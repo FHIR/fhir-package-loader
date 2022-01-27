@@ -1,0 +1,60 @@
+{
+  "name": "fhir-package-load",
+  "version": "0.1.0",
+  "description": "JavaScript package for downloading and accessing FHIR definitions",
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc -w",
+    "test": "jest --maxWorkers=4 --coverage",
+    "test:watch": "npm run test -- --watchAll",
+    "coverage": "opener coverage/lcov-report/index.html",
+    "lint": "tsc && eslint \"**/*.{js,ts}\"",
+    "lint:fix": "tsc --noEmit && eslint \"**/*.{js,ts}\" --quiet --fix",
+    "prettier": "prettier --check \"**/*.{js,ts}\"",
+    "prettier:fix": "prettier --write \"**/*.{js,ts}\"",
+    "check": "npm run test && npm run lint && npm run prettier",
+    "prepare": "npm run build"
+  },
+  "author": "",
+  "license": "Apache-2.0",
+  "main": "dist/index.js",
+  "bin": {
+    "fhir-package-load": "dist/app.js"
+  },
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*.{js,json,d.ts}"
+  ],
+  "devDependencies": {
+    "@types/fs-extra": "^8.1.0",
+    "@types/jest": "^26.0.21",
+    "@types/lodash": "^4.14.177",
+    "@types/node": "^12.12.34",
+    "@types/opener": "^1.4.0",
+    "@types/tar": "^4.0.3",
+    "@types/temp": "^0.8.34",
+    "@typescript-eslint/eslint-plugin": "^2.26.0",
+    "@typescript-eslint/parser": "^2.26.0",
+    "eslint": "^6.8.0",
+    "eslint-config-prettier": "^6.10.1",
+    "jest": "^26.6.3",
+    "jest-extended": "^0.11.5",
+    "opener": "^1.5.2",
+    "prettier": "^2.0.2",
+    "ts-jest": "^26.5.4",
+    "ts-node": "^9.1.1",
+    "typescript": "^3.9.9"
+  },
+  "dependencies": {
+    "axios": "^0.21.1",
+    "chalk": "^4.1.2",
+    "commander": "^8.3.0",
+    "fhir": "^4.9.0",
+    "fs-extra": "^8.1.0",
+    "junk": "^3.1.0",
+    "lodash": "^4.17.21",
+    "tar": "^5.0.11",
+    "temp": "^0.9.1",
+    "winston": "^3.3.3"
+  }
+}
