@@ -2,19 +2,19 @@ import { Type, Metadata } from '../utils';
 import { cloneDeep } from 'lodash';
 
 export class BaseFHIRDefinitions {
-  private resources: Map<string, any>;
-  private logicals: Map<string, any>;
-  private profiles: Map<string, any>;
-  private extensions: Map<string, any>;
-  private types: Map<string, any>;
-  private valueSets: Map<string, any>;
-  private codeSystems: Map<string, any>;
-  private implementationGuides: Map<string, any>;
-  private packageJsons: Map<string, any>;
+  protected resources: Map<string, any>;
+  protected logicals: Map<string, any>;
+  protected profiles: Map<string, any>;
+  protected extensions: Map<string, any>;
+  protected types: Map<string, any>;
+  protected valueSets: Map<string, any>;
+  protected codeSystems: Map<string, any>;
+  protected implementationGuides: Map<string, any>;
+  protected packageJsons: Map<string, any>;
   childFHIRDefs: BaseFHIRDefinitions[];
   package: string;
 
-  constructor(public readonly isSupplementalFHIRDefinitions = false) {
+  constructor() {
     this.package = '';
     this.resources = new Map();
     this.logicals = new Map();
@@ -157,13 +157,10 @@ export class BaseFHIRDefinitions {
   }
 
   add(definition: any): void {
-    // For supplemental FHIR versions, we only care about resources and types,
-    // but for normal packages, we care about everything.
     if (definition.resourceType === 'StructureDefinition') {
       if (
         definition.type === 'Extension' &&
-        definition.baseDefinition !== 'http://hl7.org/fhir/StructureDefinition/Element' &&
-        !this.isSupplementalFHIRDefinitions
+        definition.baseDefinition !== 'http://hl7.org/fhir/StructureDefinition/Element'
       ) {
         addDefinitionToMap(definition, this.extensions);
       } else if (
@@ -174,27 +171,22 @@ export class BaseFHIRDefinitions {
         addDefinitionToMap(definition, this.types);
       } else if (definition.kind === 'resource') {
         if (definition.derivation === 'constraint') {
-          if (!this.isSupplementalFHIRDefinitions) {
-            addDefinitionToMap(definition, this.profiles);
-          }
+          addDefinitionToMap(definition, this.profiles);
         } else {
           addDefinitionToMap(definition, this.resources);
         }
       } else if (definition.kind === 'logical') {
         if (definition.derivation === 'specialization') {
           addDefinitionToMap(definition, this.logicals);
-        } else if (!this.isSupplementalFHIRDefinitions) {
+        } else {
           addDefinitionToMap(definition, this.profiles);
         }
       }
-    } else if (definition.resourceType === 'ValueSet' && !this.isSupplementalFHIRDefinitions) {
+    } else if (definition.resourceType === 'ValueSet') {
       addDefinitionToMap(definition, this.valueSets);
-    } else if (definition.resourceType === 'CodeSystem' && !this.isSupplementalFHIRDefinitions) {
+    } else if (definition.resourceType === 'CodeSystem') {
       addDefinitionToMap(definition, this.codeSystems);
-    } else if (
-      definition.resourceType === 'ImplementationGuide' &&
-      !this.isSupplementalFHIRDefinitions
-    ) {
+    } else if (definition.resourceType === 'ImplementationGuide') {
       addDefinitionToMap(definition, this.implementationGuides);
     }
   }
@@ -271,7 +263,7 @@ export class BaseFHIRDefinitions {
   }
 }
 
-function addDefinitionToMap(def: any, defMap: Map<string, any>): void {
+export function addDefinitionToMap(def: any, defMap: Map<string, any>): void {
   if (def.id) {
     defMap.set(def.id, def);
   }

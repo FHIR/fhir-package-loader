@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { program } from 'commander';
 import { loadDependencies } from './loadUtils';
 
@@ -23,21 +25,7 @@ Examples:
   const packages = program.args.map(dep => dep.replace('@', '#'));
   const cachePath = program.opts().save;
 
-  // loadDependency('hl7.fhir.r4.core', '4.0.1');
-  // const myDefs = await loadDependencies(['hl7.fhir.r4.core#4.0.1', 'hl7.fhir.us.mcode#1.0.0']);
-  // const myDefs = await loadDependencies(['hl7.fhir.r4.core#4.0.1']);
-  const myDefs = await loadDependencies(packages, cachePath);
-  console.log(myDefs.allProfiles().length);
-}
-
-async function myAppForLoading() {
-  const myDefs = await loadDependencies(
-    ['hl7.fhir.r4.core#4.0.1', 'hl7.fhir.us.mcode#1.0.0'],
-    '../test-package-load'
-  );
-  // const myDefs = await loadDependencies(['hl7.fhir.r4.core#4.0.1']);
-  console.log(myDefs.allProfiles().length);
+  await loadDependencies(packages, cachePath);
 }
 
 myApp();
-// myAppForLoading();

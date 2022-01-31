@@ -13,7 +13,7 @@ npm install -g fhir-package-load
 fhir-package-load <package@version...>
 ```
 
-Optional comand line options:
+Optional command line options:
 
 - `-s, --save`: specify where to load packages to (default is local [FHIR cache](https://confluence.hl7.org/pages/viewpage.action?pageId=66928417#FHIRPackageCache-Location))
 
@@ -38,12 +38,15 @@ async function myApp() {
 
 ## Mock Out in Unit Tests
 
+If you use `fhir-package-load` as a dependency in your project, you can choose to mock any function from the package. One way to do this is using the following snippet:
+
 ```javascript
 jest.mock('fhir-package-load', () => {
   const original = jest.requireActual('fhir-package-load');
   return {
     ...original,
-    loadDependency: jest.fn()
+    loadDependency: jest.fn(), // can optionally include a mock implementation
+    // any other functions to be mocked out
   }
 }
 ```
