@@ -1,0 +1,5 @@
+{
+  "resourceType": "ImplementationGuide",
+  "id": "MyIG",
+  "url": "http://example.org/ImplementationGuide"
+}
