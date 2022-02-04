@@ -4,7 +4,7 @@ import {
   loadFromPath,
   loadDependency,
   loadDependencies,
-  BaseFHIRDefinitions as FHIRDefinitions
+  FHIRDefinitions
 } from '../../src/loadUtils';
 import { Type } from '../../src/utils';
 import { PackageLoadError } from '../../src/errors';

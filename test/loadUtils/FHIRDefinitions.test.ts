@@ -1,4 +1,4 @@
-import { loadFromPath, BaseFHIRDefinitions as FHIRDefinitions } from '../../src/loadUtils';
+import { loadFromPath, FHIRDefinitions } from '../../src/loadUtils';
 import path from 'path';
 import { Type } from '../../src/utils/Fishable';
 import { loggerSpy } from '../testhelpers';

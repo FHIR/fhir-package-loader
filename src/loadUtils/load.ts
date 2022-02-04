@@ -1,4 +1,4 @@
-import { BaseFHIRDefinitions } from './FHIRDefinitions';
+import { FHIRDefinitions } from './FHIRDefinitions';
 import { PackageLoadError, CurrentPackageLoadError } from '../errors';
 import axios from 'axios';
 import fs from 'fs-extra';
@@ -11,10 +11,10 @@ import { logger } from '../utils';
 export async function loadDependencies(
   fhirPackages: string[],
   cachePath?: string
-): Promise<BaseFHIRDefinitions> {
+): Promise<FHIRDefinitions> {
   const promises = fhirPackages.map(fhirPackage => {
     const [fhirPackageId, fhirPackageVersion] = fhirPackage.split('#');
-    const fhirDefs = new BaseFHIRDefinitions();
+    const fhirDefs = new FHIRDefinitions();
     // Testing Hack: Use exports.loadDependency instead of loadDependency so that this function
     // calls the mocked loadDependency in unit tests.  In normal (non-test) use, this should
     // have no negative effects.
@@ -36,7 +36,7 @@ export async function loadDependencies(
   });
   return await Promise.all(promises).then(fhirDefs => {
     if (fhirDefs.length > 1) {
-      const mainFHIRDefs = new BaseFHIRDefinitions();
+      const mainFHIRDefs = new FHIRDefinitions();
       fhirDefs.forEach(v => mainFHIRDefs.childFHIRDefs.push(v));
       return mainFHIRDefs;
     }
@@ -48,17 +48,17 @@ export async function loadDependencies(
  * Loads a dependency from user FHIR cache or from online
  * @param {string} packageName - The name of the package to load
  * @param {string} version - The version of the package to load
- * @param {BaseFHIRDefinitions} FHIRDefs - The BaseFHIRDefinitions to load the dependencies into
+ * @param {FHIRDefinitions} FHIRDefs - The FHIRDefinitions to load the dependencies into
  * @param {string} cachePath - The path to load the package into
- * @returns {Promise<BaseFHIRDefinitions>} the loaded FHIRDefs
+ * @returns {Promise<FHIRDefinitions>} the loaded FHIRDefs
  * @throws {PackageLoadError} when the desired package can't be loaded
  */
 export async function loadDependency(
   packageName: string,
   version: string,
-  FHIRDefs: BaseFHIRDefinitions,
+  FHIRDefs: FHIRDefinitions,
   cachePath: string = path.join(os.homedir(), '.fhir', 'packages')
-): Promise<BaseFHIRDefinitions> {
+): Promise<FHIRDefinitions> {
   let fullPackageName = `${packageName}#${version}`;
   const loadPath = path.join(cachePath, fullPackageName, 'package');
   let loadedPackage: string;
@@ -237,13 +237,13 @@ export function cleanCachedPackage(packageDirectory: string): void {
  * Locates the targetPackage within the cachePath and loads the set of JSON files into FHIRDefs
  * @param {string} cachePath - The path to the directory containing cached packages
  * @param {string} targetPackage - The name of the package we are trying to load
- * @param {BaseFHIRDefinitions} FHIRDefs - The BaseFHIRDefinitions object to load defs into
+ * @param {FHIRDefinitions} FHIRDefs - The FHIRDefinitions object to load defs into
  * @returns {string} the name of the loaded package if successful
  */
 export function loadFromPath(
   cachePath: string,
   targetPackage: string,
-  FHIRDefs: BaseFHIRDefinitions
+  FHIRDefs: FHIRDefinitions
 ): string {
   const originalSize = FHIRDefs.size();
   const packages = fs.existsSync(cachePath) ? fs.readdirSync(cachePath) : [];

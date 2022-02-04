@@ -1,7 +1,7 @@
 import { Type, Metadata } from '../utils';
 import { cloneDeep } from 'lodash';
 
-export class BaseFHIRDefinitions {
+export class FHIRDefinitions {
   protected resources: Map<string, any>;
   protected logicals: Map<string, any>;
   protected profiles: Map<string, any>;
@@ -11,7 +11,7 @@ export class BaseFHIRDefinitions {
   protected codeSystems: Map<string, any>;
   protected implementationGuides: Map<string, any>;
   protected packageJsons: Map<string, any>;
-  childFHIRDefs: BaseFHIRDefinitions[];
+  childFHIRDefs: FHIRDefinitions[];
   package: string;
 
   constructor() {
