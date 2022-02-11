@@ -16,6 +16,10 @@ class LoggerSpy {
     }
   }
 
+  log(level: string, message: string) {
+    logger.log(level, message);
+  }
+
   getAllLogs(level?: Level): LogEntry[] {
     const logs = this.mockWriter.mock.calls.map(m => m[0]);
     if (level) {

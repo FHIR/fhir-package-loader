@@ -1,4 +1,4 @@
-import { logger, stats, errorsAndWarnings } from '../../src/utils/Logger';
+import { logger, stats, errorsAndWarnings, logWithTrack } from '../../src/utils/Logger';
 // MUTE_LOGS controls whether or not logs get printed during testing.
 // Usually, we don't want logs actually printed, as they cause clutter.
 const MUTE_LOGS = true;
@@ -113,35 +113,56 @@ describe('Logger', () => {
     expect(errorsAndWarnings.errors).toHaveLength(0);
     expect(errorsAndWarnings.warnings).toHaveLength(0);
   });
+});
+
+describe('LogWithTrack', () => {
+  let originalWriteFn = logger.transports[0]['write'];
+  let log: (level: string, message: string) => void;
+  beforeAll(() => {
+    log = (level: string, message: string) => {
+      logger.log(level, message);
+    };
+  });
+
+  beforeEach(() => {
+    stats.reset();
+    errorsAndWarnings.reset();
+    if (MUTE_LOGS) {
+      originalWriteFn = logger.transports[0]['write'];
+      logger.transports[0]['write'] = jest.fn(() => true);
+    }
+  });
+
+  afterEach(() => {
+    if (MUTE_LOGS) {
+      logger.transports[0]['write'] = originalWriteFn;
+    }
+  });
 
   it('should track errors and warnings when shouldTrack is true', () => {
     errorsAndWarnings.shouldTrack = true;
-    logger.warn('warn1', { location: [1, 2, 3, 4], file: 'Input_0' });
-    logger.warn('warn2');
-    logger.error('error1');
-    logger.error('error2');
+    logWithTrack('warn', 'warn1', log);
+    logWithTrack('warn', 'warn2', log);
+    logWithTrack('error', 'error1', log);
+    logWithTrack('error', 'error2', log);
     expect(errorsAndWarnings.shouldTrack).toBe(true);
     expect(errorsAndWarnings.warnings).toHaveLength(2);
-    expect(errorsAndWarnings.warnings).toContainEqual({
-      location: [1, 2, 3, 4],
-      message: 'warn1',
-      input: 'Input_0'
-    });
-    expect(errorsAndWarnings.warnings).toContainEqual({ message: 'warn2' });
+    expect(errorsAndWarnings.warnings).toContainEqual('warn1');
+    expect(errorsAndWarnings.warnings).toContainEqual('warn2');
     expect(errorsAndWarnings.errors).toHaveLength(2);
-    expect(errorsAndWarnings.errors).toContainEqual({ message: 'error1' });
-    expect(errorsAndWarnings.errors).toContainEqual({ message: 'error2' });
+    expect(errorsAndWarnings.errors).toContainEqual('error1');
+    expect(errorsAndWarnings.errors).toContainEqual('error2');
   });
 
   it('should reset errors and warnings', () => {
     errorsAndWarnings.shouldTrack = true;
-    logger.warn('warn1');
-    logger.error('error1');
+    logWithTrack('warn', 'warn1', log);
+    logWithTrack('error', 'error1', log);
     expect(errorsAndWarnings.shouldTrack).toBe(true);
     expect(errorsAndWarnings.warnings).toHaveLength(1);
-    expect(errorsAndWarnings.warnings).toContainEqual({ message: 'warn1' });
+    expect(errorsAndWarnings.warnings).toContainEqual('warn1');
     expect(errorsAndWarnings.errors).toHaveLength(1);
-    expect(errorsAndWarnings.errors).toContainEqual({ message: 'error1' });
+    expect(errorsAndWarnings.errors).toContainEqual('error1');
     errorsAndWarnings.reset();
     expect(errorsAndWarnings.errors).toHaveLength(0);
     expect(errorsAndWarnings.warnings).toHaveLength(0);

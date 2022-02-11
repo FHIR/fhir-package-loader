@@ -203,9 +203,48 @@ describe('#loadFromPath()', () => {
   it('should count size of each child FHIRDefs in total', () => {
     expect(defsWithChildDefs.size()).toEqual(2 * defs.size());
   });
+
+  it('should get all unsuccessfully loaded packages from FHIRDefs with no children', () => {
+    const failedPackage = new FHIRDefinitions();
+    failedPackage.package = 'my-package';
+    failedPackage.unsuccessfulPackageLoad = true;
+    expect(failedPackage.allUnsuccessfulPackageLoads()).toHaveLength(1);
+  });
+
+  it('should get all unsuccessfully loaded packages from all child FHIRDefs', () => {
+    const failedPackage = new FHIRDefinitions();
+    failedPackage.package = 'my-package';
+    failedPackage.unsuccessfulPackageLoad = true;
+    const failedChildPackage = new FHIRDefinitions();
+    failedChildPackage.package = 'failed-child-package';
+    failedChildPackage.unsuccessfulPackageLoad = true;
+    const successfulPackageLoad = new FHIRDefinitions();
+    successfulPackageLoad.package = 'successful-child-package';
+    // unsuccessfulPackageLoad defaults to false
+    failedPackage.childFHIRDefs.push(failedChildPackage, successfulPackageLoad);
+    expect(failedPackage.allUnsuccessfulPackageLoads()).toHaveLength(2);
+  });
+
+  it('should get all unsuccessfully loaded packages from specified package', () => {
+    const failedPackage = new FHIRDefinitions();
+    failedPackage.package = 'my-package';
+    failedPackage.unsuccessfulPackageLoad = true;
+    const failedChildPackage = new FHIRDefinitions();
+    failedChildPackage.package = 'failed-child-package';
+    failedChildPackage.unsuccessfulPackageLoad = true;
+    const successfulPackageLoad = new FHIRDefinitions();
+    successfulPackageLoad.package = 'successful-child-package';
+    // unsuccessfulPackageLoad defaults to false
+    failedPackage.childFHIRDefs.push(failedChildPackage, successfulPackageLoad);
+    expect(failedPackage.allUnsuccessfulPackageLoads('my-package')).toHaveLength(1);
+    expect(failedPackage.allUnsuccessfulPackageLoads('my-package')).toEqual(['my-package']);
+  });
 });
 
 describe('#loadDependencies()', () => {
+  const log = (level: string, message: string) => {
+    loggerSpy.log(level, message);
+  };
   let jestSpy: jest.SpyInstance;
   beforeAll(() => {
     jestSpy = jest
@@ -235,7 +274,7 @@ describe('#loadDependencies()', () => {
 
   it('should return single FHIRDefinitions if only one package is loaded', () => {
     const fhirPackages = ['hl7.fhir.us.core#4.0.1'];
-    return loadDependencies(fhirPackages).then(defs => {
+    return loadDependencies(fhirPackages, undefined, log).then(defs => {
       expect(defs.package).toEqual('hl7.fhir.us.core#4.0.1');
       expect(loggerSpy.getAllLogs('warn')).toHaveLength(0);
       expect(loggerSpy.getAllLogs('error')).toHaveLength(0);
@@ -244,7 +283,7 @@ describe('#loadDependencies()', () => {
 
   it('should return an array of FHIRDefinitions if multiple packages are loaded', () => {
     const fhirPackages = ['hl7.fhir.us.core#4.0.1', 'hl7.fhir.us.core#3.0.1'];
-    return loadDependencies(fhirPackages).then(defs => {
+    return loadDependencies(fhirPackages, undefined, log).then(defs => {
       expect(defs.package).toEqual(''); // No package specified on wrapper class
       expect(defs.childFHIRDefs).toHaveLength(2);
       expect(defs.childFHIRDefs[0].package).toEqual('hl7.fhir.us.core#4.0.1');
@@ -256,8 +295,8 @@ describe('#loadDependencies()', () => {
 
   it('should log an error when it fails to load any of dependencies', () => {
     const fhirPackages = ['hl7.does.not.exist#current'];
-    return loadDependencies(fhirPackages).then(defs => {
-      expect(defs.package).toEqual(''); // No package name set
+    return loadDependencies(fhirPackages, undefined, log).then(defs => {
+      expect(defs.package).toEqual('hl7.does.not.exist#current');
       expect(defs.allResources()).toHaveLength(0); // No resources added
       expect(loggerSpy.getLastMessage('error')).toMatch(
         /Failed to load hl7\.does\.not\.exist#current/s
@@ -268,8 +307,8 @@ describe('#loadDependencies()', () => {
 
   it('should log a more detailed error when it fails to download a dependency due to certificate issue', () => {
     const selfSignedPackage = ['self-signed.package#1.0.0'];
-    return loadDependencies(selfSignedPackage).then(defs => {
-      expect(defs.package).toEqual(''); // No package name set
+    return loadDependencies(selfSignedPackage, undefined, log).then(defs => {
+      expect(defs.package).toEqual('self-signed.package#1.0.0');
       expect(defs.allResources()).toHaveLength(0); // No resources added
       expect(loggerSpy.getLastMessage('error')).toMatch(
         /Failed to load self-signed\.package#1\.0\.0/s
@@ -283,6 +322,9 @@ describe('#loadDependencies()', () => {
 });
 
 describe('#loadDependency()', () => {
+  const log = (level: string, message: string) => {
+    loggerSpy.log(level, message);
+  };
   let defs: FHIRDefinitions;
   let axiosSpy: jest.SpyInstance;
   let axiosHeadSpy: jest.SpyInstance;
@@ -439,7 +481,7 @@ describe('#loadDependency()', () => {
   it('should not try to download a non-current package that is already in the cache', async () => {
     const expectedDefs = new FHIRDefinitions();
     loadFromPath(cachePath, 'sushi-test#0.1.0', expectedDefs);
-    await expect(loadDependency('sushi-test', '0.1.0', defs, cachePath)).resolves.toEqual(
+    await expect(loadDependency('sushi-test', '0.1.0', defs, cachePath, log)).resolves.toEqual(
       expectedDefs
     );
     expect(axiosSpy.mock.calls.length).toBe(0);
@@ -448,14 +490,14 @@ describe('#loadDependency()', () => {
   it('should recognize a package in the cache with uppercase letters', async () => {
     const expectedDefs = new FHIRDefinitions();
     loadFromPath(cachePath, 'sushi-test-caps#0.1.0', expectedDefs);
-    await expect(loadDependency('sushi-test-caps', '0.1.0', defs, cachePath)).resolves.toEqual(
+    await expect(loadDependency('sushi-test-caps', '0.1.0', defs, cachePath, log)).resolves.toEqual(
       expectedDefs
     );
     expect(axiosSpy.mock.calls.length).toBe(0);
   });
 
   it('should try to load a package from packages.fhir.org when a non-current package is not cached', async () => {
-    await expect(loadDependency('sushi-test', '0.2.0', defs, 'foo')).rejects.toThrow(
+    await expect(loadDependency('sushi-test', '0.2.0', defs, 'foo', log)).rejects.toThrow(
       'The package sushi-test#0.2.0 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -465,7 +507,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should try to load FHIR R4 (4.0.1) from packages.fhir.org when it is not cached', async () => {
-    await expect(loadDependency('hl7.fhir.r4.core', '4.0.1', defs, 'foo')).rejects.toThrow(
+    await expect(loadDependency('hl7.fhir.r4.core', '4.0.1', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.r4.core#4.0.1 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -475,7 +517,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should try to load prerelease FHIR R4B (4.1.0) from packages2.fhir.org when it is not cached', async () => {
-    await expect(loadDependency('hl7.fhir.r4b.core', '4.1.0', defs, 'foo')).rejects.toThrow(
+    await expect(loadDependency('hl7.fhir.r4b.core', '4.1.0', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.r4b.core#4.1.0 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -488,7 +530,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should try to load FHIR R4B (4.3.0) from packages.fhir.org when it is not cached', async () => {
-    await expect(loadDependency('hl7.fhir.r4b.core', '4.3.0', defs, 'foo')).rejects.toThrow(
+    await expect(loadDependency('hl7.fhir.r4b.core', '4.3.0', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.r4b.core#4.3.0 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -498,7 +540,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should try to load prerelease FHIR R5 (4.5.0) from packages2.fhir.org when it is not cached', async () => {
-    await expect(loadDependency('hl7.fhir.r5.core', '4.5.0', defs, 'foo')).rejects.toThrow(
+    await expect(loadDependency('hl7.fhir.r5.core', '4.5.0', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.r5.core#4.5.0 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -511,7 +553,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should try to load a package from packages2.fhir.org when it is not on packages.fhir.org', async () => {
-    await expect(loadDependency('fhir.dicom', '2021.4.20210910', defs, 'foo')).rejects.toThrow(
+    await expect(loadDependency('fhir.dicom', '2021.4.20210910', defs, 'foo', log)).rejects.toThrow(
       'The package fhir.dicom#2021.4.20210910 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -524,7 +566,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should throw PackageLoadError when a package with a non-current version is not cached or available on packages.fhir.org', async () => {
-    await expect(loadDependency('sushi-test', '0.3.0', defs, 'foo')).rejects.toThrow(
+    await expect(loadDependency('sushi-test', '0.3.0', defs, 'foo', log)).rejects.toThrow(
       'The package sushi-test#0.3.0 could not be loaded locally or from the FHIR package registry'
     );
     expect(loggerSpy.getLastMessage('info')).toMatch(
@@ -546,7 +588,7 @@ describe('#loadDependency()', () => {
           throw 'Not Found';
         }
       });
-    await expect(loadDependency('fhir.fake', '2022.1.01', defs, 'foo')).rejects.toThrow(
+    await expect(loadDependency('fhir.fake', '2022.1.01', defs, 'foo', log)).rejects.toThrow(
       'The package fhir.fake#2022.1.01 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -562,7 +604,7 @@ describe('#loadDependency()', () => {
   it('should not try to download a current package that is already in the cache and up to date', async () => {
     const expectedDefs = new FHIRDefinitions();
     loadFromPath(cachePath, 'sushi-test#current', expectedDefs);
-    await expect(loadDependency('sushi-test', 'current', defs, cachePath)).resolves.toEqual(
+    await expect(loadDependency('sushi-test', 'current', defs, cachePath, log)).resolves.toEqual(
       expectedDefs
     );
     expect(axiosSpy.mock.calls).toEqual([
@@ -572,7 +614,9 @@ describe('#loadDependency()', () => {
   });
 
   it('should try to load the latest package from build.fhir.org when a current package version is not locally cached', async () => {
-    await expect(loadDependency('hl7.fhir.us.core.r4', 'current', defs, 'foo')).rejects.toThrow(
+    await expect(
+      loadDependency('hl7.fhir.us.core.r4', 'current', defs, 'foo', log)
+    ).rejects.toThrow(
       'The package hl7.fhir.us.core.r4#current could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -584,7 +628,7 @@ describe('#loadDependency()', () => {
 
   it('should try to load the latest package from build.fhir.org when a current package version has an older version that is locally cached', async () => {
     await expect(
-      loadDependency('sushi-test-old', 'current', defs, cachePath)
+      loadDependency('sushi-test-old', 'current', defs, cachePath, log)
     ).resolves.toBeTruthy(); // Since tar is mocked, the actual cache is not updated
     expectDownloadSequence(
       'https://build.fhir.org/ig/sushi/sushi-test-old/package.tgz',
@@ -595,7 +639,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should try to load the latest FHIR R5 package from build.fhir.org when it is not locally cached', async () => {
-    await expect(loadDependency('hl7.fhir.r5.core', 'current', defs, 'foo')).rejects.toThrow(
+    await expect(loadDependency('hl7.fhir.r5.core', 'current', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.r5.core#current could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -609,7 +653,7 @@ describe('#loadDependency()', () => {
     const expectedDefs = new FHIRDefinitions();
     loadFromPath(cachePath, 'sushi-test-no-download#current', expectedDefs);
     await expect(
-      loadDependency('sushi-test-no-download', 'current', defs, cachePath)
+      loadDependency('sushi-test-no-download', 'current', defs, cachePath, log)
     ).resolves.toEqual(expectedDefs);
     expectDownloadSequence(
       'https://build.fhir.org/ig/sushi/sushi-test-no-download/package.tgz',
@@ -623,14 +667,16 @@ describe('#loadDependency()', () => {
   it('should not try to download a dev package that is already in the cache', async () => {
     const expectedDefs = new FHIRDefinitions();
     loadFromPath(cachePath, 'sushi-test#dev', expectedDefs);
-    await expect(loadDependency('sushi-test', 'dev', defs, cachePath)).resolves.toEqual(
+    await expect(loadDependency('sushi-test', 'dev', defs, cachePath, log)).resolves.toEqual(
       expectedDefs
     );
     expect(axiosSpy.mock.calls).toHaveLength(0);
   });
 
   it('should load the current package from build.fhir.org when a dev package is loaded and not locally cached', async () => {
-    await expect(loadDependency('sushi-test-old', 'dev', defs, cachePath)).resolves.toBeTruthy();
+    await expect(
+      loadDependency('sushi-test-old', 'dev', defs, cachePath, log)
+    ).resolves.toBeTruthy();
     expect(
       loggerSpy
         .getAllMessages('info')
@@ -649,7 +695,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should throw CurrentPackageLoadError when a current package is not listed', async () => {
-    await expect(loadDependency('hl7.fhir.us.core', 'current', defs, 'foo')).rejects.toThrow(
+    await expect(loadDependency('hl7.fhir.us.core', 'current', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.us.core#current is not available on https://build.fhir.org/ig/qas.json, so no current version can be loaded'
     );
     expect(axiosSpy.mock.calls.length).toBe(1);
@@ -658,7 +704,7 @@ describe('#loadDependency()', () => {
 
   it('should throw CurrentPackageLoadError when https://build.fhir.org/ig/qas.json gives a bad response', async () => {
     axiosSpy.mockImplementationOnce(() => {});
-    await expect(loadDependency('bad.response', 'current', defs, 'foo')).rejects.toThrow(
+    await expect(loadDependency('bad.response', 'current', defs, 'foo', log)).rejects.toThrow(
       'The package bad.response#current is not available on https://build.fhir.org/ig/qas.json, so no current version can be loaded'
     );
     expect(axiosSpy.mock.calls.length).toBe(1);

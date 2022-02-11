@@ -1,16 +1,17 @@
 import { FHIRDefinitions } from './FHIRDefinitions';
 import { PackageLoadError, CurrentPackageLoadError } from '../errors';
+import { logWithTrack } from '../utils';
 import axios from 'axios';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
 import tar from 'tar';
 import temp from 'temp';
-import { logger } from '../utils';
 
 export async function loadDependencies(
   fhirPackages: string[],
-  cachePath?: string
+  cachePath: string = path.join(os.homedir(), '.fhir', 'packages'),
+  log: (level: string, message: string) => void = () => {}
 ): Promise<FHIRDefinitions> {
   const promises = fhirPackages.map(fhirPackage => {
     const [fhirPackageId, fhirPackageVersion] = fhirPackage.split('#');
@@ -19,7 +20,7 @@ export async function loadDependencies(
     // calls the mocked loadDependency in unit tests.  In normal (non-test) use, this should
     // have no negative effects.
     return exports
-      .loadDependency(fhirPackageId, fhirPackageVersion, fhirDefs, cachePath)
+      .loadDependency(fhirPackageId, fhirPackageVersion, fhirDefs, cachePath, log)
       .catch((e: Error) => {
         let message = `Failed to load ${fhirPackageId}#${fhirPackageVersion}: ${e.message}`;
         if (/certificate/.test(e.message)) {
@@ -30,7 +31,9 @@ export async function loadDependencies(
             '  2. Set NODE_EXTRA_CA_CERTS as described at https://bit.ly/3ghJqJZ (RECOMMENDED).\n' +
             '  3. Disable certificate validation as described at https://bit.ly/3syjzm7 (NOT RECOMMENDED).\n';
         }
-        logger.error(message);
+        logWithTrack('error', message, log);
+        fhirDefs.unsuccessfulPackageLoad = true;
+        fhirDefs.package = `${fhirPackageId}#${fhirPackageVersion}`;
         return fhirDefs;
       });
   });
@@ -57,26 +60,29 @@ export async function loadDependency(
   packageName: string,
   version: string,
   FHIRDefs: FHIRDefinitions,
-  cachePath: string = path.join(os.homedir(), '.fhir', 'packages')
+  cachePath: string = path.join(os.homedir(), '.fhir', 'packages'),
+  log: (level: string, message: string) => void = () => {}
 ): Promise<FHIRDefinitions> {
   let fullPackageName = `${packageName}#${version}`;
   const loadPath = path.join(cachePath, fullPackageName, 'package');
   let loadedPackage: string;
 
   // First, try to load the package from the local cache
-  logger.info(`Checking ${cachePath} for ${fullPackageName}...`);
+  logWithTrack('info', `Checking ${cachePath} for ${fullPackageName}...`, log);
   loadedPackage = loadFromPath(cachePath, fullPackageName, FHIRDefs);
   if (loadedPackage) {
-    logger.info(`Found ${fullPackageName} in ${cachePath}.`);
+    logWithTrack('info', `Found ${fullPackageName} in ${cachePath}.`, log);
   } else {
-    logger.info(`Did not find ${fullPackageName} in ${cachePath}.`);
+    logWithTrack('info', `Did not find ${fullPackageName} in ${cachePath}.`, log);
   }
 
   // When a dev package is not present locally, fall back to using the current version
   // as described here https://confluence.hl7.org/pages/viewpage.action?pageId=35718627#IGPublisherDocumentation-DependencyList
   if (version === 'dev' && !loadedPackage) {
-    logger.info(
-      `Falling back to ${packageName}#current since ${fullPackageName} is not locally cached. To avoid this, add ${fullPackageName} to your local FHIR cache by building it locally with the HL7 FHIR IG Publisher.`
+    logWithTrack(
+      'info',
+      `Falling back to ${packageName}#current since ${fullPackageName} is not locally cached. To avoid this, add ${fullPackageName} to your local FHIR cache by building it locally with the HL7 FHIR IG Publisher.`,
+      log
     );
     version = 'current';
     fullPackageName = `${packageName}#${version}`;
@@ -89,8 +95,10 @@ export async function loadDependency(
     // TODO: Figure out how to determine if the cached package is current
     // See: https://chat.fhir.org/#narrow/stream/179252-IG-creation/topic/Registry.20for.20FHIR.20Core.20packages.20.3E.204.2E0.2E1
     if (loadedPackage) {
-      logger.info(
-        `Downloading ${fullPackageName} since FHIR Package Loader cannot determine if the version in ${cachePath} is the most recent build.`
+      logWithTrack(
+        'info',
+        `Downloading ${fullPackageName} since FHIR Package Loader cannot determine if the version in ${cachePath} is the most recent build.`,
+        log
       );
     }
   } else if (version === 'current') {
@@ -121,24 +129,30 @@ export async function loadDependency(
       if (manifest?.data?.date !== cachedPackageJSON?.date) {
         packageUrl = `${igUrl}/package.tgz`;
         if (cachedPackageJSON) {
-          logger.debug(
+          logWithTrack(
+            'debug',
             `Cached package date for ${fullPackageName} (${formatDate(
               cachedPackageJSON.date
             )}) does not match last build date on build.fhir.org (${formatDate(
               manifest?.data?.date
-            )})`
+            )})`,
+            log
           );
-          logger.info(
-            `Cached package ${fullPackageName} is out of date and will be replaced by the more recent version found on build.fhir.org.`
+          logWithTrack(
+            'info',
+            `Cached package ${fullPackageName} is out of date and will be replaced by the more recent version found on build.fhir.org.`,
+            log
           );
         }
       } else {
-        logger.debug(
+        logWithTrack(
+          'debug',
           `Cached package date for ${fullPackageName} (${formatDate(
             cachedPackageJSON.date
           )}) matches last build date on build.fhir.org (${formatDate(
             manifest?.data?.date
-          )}), so the cached package will be used`
+          )}), so the cached package will be used`,
+          log
         );
       }
     } else {
@@ -151,12 +165,12 @@ export async function loadDependency(
   // If the packageUrl is set, we must download the package from that url, and extract it to our local cache
   if (packageUrl) {
     const doDownload = async (url: string) => {
-      logger.info(`Downloading ${fullPackageName}... ${url}`);
+      logWithTrack('info', `Downloading ${fullPackageName}... ${url}`, log);
       const res = await axios.get(url, {
         responseType: 'arraybuffer'
       });
       if (res?.data) {
-        logger.info(`Downloaded ${fullPackageName}`);
+        logWithTrack('info', `Downloaded ${fullPackageName}`, log);
         // Create a temporary file and write the package to there
         temp.track();
         const tempFile = temp.openSync();
@@ -179,7 +193,7 @@ export async function loadDependency(
         // Now try to load again from the path
         loadedPackage = loadFromPath(cachePath, fullPackageName, FHIRDefs);
       } else {
-        logger.info(`Unable to download most current version of ${fullPackageName}`);
+        logWithTrack('info', `Unable to download most current version of ${fullPackageName}`, log);
       }
     };
     try {
@@ -205,7 +219,7 @@ export async function loadDependency(
     // If we fail again, then we couldn't get the package locally or from online
     throw new PackageLoadError(fullPackageName);
   }
-  logger.info(`Loaded package ${fullPackageName}`);
+  logWithTrack('info', `Loaded package ${fullPackageName}`, log);
   return FHIRDefs;
 }
 

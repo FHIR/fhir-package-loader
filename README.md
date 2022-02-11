@@ -53,26 +53,69 @@ Examples:
   fhir-package-load hl7.fhir.r4.core@4.0.1 hl7.fhir.us.core@4.0.0 --save ./myProject
 ```
 
-### JavaScript Project
+### API
 
-Additionally, FHIR Package Load can be installed as a dependency of a JavaScript or TypeScript project. It add it as a dependency, navigate to your project directory and use `npm` to install the package:
+Additionally, FHIR Package Load exposes a `loadApi` function that can be used to download FHIR packages and load their definitions.
+
+#### Syntax
+
+```javascript
+loadApi(fhirPackages[, cachePath, options])
+```
+
+#### Parameters
+
+`fhirPackages` - An array of strings (or a comma separated string) that specifies the FHIR packages and versions to load. These can be in the format of `package#version` or `package@version`.
+
+- For example: `'hl7.fhir.r4.core@4.0.1, hl7.fhir.us.core@4.0.0'` or `['hl7.fhir.r4.core@4.0.1', 'hl7.fhir.us.core@4.0.0']`
+
+`cachePath` - A string that specifies where to look for already downloaded packages and download them to if they are not found. The default is the the local [FHIR cache](https://confluence.hl7.org/pages/viewpage.action?pageId=66928417#FHIRPackageCache-Location)).
+
+`options` - An object which can have the following attributes:
+
+- `log` - a function that is responsible logging information. It takes in two strings, a level and a message, and does not return anything.
+  - For example: `log: console.log` will pass in `console.log` as the logging function and the level and message will be logged as `console.log(level, message)`
+
+#### Return Value
+
+A `Promise` that resolves to an object with the following attributes:
+
+- `defs` - A [`FHIRDefinitions`](./src/load/FHIRDefinitions.ts) class instances that contains any definitions loaded from the specified package(s).
+- `errors` An array of strings containing any errors detected during package loading.
+- `warnings` An array of strings containing any warnings detected during package loading.
+- `failedPackages` An array of strings containing the `package#version` of any packages that encountered an error during download or load and were not properly loaded to `defs`.
+
+#### Usage
+
+To use the API, FHIR Package Load must be installed as a dependency of your project. To add it as a dependency, navigate to your project directory and use `npm` to install the package:
 
 ```sh
 $ cd myProject
 $ npm install fhir-package-load
 ```
 
-Once installed as a dependency, various functions are available to use within your project. The main function available is `loadDependencies`. This function provides the same functionality you get through the CLI, but you also have access to the in memory definitions from the packages. The following example shows two ways to use the function in a project:
+Once installed as a dependency, you can `import` and use the API for loading FHIR packages. This function provides the same functionality you get through the CLI, but you also have access to the in memory definitions from the packages. The following example shows two ways to use the function in a project:
 
 ```javascript
-import { loadDependencies } from 'fhir-package-load
+import { loadApi } from 'fhir-package-load
 
 async function myApp() {
   // Downloads and unzips packages to FHIR cache or other specified location (if not already present)
-  await loadDependencies(['package@version, package2@version']);
+  await loadApi(['package@version, package2@version'])
+    .then((results) => [
+      // handle results
+    ]).catch((err) => {
+      // handle thrown errors
+    });
 
-  // Does the same as above, and returns a [FHIRDefinition](./src/load/FHIRDefinitions.ts) class, which allows access to each definition in the specified packages
-  const definitions = await loadDependencies(['package@version']);
+  // Similar to above, but uses optional path for packages to download to and options
+  await loadApi(['package@version'], '../myPackages', {
+    log: console.log
+  }).then((results) => [
+    // handle results
+  ]).catch((err) => {
+    // handle thrown errors
+  });;
 }
 ```
 

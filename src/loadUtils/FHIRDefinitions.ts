@@ -13,6 +13,7 @@ export class FHIRDefinitions {
   protected packageJsons: Map<string, any>;
   childFHIRDefs: FHIRDefinitions[];
   package: string;
+  unsuccessfulPackageLoad: boolean;
 
   constructor() {
     this.package = '';
@@ -26,6 +27,7 @@ export class FHIRDefinitions {
     this.implementationGuides = new Map();
     this.packageJsons = new Map();
     this.childFHIRDefs = [];
+    this.unsuccessfulPackageLoad = false;
   }
 
   size(): number {
@@ -154,6 +156,20 @@ export class FHIRDefinitions {
       }
     }
     return cloneJsonMapValues(implementationGuides).concat(childValues);
+  }
+
+  allUnsuccessfulPackageLoads(fhirPackage?: string): string[] {
+    const childValues = this.childFHIRDefs
+      .map(def => def.allUnsuccessfulPackageLoads(fhirPackage))
+      .reduce((a, b) => a.concat(b), []);
+    if (fhirPackage) {
+      if (this.package === fhirPackage && this.unsuccessfulPackageLoad) {
+        return childValues.concat(this.package);
+      }
+    } else if (this.unsuccessfulPackageLoad) {
+      return childValues.concat(this.package);
+    }
+    return childValues;
   }
 
   add(definition: any): void {

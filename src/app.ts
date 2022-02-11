@@ -32,7 +32,11 @@ Examples:
   const packages = program.args.map(dep => dep.replace('@', '#'));
   const cachePath = program.opts().save;
 
-  await loadDependencies(packages, cachePath);
+  const logMessage = (level: string, message: string) => {
+    logger.log(level, message);
+  };
+
+  await loadDependencies(packages, cachePath, logMessage);
 }
 
 myApp();
