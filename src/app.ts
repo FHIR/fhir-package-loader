@@ -1,10 +1,21 @@
 #!/usr/bin/env node
 
 import { program } from 'commander';
-import { loadDependencies } from './loadUtils';
+import path from 'path';
+import fs from 'fs-extra';
+import { loadDependencies, loadApi } from './loadUtils';
 import { logger } from './utils';
 
-async function myApp() {
+function getVersion(): string {
+  const packageJSONPath = path.join(__dirname, '..', 'package.json');
+  if (fs.existsSync(packageJSONPath)) {
+    const sushiVersion = fs.readJSONSync(packageJSONPath)?.version;
+    return `FHIR Package Load v${sushiVersion}`;
+  }
+  return 'unknown';
+}
+
+async function app() {
   program
     .name('fhir-package-load')
     .usage('<fhirPackages...> [options]')
@@ -24,7 +35,7 @@ Examples:
   npx fhir-package-load hl7.fhir.r5.core@current
   fhir-package-load hl7.fhir.r4.core@4.0.1 hl7.fhir.us.core@4.0.0 --save ./myProject`
     )
-    .version('0.1.0', '-v, --version') // Use -v (instead of default -V)
+    .version(getVersion(), '-v, --version') // Use -v (instead of default -V)
     .parse(process.argv);
 
   if (program.opts().debug) logger.level = 'debug';
@@ -39,4 +50,4 @@ Examples:
   await loadDependencies(packages, cachePath, logMessage);
 }
 
-myApp();
+app();
