@@ -6,7 +6,7 @@ FHIR Package Load is a utility that downloads published FHIR packages from the F
 
 This tool can be used directly through a command line interface (CLI) or it can be used as a dependency in another JavaScript/TypeScript project to download FHIR packages and load the contents into memory.
 
-FHIR Package Load requires [Node.js](https://nodejs.org/) to be installed on the user's system. Users should install Node.js 16 (LTS), although the previous LTS versions (Node.js 14 and Node.js 12) are also expected to work.
+FHIR Package Load requires [Node.js](https://nodejs.org/) to be installed on the user's system. Users should install Node.js 12 (LTS), although the previous LTS version (Node.js 10) and other current LTS versions (Node.js 14 and Node.js 16) are also expected to work.
 
 Once Node.js is installed, use either of the following methods to use the FHIR Package Load.
 
@@ -60,7 +60,7 @@ Additionally, FHIR Package Load exposes a `loadApi` function that can be used to
 #### Syntax
 
 ```javascript
-loadApi(fhirPackages[, cachePath, options])
+loadApi(fhirPackages[, options])
 ```
 
 #### Parameters
@@ -69,11 +69,11 @@ loadApi(fhirPackages[, cachePath, options])
 
 - For example: `'hl7.fhir.r4.core@4.0.1, hl7.fhir.us.core@4.0.0'` or `['hl7.fhir.r4.core@4.0.1', 'hl7.fhir.us.core@4.0.0']`
 
-`cachePath` - A string that specifies where to look for already downloaded packages and download them to if they are not found. The default is the the local [FHIR cache](https://confluence.hl7.org/pages/viewpage.action?pageId=66928417#FHIRPackageCache-Location)).
-
 `options` - An object which can have the following attributes:
 
-- `log` - a function that is responsible logging information. It takes in two strings, a level and a message, and does not return anything.
+- `cachePath` - A string that specifies where to look for already downloaded packages and download them to if they are not found. The default is the the local [FHIR cache](https://confluence.hl7.org/pages/viewpage.action?pageId=66928417#FHIRPackageCache-Location)).
+
+- `log` - A function that is responsible logging information. It takes in two strings, a level and a message, and does not return anything.
   - For example: `log: console.log` will pass in `console.log` as the logging function and the level and message will be logged as `console.log(level, message)`
 
 #### Return Value
@@ -97,7 +97,7 @@ $ npm install fhir-package-load
 Once installed as a dependency, you can `import` and use the API for loading FHIR packages. This function provides the same functionality you get through the CLI, but you also have access to the in memory definitions from the packages. The following example shows two ways to use the function in a project:
 
 ```javascript
-import { loadApi } from 'fhir-package-load
+import { loadApi } from 'fhir-package-load'
 
 async function myApp() {
   // Downloads and unzips packages to FHIR cache or other specified location (if not already present)
@@ -108,8 +108,9 @@ async function myApp() {
       // handle thrown errors
     });
 
-  // Similar to above, but uses optional path for packages to download to and options
-  await loadApi(['package@version'], '../myPackages', {
+  // Similar to above, but uses options
+  await loadApi(['package@version'], {
+    cachePath: '../myPackages',
     log: console.log
   }).then((results) => [
     // handle results
@@ -152,7 +153,7 @@ jest.spyOn(logger.transports[0], 'write').mockImplementation(() => true);
 
 ## Installation for Developers
 
-FHIR Package Load is a [TypeScript](https://www.typescriptlang.org/) project. At a minimum, it requires [Node.js](https://nodejs.org/) to build, test, and run the CLI. Developers should install Node.js 16 (LTS), although the previous LTS versions (Node.js 14 and 12) are also expected to work.
+FHIR Package Load is a [TypeScript](https://www.typescriptlang.org/) project. At a minimum, it requires [Node.js](https://nodejs.org/) to build, test, and run the CLI. Developers should install Node.js 12 (LTS), although the previous LTS version (Node.js 10) and other current LTS versions (Node.js 14 and Node.js 16) are also expected to work.
 
 Once Node.js is installed, run the following command from this project's root folder:
 

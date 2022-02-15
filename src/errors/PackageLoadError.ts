@@ -1,5 +1,3 @@
-// import { Annotated } from './Annotated';
-
 export class PackageLoadError extends Error {
   specReferences = ['https://confluence.hl7.org/display/FHIR/NPM+Package+Specification'];
   constructor(public fullPackageName: string) {

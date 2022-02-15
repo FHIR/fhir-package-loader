@@ -3,27 +3,6 @@ import chalk from 'chalk';
 
 const { combine, printf } = format;
 
-const incrementCounts = format(info => {
-  switch (info.level) {
-    case 'info':
-      stats.numInfo++;
-      break;
-    case 'warn':
-      stats.numWarn++;
-      break;
-    case 'error':
-      stats.numError++;
-      break;
-    case 'debug':
-      stats.numDebug++;
-      break;
-    default:
-      break;
-  }
-
-  return info;
-});
-
 const printer = printf(info => {
   let level;
   switch (info.level) {
@@ -46,49 +25,29 @@ const printer = printf(info => {
 });
 
 export const logger = createLogger({
-  format: combine(incrementCounts(), printer),
+  format: combine(printer),
   transports: [new transports.Console()]
 });
-
-class LoggerStats {
-  public numInfo = 0;
-  public numWarn = 0;
-  public numError = 0;
-  public numDebug = 0;
-
-  reset(): void {
-    this.numInfo = 0;
-    this.numWarn = 0;
-    this.numError = 0;
-    this.numDebug = 0;
-  }
-}
-
-export const stats = new LoggerStats();
 
 export class ErrorsAndWarnings {
   public errors: string[] = [];
   public warnings: string[] = [];
-  public shouldTrack = false;
 
   reset(): void {
     this.errors = [];
     this.warnings = [];
-    this.shouldTrack = false;
   }
 }
 
-export const errorsAndWarnings = new ErrorsAndWarnings();
-
-export const logWithTrack = (
-  level: string,
-  message: string,
-  log: (level: string, message: string) => void
-) => {
-  if (errorsAndWarnings.shouldTrack && level === 'error') {
-    errorsAndWarnings.errors.push(message);
-  } else if (errorsAndWarnings.shouldTrack && level === 'warn') {
-    errorsAndWarnings.warnings.push(message);
-  }
-  log(level, message);
+export const wrapLogger = (log: LogFunction = () => {}, errorsAndWarnings: ErrorsAndWarnings) => {
+  return (level: string, message: string) => {
+    if (level === 'error') {
+      errorsAndWarnings.errors.push(message);
+    } else if (level === 'warn') {
+      errorsAndWarnings.warnings.push(message);
+    }
+    log(level, message);
+  };
 };
+
+export type LogFunction = (level: string, message: string) => void;
