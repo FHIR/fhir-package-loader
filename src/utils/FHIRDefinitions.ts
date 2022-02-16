@@ -1,5 +1,5 @@
-import { Type, Metadata } from '../utils';
 import { cloneDeep } from 'lodash';
+import { Type, Metadata } from '.';
 
 export class FHIRDefinitions {
   protected resources: Map<string, any>;

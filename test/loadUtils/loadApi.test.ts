@@ -1,7 +1,7 @@
 import path from 'path';
-import { FHIRDefinitions, loadApi } from '../../src/loadUtils';
-import { ErrorsAndWarnings } from '../../src/utils';
-import * as loadModule from '../../src/loadUtils/load';
+import { loadApi } from '../../src/loadApi';
+import { ErrorsAndWarnings, FHIRDefinitions } from '../../src/utils';
+import * as loadModule from '../../src/load';
 import * as logModule from '../../src/utils/logger';
 
 describe('loadApi', () => {

@@ -3,7 +3,7 @@
 import { program } from 'commander';
 import path from 'path';
 import fs from 'fs-extra';
-import { loadDependencies, loadApi } from './loadUtils';
+import { loadDependencies } from './load';
 import { logger } from './utils';
 
 function getVersion(): string {

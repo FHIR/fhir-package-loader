@@ -1,6 +1,6 @@
-import { loadFromPath, FHIRDefinitions } from '../../src/loadUtils';
 import path from 'path';
-import { Type } from '../../src/utils/Fishable';
+import { loadFromPath } from '../../src/load';
+import { Type, FHIRDefinitions } from '../../src/utils';
 import { loggerSpy } from '../testhelpers';
 
 describe('FHIRDefinitions', () => {

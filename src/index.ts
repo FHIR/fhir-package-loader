@@ -1,3 +1,4 @@
 export * from './errors';
-export * from './loadUtils';
+export * from './load';
+export * from './loadApi';
 export * from './utils';

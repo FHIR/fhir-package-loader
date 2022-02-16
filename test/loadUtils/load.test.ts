@@ -1,19 +1,13 @@
-import * as loadModule from '../../src/loadUtils/load';
-import {
-  cleanCachedPackage,
-  loadFromPath,
-  loadDependency,
-  loadDependencies,
-  FHIRDefinitions
-} from '../../src/loadUtils';
-import { Type } from '../../src/utils';
-import { PackageLoadError } from '../../src/errors';
-import { loggerSpy } from '../testhelpers';
 import axios from 'axios';
+import { cloneDeep } from 'lodash';
 import fs from 'fs-extra';
 import path from 'path';
 import tar from 'tar';
-import { cloneDeep } from 'lodash';
+import * as loadModule from '../../src/load';
+import { cleanCachedPackage, loadFromPath, loadDependency, loadDependencies } from '../../src/load';
+import { FHIRDefinitions, Type } from '../../src/utils';
+import { PackageLoadError } from '../../src/errors';
+import { loggerSpy } from '../testhelpers';
 
 describe('#loadFromPath()', () => {
   const defsWithChildDefs = new FHIRDefinitions();

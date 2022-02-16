@@ -1,6 +1,5 @@
-import { FHIRDefinitions } from './FHIRDefinitions';
-import { PackageLoadError, CurrentPackageLoadError } from '../errors';
-import { LogFunction } from '../utils';
+import { PackageLoadError, CurrentPackageLoadError } from './errors';
+import { FHIRDefinitions, LogFunction } from './utils';
 import axios from 'axios';
 import fs from 'fs-extra';
 import path from 'path';
