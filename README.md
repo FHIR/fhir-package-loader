@@ -155,22 +155,6 @@ jest.mock('fhir-package-loader', () => {
 }
 ```
 
-The logger can also be silenced during testing by mocking the transport function:
-
-```javascript
-import { logger } from 'fhir-package-loader';
-
-logger.transports[0]['write'] = jest.fn(() => true);
-```
-
-or
-
-```javascript
-import { logger } from 'fhir-package-loader';
-
-jest.spyOn(logger.transports[0], 'write').mockImplementation(() => true);
-```
-
 ## Installation for Developers
 
 FHIR Package Loader is a [TypeScript](https://www.typescriptlang.org/) project. At a minimum, it requires [Node.js](https://nodejs.org/) to build, test, and run the CLI. Developers should install Node.js 12 (LTS), although the previous LTS version (Node.js 10) and other current LTS versions (Node.js 14 and Node.js 16) are also expected to work.
