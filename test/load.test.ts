@@ -3,18 +3,18 @@ import { cloneDeep } from 'lodash';
 import fs from 'fs-extra';
 import path from 'path';
 import tar from 'tar';
-import * as loadModule from '../../src/load';
-import { cleanCachedPackage, loadFromPath, loadDependency, loadDependencies } from '../../src/load';
-import { FHIRDefinitions, Type } from '../../src/utils';
-import { PackageLoadError } from '../../src/errors';
-import { loggerSpy } from '../testhelpers';
+import * as loadModule from '../src/load';
+import { cleanCachedPackage, loadFromPath, loadDependency, loadDependencies } from '../src/load';
+import { FHIRDefinitions, Type } from '../src/utils';
+import { PackageLoadError } from '../src/errors';
+import { loggerSpy } from './testhelpers';
 
 describe('#loadFromPath()', () => {
   const defsWithChildDefs = new FHIRDefinitions();
   let defs: FHIRDefinitions;
   beforeAll(() => {
     defs = new FHIRDefinitions();
-    loadFromPath(path.join(__dirname, '..', 'testhelpers', 'testdefs'), 'r4-definitions', defs);
+    loadFromPath(path.join(__dirname, 'testhelpers', 'testdefs'), 'r4-definitions', defs);
     defs.fishForFHIR('Condition');
     defs.fishForFHIR('boolean');
     defs.fishForFHIR('Address');
@@ -457,7 +457,7 @@ describe('#loadDependency()', () => {
     writeSpy = jest.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
     removeSpy = jest.spyOn(fs, 'removeSync').mockImplementation(() => {});
     moveSpy = jest.spyOn(fs, 'moveSync').mockImplementation(() => {});
-    cachePath = path.join(__dirname, 'fixtures');
+    cachePath = path.join(__dirname, 'testhelpers', 'fixtures');
   });
 
   beforeEach(() => {
@@ -712,7 +712,7 @@ describe('#cleanCachedPackage', () => {
 
   beforeAll(() => {
     renameSpy = jest.spyOn(fs, 'renameSync').mockImplementation(() => {});
-    cachePath = path.join(__dirname, 'fixtures');
+    cachePath = path.join(__dirname, 'testhelpers', 'fixtures');
   });
 
   beforeEach(() => {
