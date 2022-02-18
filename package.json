@@ -1,5 +1,5 @@
 {
-  "name": "fhir-package-load",
+  "name": "fhir-package-loader",
   "version": "0.1.0",
   "description": "JavaScript package for downloading and accessing FHIR definitions",
   "scripts": {
@@ -25,7 +25,7 @@
   "license": "Apache-2.0",
   "main": "dist/index.js",
   "bin": {
-    "fhir-package-load": "dist/app.js"
+    "fpl": "dist/app.js"
   },
   "types": "dist/index.d.ts",
   "files": [

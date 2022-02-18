@@ -1,21 +1,21 @@
-# FHIR Package Load
+# FHIR Package Loader
 
-FHIR Package Load is a utility that downloads published FHIR packages from the FHIR package registry.
+FHIR Package Loader is a utility that downloads published FHIR packages from the FHIR package registry.
 
 ## Usage
 
 This tool can be used directly through a command line interface (CLI) or it can be used as a dependency in another JavaScript/TypeScript project to download FHIR packages and load the contents into memory.
 
-FHIR Package Load requires [Node.js](https://nodejs.org/) to be installed on the user's system. Users should install Node.js 12 (LTS), although the previous LTS version (Node.js 10) and other current LTS versions (Node.js 14 and Node.js 16) are also expected to work.
+FHIR Package Loader requires [Node.js](https://nodejs.org/) to be installed on the user's system. Users should install Node.js 12 (LTS), although the previous LTS version (Node.js 10) and other current LTS versions (Node.js 14 and Node.js 16) are also expected to work.
 
-Once Node.js is installed, use either of the following methods to use the FHIR Package Load.
+Once Node.js is installed, use either of the following methods to use the FHIR Package Loader.
 
 ### Command Line
 
 To download and unzip FHIR packages through the command line, you can run the following command directly:
 
 ```sh
-$ npx fhir-package-load <package@version...> # downloads specified FHIR packages
+$ npx fhir-package-loader install <package@version...> # downloads specified FHIR packages
 ```
 
 _Note: `npx` comes with npm 5.2+ and higher._
@@ -25,42 +25,62 @@ _Note: `npx` comes with npm 5.2+ and higher._
 Alternatively, if you'd like to install the package, it can be installed globally and used as follows:
 
 ```sh
-$ npm install -g fhir-package-load # installs the package from npm
+$ npm install -g fhir-package-loader # installs the package from npm
 ```
 
-After installation, the `fhir-package-load` command line will be available on your path:
+After installation, the `fhir-package-loader` command line will be available on your path:
 
 ```sh
-$ fhir-package-load --help # outputs information about using the command line
+$ fpl --help # outputs information about using the command line
+$ fpl install --help
 
-$ fhir-package-load <package@version...> # downloads specified FHIR packages
+$ fpl install <package@version...> # downloads specified FHIR packages
 ```
 
-With both approaches, the same arguments and options can be used:
+With both approaches, the same commands are available. The install command allows you to specify the FHIR packages to download, along with a few additional options:
 
 ```
+Usage: fpl install <fhirPackages...> [options]
+
+download and unzip specified FHIR packages
+
 Arguments:
-  fhirPackages      a list of FHIR packages to load using the format packageId@packageVersion...
+  fhirPackages      list of FHIR packages to load using the format packageId@packageVersion...
 
 Options:
   -s, --save <dir>  where to save packages to and load definitions from (default is the local [FHIR cache](https://confluence.hl7.org/pages/viewpage.action?pageId=66928417#FHIRPackageCache-Location))
   -d, --debug       output extra debugging information
-  -v, --version     output the version number
   -h, --help        display help for command
+```
+
+General information about any command can be found with `fpl --help`:
+
+```
+Usage: fpl [options] [command]
+
+CLI for downloading FHIR packages
+
+Options:
+  -v, --version                        output the version number
+  -h, --help                           display help for command
+
+Commands:
+  install [options] <fhirPackages...>  download and unzip specified FHIR packages
+  help [command]                       display help for command
 
 Examples:
-  npx fhir-package-load hl7.fhir.r5.core@current
-  fhir-package-load hl7.fhir.r4.core@4.0.1 hl7.fhir.us.core@4.0.0 --save ./myProject
+  npx fpl install hl7.fhir.r5.core@current
+  fpl install hl7.fhir.r4.core@4.0.1 hl7.fhir.us.core@4.0.0 --save ./myProject
 ```
 
 ### API
 
-Additionally, FHIR Package Load exposes a `loadApi` function that can be used to download FHIR packages and load their definitions.
+Additionally, FHIR Package Loader exposes an `fpl` function that can be used to download FHIR packages and load their definitions.
 
 #### Syntax
 
 ```javascript
-loadApi(fhirPackages[, options])
+fpl(fhirPackages[, options])
 ```
 
 #### Parameters
@@ -87,21 +107,21 @@ A `Promise` that resolves to an object with the following attributes:
 
 #### Usage
 
-To use the API, FHIR Package Load must be installed as a dependency of your project. To add it as a dependency, navigate to your project directory and use `npm` to install the package:
+To use the API, FHIR Package Loader must be installed as a dependency of your project. To add it as a dependency, navigate to your project directory and use `npm` to install the package:
 
 ```sh
 $ cd myProject
-$ npm install fhir-package-load
+$ npm install fhir-package-loader
 ```
 
 Once installed as a dependency, you can `import` and use the API for loading FHIR packages. This function provides the same functionality you get through the CLI, but you also have access to the in memory definitions from the packages. The following example shows two ways to use the function in a project:
 
 ```javascript
-import { loadApi } from 'fhir-package-load'
+import { fpl } from 'fhir-package-loader'
 
 async function myApp() {
   // Downloads and unzips packages to FHIR cache or other specified location (if not already present)
-  await loadApi(['package@version, package2@version'])
+  await fpl(['package@version, package2@version'])
     .then((results) => [
       // handle results
     ]).catch((err) => {
@@ -109,7 +129,7 @@ async function myApp() {
     });
 
   // Similar to above, but uses options
-  await loadApi(['package@version'], {
+  await fpl(['package@version'], {
     cachePath: '../myPackages',
     log: console.log
   }).then((results) => [
@@ -122,11 +142,11 @@ async function myApp() {
 
 ## Mock Out in Unit Tests
 
-If you use `fhir-package-load` as a dependency in your project, you can choose to mock any function from the package. This may be helpful for writing unit tests that do not need to download packages from the FHIR registry. One way to do this is using the following snippet:
+If you use `fhir-package-loader` as a dependency in your project, you can choose to mock any function from the package. This may be helpful for writing unit tests that do not need to download packages from the FHIR registry. One way to do this is using the following snippet:
 
 ```javascript
-jest.mock('fhir-package-load', () => {
-  const original = jest.requireActual('fhir-package-load');
+jest.mock('fhir-package-loader', () => {
+  const original = jest.requireActual('fhir-package-loader');
   return {
     ...original,
     loadDependency: jest.fn(), // can optionally include a mock implementation
@@ -138,7 +158,7 @@ jest.mock('fhir-package-load', () => {
 The logger can also be silenced during testing by mocking the transport function:
 
 ```javascript
-import { logger } from 'fhir-package-load';
+import { logger } from 'fhir-package-loader';
 
 logger.transports[0]['write'] = jest.fn(() => true);
 ```
@@ -146,14 +166,14 @@ logger.transports[0]['write'] = jest.fn(() => true);
 or
 
 ```javascript
-import { logger } from 'fhir-package-load';
+import { logger } from 'fhir-package-loader';
 
 jest.spyOn(logger.transports[0], 'write').mockImplementation(() => true);
 ```
 
 ## Installation for Developers
 
-FHIR Package Load is a [TypeScript](https://www.typescriptlang.org/) project. At a minimum, it requires [Node.js](https://nodejs.org/) to build, test, and run the CLI. Developers should install Node.js 12 (LTS), although the previous LTS version (Node.js 10) and other current LTS versions (Node.js 14 and Node.js 16) are also expected to work.
+FHIR Package Loader is a [TypeScript](https://www.typescriptlang.org/) project. At a minimum, it requires [Node.js](https://nodejs.org/) to build, test, and run the CLI. Developers should install Node.js 12 (LTS), although the previous LTS version (Node.js 10) and other current LTS versions (Node.js 14 and Node.js 16) are also expected to work.
 
 Once Node.js is installed, run the following command from this project's root folder:
 

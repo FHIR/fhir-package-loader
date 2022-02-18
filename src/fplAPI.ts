@@ -1,7 +1,7 @@
 import { FHIRDefinitions, ErrorsAndWarnings, LogFunction, wrapLogger } from './utils';
 import { loadDependencies } from './load';
 
-export async function loadApi(
+export async function fpl(
   fhirPackages: string | string[],
   options: packageLoadOptions = {}
 ): Promise<{
