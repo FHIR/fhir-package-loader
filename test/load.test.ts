@@ -632,6 +632,25 @@ describe('#loadDependency()', () => {
     expect(removeSpy.mock.calls[0][0]).toBe(path.join(cachePath, 'sushi-test-old#current'));
   });
 
+  // This handles the edge case that comes from how SUSHI uses FHIRDefinitions
+  it('should successfully load a package even if the FHIRDefinitions.package property does not reflect the current package', async () => {
+    const newDefs = await loadDependency('sushi-test', 'current', defs, cachePath, log);
+    axiosSpy.mockClear(); // Clear the spy between the two calls in the single test
+
+    // This mimics the odd SUSHI case because we pass in a FHIRDefinitions that already had definitions loaded into it
+    // So instead of creating a new FHIRDefs for a new package, we re-use an old one. Only SUSHI does this.
+    // This is not expected and is not the intended pattern for normal use.
+    await expect(
+      loadDependency('sushi-test-old', 'current', newDefs, cachePath, log)
+    ).resolves.toBeTruthy();
+    expectDownloadSequence(
+      'https://build.fhir.org/ig/sushi/sushi-test-old/package.tgz',
+      path.join(cachePath, 'sushi-test-old#current'),
+      true
+    );
+    expect(removeSpy.mock.calls[0][0]).toBe(path.join(cachePath, 'sushi-test-old#current'));
+  });
+
   it('should try to load the latest FHIR R5 package from build.fhir.org when it is not locally cached', async () => {
     await expect(loadDependency('hl7.fhir.r5.core', 'current', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.r5.core#current could not be loaded locally or from the FHIR package registry'

@@ -279,6 +279,13 @@ export function loadFromPath(
   if (FHIRDefs.package === targetPackage) {
     return targetPackage;
   }
+  // This last case is to ensure SUSHI (which uses a single FHIRDefinitions class for many packages)
+  // can tell if a package has already be loaded. We don't have access to the array of package names
+  // that SUSHI keeps track of, so we check for the package.json of the targetPackage. If it's there,
+  // the package has already been loaded, so just return the targetPackage string.
+  if (FHIRDefs.getPackageJson(targetPackage)) {
+    return targetPackage;
+  }
 }
 
 /**
