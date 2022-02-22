@@ -276,7 +276,7 @@ export function loadFromPath(
     return targetPackage;
   }
   // If the package has already been loaded, just return the targetPackage string
-  if (originalSize > 0) {
+  if (FHIRDefs.package === targetPackage) {
     return targetPackage;
   }
 }
