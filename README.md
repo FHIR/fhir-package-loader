@@ -15,7 +15,7 @@ Once Node.js is installed, use either of the following methods to use the FHIR P
 To download and unzip FHIR packages through the command line, you can run the following command directly:
 
 ```sh
-$ npx fhir-package-loader install <package@version...> # downloads specified FHIR packages
+npx fhir-package-loader install <package@version...> # downloads specified FHIR packages
 ```
 
 _Note: `npx` comes with npm 5.2+ and higher._
@@ -25,21 +25,21 @@ _Note: `npx` comes with npm 5.2+ and higher._
 Alternatively, if you'd like to install the package, it can be installed globally and used as follows:
 
 ```sh
-$ npm install -g fhir-package-loader # installs the package from npm
+npm install -g fhir-package-loader # installs the package from npm
 ```
 
 After installation, the `fhir-package-loader` command line will be available on your path:
 
 ```sh
-$ fpl --help # outputs information about using the command line
-$ fpl install --help
+fpl --help # outputs information about using the command line
+fpl install --help
 
-$ fpl install <package@version...> # downloads specified FHIR packages
+fpl install <package@version...> # downloads specified FHIR packages
 ```
 
 With both approaches, the same commands are available. The install command allows you to specify the FHIR packages to download, along with a few additional options:
 
-```
+```sh
 Usage: fpl install <fhirPackages...> [options]
 
 download and unzip specified FHIR packages
@@ -55,7 +55,7 @@ Options:
 
 General information about any command can be found with `fpl --help`:
 
-```
+```sh
 Usage: fpl [options] [command]
 
 CLI for downloading FHIR packages
@@ -110,21 +110,22 @@ A `Promise` that resolves to an object with the following attributes:
 To use the API, FHIR Package Loader must be installed as a dependency of your project. To add it as a dependency, navigate to your project directory and use `npm` to install the package:
 
 ```sh
-$ cd myProject
-$ npm install fhir-package-loader
+cd myProject
+npm install fhir-package-loader
 ```
 
 Once installed as a dependency, you can `import` and use the API for loading FHIR packages. This function provides the same functionality you get through the CLI, but you also have access to the in memory definitions from the packages. The following example shows two ways to use the function in a project:
 
 ```javascript
-import { fpl } from 'fhir-package-loader'
+import { fpl } from 'fhir-package-loader';
 
 async function myApp() {
   // Downloads and unzips packages to FHIR cache or other specified location (if not already present)
   await fpl(['package@version, package2@version'])
-    .then((results) => [
+    .then(results => {
       // handle results
-    ]).catch((err) => {
+    })
+    .catch(err => {
       // handle thrown errors
     });
 
@@ -132,11 +133,13 @@ async function myApp() {
   await fpl(['package@version'], {
     cachePath: '../myPackages',
     log: console.log
-  }).then((results) => [
-    // handle results
-  ]).catch((err) => {
-    // handle thrown errors
-  });;
+  })
+    .then(results => {
+      // handle results
+    })
+    .catch(err => {
+      // handle thrown errors
+    });
 }
 ```
 
@@ -162,7 +165,7 @@ FHIR Package Loader is a [TypeScript](https://www.typescriptlang.org/) project. 
 Once Node.js is installed, run the following command from this project's root folder:
 
 ```sh
-$ npm install
+npm install
 ```
 
 # License
