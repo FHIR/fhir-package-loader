@@ -7,6 +7,13 @@ import os from 'os';
 import tar from 'tar';
 import temp from 'temp';
 
+/**
+ * Loads multiple dependencies from a directory (the user FHIR cache or a specified directory) or from online
+ * @param {string[]} fhirPackages - An array of FHIR packages to download and load definitions from (format: packageId#version)
+ * @param {string} [cachePath=path.join(os.homedir(), '.fhir', 'packages')] - Path to look for the package and download to if not already present. Defaults to local FHIR cache.
+ * @param {LogFunction} [log=() => {}] - A function for logging. Defaults to no-op.
+ * @returns {Promise<FHIRDefinitions>} the loaded FHIRDefinitions
+ */
 export async function loadDependencies(
   fhirPackages: string[],
   cachePath: string = path.join(os.homedir(), '.fhir', 'packages'),
@@ -47,11 +54,11 @@ export async function loadDependencies(
 }
 
 /**
- * Loads a dependency from user FHIR cache or from online
+ * Loads a dependency from a directory (the user FHIR cache or a specified directory) or from online
  * @param {string} packageName - The name of the package to load
  * @param {string} version - The version of the package to load
  * @param {FHIRDefinitions} FHIRDefs - The FHIRDefinitions to load the dependencies into
- * @param {string} cachePath - The path to load the package into
+ * @param {string} [cachePath=path.join(os.homedir(), '.fhir', 'packages')] - The path to load the package into (default: user FHIR cache)
  * @returns {Promise<FHIRDefinitions>} the loaded FHIRDefs
  * @throws {PackageLoadError} when the desired package can't be loaded
  */

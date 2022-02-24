@@ -1,6 +1,7 @@
 import { cloneDeep } from 'lodash';
 import { Type, Metadata } from '.';
 
+/** Class representing the FHIR definitions in one or more FHIR packages */
 export class FHIRDefinitions {
   protected resources: Map<string, any>;
   protected logicals: Map<string, any>;
@@ -15,6 +16,7 @@ export class FHIRDefinitions {
   package: string;
   unsuccessfulPackageLoad: boolean;
 
+  /** Create a FHIRDefinitions */
   constructor() {
     this.package = '';
     this.resources = new Map();
@@ -30,6 +32,7 @@ export class FHIRDefinitions {
     this.unsuccessfulPackageLoad = false;
   }
 
+  /** Get the total number of definitions */
   size(): number {
     return (
       this.resources.size +
@@ -46,6 +49,11 @@ export class FHIRDefinitions {
 
   // NOTE: These all return clones of the JSON to prevent the source values from being overwritten
 
+  /**
+   * Get all resources
+   * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
+   * @returns array of resources
+   */
   allResources(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
       .map(def => def.allResources(fhirPackage))
@@ -60,6 +68,11 @@ export class FHIRDefinitions {
     return cloneJsonMapValues(resources).concat(childValues);
   }
 
+  /**
+   * Get all logicals
+   * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
+   * @returns array of logicals
+   */
   allLogicals(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
       .map(def => def.allLogicals(fhirPackage))
@@ -74,6 +87,11 @@ export class FHIRDefinitions {
     return cloneJsonMapValues(logicals).concat(childValues);
   }
 
+  /**
+   * Get all profiles
+   * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
+   * @returns array of profiles
+   */
   allProfiles(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
       .map(def => def.allProfiles(fhirPackage))
@@ -88,6 +106,11 @@ export class FHIRDefinitions {
     return cloneJsonMapValues(profiles).concat(childValues);
   }
 
+  /**
+   * Get all extensions
+   * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
+   * @returns array of extensions
+   */
   allExtensions(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
       .map(def => def.allExtensions(fhirPackage))
@@ -102,6 +125,11 @@ export class FHIRDefinitions {
     return cloneJsonMapValues(extensions).concat(childValues);
   }
 
+  /**
+   * Get all types
+   * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
+   * @returns array of types
+   */
   allTypes(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
       .map(def => def.allTypes(fhirPackage))
@@ -116,6 +144,11 @@ export class FHIRDefinitions {
     return cloneJsonMapValues(types).concat(childValues);
   }
 
+  /**
+   * Get all value sets
+   * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
+   * @returns array of value sets
+   */
   allValueSets(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
       .map(def => def.allValueSets(fhirPackage))
@@ -130,6 +163,11 @@ export class FHIRDefinitions {
     return cloneJsonMapValues(valueSets).concat(childValues);
   }
 
+  /**
+   * Get all code systems
+   * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
+   * @returns array of code systems
+   */
   allCodeSystems(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
       .map(def => def.allCodeSystems(fhirPackage))
@@ -144,6 +182,11 @@ export class FHIRDefinitions {
     return cloneJsonMapValues(codeSystems).concat(childValues);
   }
 
+  /**
+   * Get all implementation guides
+   * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
+   * @returns array of implementation guides
+   */
   allImplementationGuides(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
       .map(def => def.allImplementationGuides(fhirPackage))
@@ -158,6 +201,11 @@ export class FHIRDefinitions {
     return cloneJsonMapValues(implementationGuides).concat(childValues);
   }
 
+  /**
+   * Get a list of packages that encountered errors while downloaded and were not loaded
+   * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
+   * @returns array of packages (packageId#version) that were not successfully loaded
+   */
   allUnsuccessfulPackageLoads(fhirPackage?: string): string[] {
     const childValues = this.childFHIRDefs
       .map(def => def.allUnsuccessfulPackageLoads(fhirPackage))
@@ -172,6 +220,10 @@ export class FHIRDefinitions {
     return childValues;
   }
 
+  /**
+   * Add a definition
+   * @param definition - The definition to add
+   */
   add(definition: any): void {
     if (definition.resourceType === 'StructureDefinition') {
       if (
@@ -207,14 +259,30 @@ export class FHIRDefinitions {
     }
   }
 
+  /**
+   * Add a package.json
+   * @param {string} id - package id
+   * @param {string} definition - package JSON definition
+   */
   addPackageJson(id: string, definition: any): void {
     this.packageJsons.set(id, definition);
   }
 
+  /**
+   * Get a package's package.json
+   * @param {string} id - package id
+   * @returns package.json definition
+   */
   getPackageJson(id: string): any {
     return this.packageJsons.get(id);
   }
 
+  /**
+   * Search for a definition based on the type it could be
+   * @param {string} item - the item to search for
+   * @param {Type[]} types - the possible type the item could be
+   * @returns the definition that is returned or undefined if none is found
+   */
   fishForFHIR(item: string, ...types: Type[]): any | undefined {
     // No types passed in means to search ALL supported types
     if (types.length === 0) {
@@ -263,6 +331,12 @@ export class FHIRDefinitions {
     }
   }
 
+  /**
+   * Search for the metadata of a definition based on the type it could be
+   * @param {string} item - the item to search for
+   * @param {Type[]} types - the possible types the item could be
+   * @returns {Metadata | undefined} the metadata of the item or undefined if none is found
+   */
   fishForMetadata(item: string, ...types: Type[]): Metadata | undefined {
     const result = this.fishForFHIR(item, ...types);
     if (result) {
@@ -279,7 +353,7 @@ export class FHIRDefinitions {
   }
 }
 
-export function addDefinitionToMap(def: any, defMap: Map<string, any>): void {
+function addDefinitionToMap(def: any, defMap: Map<string, any>): void {
   if (def.id) {
     defMap.set(def.id, def);
   }
@@ -291,6 +365,6 @@ export function addDefinitionToMap(def: any, defMap: Map<string, any>): void {
   }
 }
 
-export function cloneJsonMapValues(map: Map<string, any>): any {
+function cloneJsonMapValues(map: Map<string, any>): any {
   return Array.from(map.values()).map(v => cloneDeep(v));
 }

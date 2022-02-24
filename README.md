@@ -158,7 +158,9 @@ jest.mock('fhir-package-loader', () => {
 }
 ```
 
-## Installation for Developers
+## For Developers
+
+### Installation
 
 FHIR Package Loader is a [TypeScript](https://www.typescriptlang.org/) project. At a minimum, it requires [Node.js](https://nodejs.org/) to build, test, and run the CLI. Developers should install Node.js 12 (LTS), although the previous LTS version (Node.js 10) and other current LTS versions (Node.js 14 and Node.js 16) are also expected to work.
 
@@ -167,6 +169,18 @@ Once Node.js is installed, run the following command from this project's root fo
 ```sh
 npm install
 ```
+
+### Exposed functions
+
+While the CLI and API should be sufficient for the majority of use cases, FHIR Package Loader exposes a few additional functions and classes that can be used within JavaScript/TypeScript projects. Below are the key exports:
+
+| Export             | Description                                                                                                                                                                                                |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fpl`              | API function to download and load definitions for a provided list of packages.                                                                                                                             |
+| `loadDependencies` | Takes a list of FHIR packages, a path to a directory (optional, defaults to FHIR cache), a log function (optional) and returns FHIRDefinitions from the provided packages.                                 |
+| `loadDependency`   | Takes a package name, a package version, an instance of FHIRDefinitions, a path to a directory (optional, defaults to FHIR cache), a log function (optional) and returns FHIRDefinitions from the package. |
+| `loadFromPath`     | Takes a path, a package and version (format: package#version), and an instance of FHIRDefinitions and loads the definitions from the provided package at the provided path into FHIRDefinitions.           |
+| `FHIRDefinitions`  | A class for FHIRDefinitions for one or more packages. This could be extended if there are additional properties that are specific to your implementation.                                                  |
 
 # License
 
