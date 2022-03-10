@@ -1,5 +1,4 @@
 import { cloneDeep } from 'lodash';
-import { Type, Metadata } from '.';
 
 /** Class representing the FHIR definitions in one or more FHIR packages */
 export class FHIRDefinitions {
@@ -368,3 +367,30 @@ function addDefinitionToMap(def: any, defMap: Map<string, any>): void {
 function cloneJsonMapValues(map: Map<string, any>): any {
   return Array.from(map.values()).map(v => cloneDeep(v));
 }
+
+export enum Type {
+  Profile,
+  Extension,
+  ValueSet,
+  CodeSystem,
+  Instance,
+  Invariant, // NOTE: only defined in FSHTanks, not FHIR defs
+  RuleSet, // NOTE: only defined in FSHTanks, not FHIR defs
+  Mapping, // NOTE: only defined in FSHTanks, not FHIR defs
+  Resource,
+  Type, // NOTE: only defined in FHIR defs, not FSHTanks
+  Logical
+}
+
+interface Metadata {
+  id: string;
+  name: string;
+  sdType?: string;
+  resourceType?: string;
+  url?: string;
+  parent?: string;
+  abstract?: boolean;
+  instanceUsage?: InstanceUsage;
+}
+
+type InstanceUsage = 'Example' | 'Definition' | 'Inline';
