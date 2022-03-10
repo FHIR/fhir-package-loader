@@ -1,13 +1,13 @@
 import path from 'path';
-import { loadFromPath } from '../../src/load';
-import { Type, FHIRDefinitions } from '../../src/utils';
-import { loggerSpy } from '../testhelpers';
+import { loadFromPath } from '../src/load';
+import { FHIRDefinitions, Type } from '../src/FHIRDefinitions';
+import { loggerSpy } from './testhelpers';
 
 describe('FHIRDefinitions', () => {
   let defs: FHIRDefinitions;
   beforeAll(() => {
     defs = new FHIRDefinitions();
-    loadFromPath(path.join(__dirname, '..', 'testhelpers', 'testdefs'), 'r4-definitions', defs);
+    loadFromPath(path.join(__dirname, 'testhelpers', 'testdefs'), 'r4-definitions', defs);
     defs.fishForFHIR('Condition');
     defs.fishForFHIR('eLTSSServiceModel');
     defs.fishForFHIR('boolean');

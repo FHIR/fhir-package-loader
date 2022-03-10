@@ -5,7 +5,7 @@ import path from 'path';
 import tar from 'tar';
 import * as loadModule from '../src/load';
 import { cleanCachedPackage, loadFromPath, loadDependency, loadDependencies } from '../src/load';
-import { FHIRDefinitions, Type } from '../src/utils';
+import { FHIRDefinitions, Type } from '../src/FHIRDefinitions';
 import { PackageLoadError } from '../src/errors';
 import { loggerSpy } from './testhelpers';
 

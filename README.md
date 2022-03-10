@@ -100,7 +100,7 @@ fpl(fhirPackages[, options])
 
 A `Promise` that resolves to an object with the following attributes:
 
-- `defs` - A [`FHIRDefinitions`](./src/load/FHIRDefinitions.ts) class instances that contains any definitions loaded from the specified package(s).
+- `defs` - A [`FHIRDefinitions`](./src/FHIRDefinitions.ts) class instances that contains any definitions loaded from the specified package(s).
 - `errors` An array of strings containing any errors detected during package loading.
 - `warnings` An array of strings containing any warnings detected during package loading.
 - `failedPackages` An array of strings containing the `package#version` of any packages that encountered an error during download or load and were not properly loaded to `defs`.

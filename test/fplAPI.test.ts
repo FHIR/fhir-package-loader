@@ -1,6 +1,7 @@
 import path from 'path';
+import { FHIRDefinitions } from '../src/FHIRDefinitions';
 import { fpl } from '../src/fplAPI';
-import { ErrorsAndWarnings, FHIRDefinitions } from '../src/utils';
+import { ErrorsAndWarnings } from '../src/utils';
 import * as loadModule from '../src/load';
 import * as logModule from '../src/utils/logger';
 
