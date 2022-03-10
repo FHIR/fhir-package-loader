@@ -1,11 +1,11 @@
 import path from 'path';
+import { fpl } from '../src/api';
 import { FHIRDefinitions } from '../src/FHIRDefinitions';
-import { fpl } from '../src/fplAPI';
 import { ErrorsAndWarnings } from '../src/utils';
 import * as loadModule from '../src/load';
 import * as logModule from '../src/utils/logger';
 
-describe('fplAPI', () => {
+describe('fpl (API)', () => {
   let loadSpy: jest.SpyInstance;
   const cachePath = path.join(__dirname, 'testhelpers', 'fixtures');
   const log = jest.fn();
