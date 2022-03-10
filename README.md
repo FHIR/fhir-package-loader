@@ -91,7 +91,7 @@ fpl(fhirPackages[, options])
 
 `options` - An object which can have the following attributes:
 
-- `cachePath` - A string that specifies where to look for already downloaded packages and download them to if they are not found. The default is the the local [FHIR cache](https://confluence.hl7.org/pages/viewpage.action?pageId=66928417#FHIRPackageCache-Location)).
+- `cachePath` - A string that specifies where to look for already downloaded packages and download them to if they are not found. The default is the the local [FHIR cache](https://confluence.hl7.org/pages/viewpage.action?pageId=66928417#FHIRPackageCache-Location).
 
 - `log` - A function that is responsible logging information. It takes in two strings, a level and a message, and does not return anything.
   - For example: `log: console.log` will pass in `console.log` as the logging function and the level and message will be logged as `console.log(level, message)`
