@@ -26,7 +26,7 @@ async function install(fhirPackages: string[], options: OptionValues) {
   if (options.debug) logger.level = 'debug';
 
   const packages = fhirPackages.map(dep => dep.replace('@', '#'));
-  const cachePath = options.save;
+  const cachePath = options.cachePath;
 
   const logMessage = (level: string, message: string) => {
     logger.log(level, message);
@@ -51,7 +51,7 @@ async function app() {
       'list of FHIR packages to load using the format packageId@packageVersion...'
     )
     .option(
-      '-s, --save <dir>',
+      '-c, --cachePath <dir>',
       'where to save packages to and load definitions from (default is the local FHIR cache)'
     )
     .option('-d, --debug', 'output extra debugging information')

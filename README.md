@@ -48,7 +48,7 @@ Arguments:
   fhirPackages      list of FHIR packages to load using the format packageId@packageVersion...
 
 Options:
-  -s, --save <dir>  where to save packages to and load definitions from (default is the local [FHIR cache](https://confluence.hl7.org/pages/viewpage.action?pageId=66928417#FHIRPackageCache-Location))
+  -c, --cachePath <dir>  where to save packages to and load definitions from (default is the local [FHIR cache](https://confluence.hl7.org/pages/viewpage.action?pageId=66928417#FHIRPackageCache-Location))
   -d, --debug       output extra debugging information
   -h, --help        display help for command
 ```
@@ -70,7 +70,7 @@ Commands:
 
 Examples:
   npx fpl install hl7.fhir.r5.core@current
-  fpl install hl7.fhir.r4.core@4.0.1 hl7.fhir.us.core@4.0.0 --save ./myProject
+  fpl install hl7.fhir.r4.core@4.0.1 hl7.fhir.us.core@4.0.0 --cachePath ./myProject
 ```
 
 ### API
