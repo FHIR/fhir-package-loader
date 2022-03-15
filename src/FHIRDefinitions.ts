@@ -329,27 +329,6 @@ export class FHIRDefinitions {
       }
     }
   }
-
-  /**
-   * Search for the metadata of a definition based on the type it could be
-   * @param {string} item - the item to search for
-   * @param {Type[]} types - the possible types the item could be
-   * @returns {Metadata | undefined} the metadata of the item or undefined if none is found
-   */
-  fishForMetadata(item: string, ...types: Type[]): Metadata | undefined {
-    const result = this.fishForFHIR(item, ...types);
-    if (result) {
-      return {
-        id: result.id as string,
-        name: result.name as string,
-        sdType: result.type as string,
-        url: result.url as string,
-        parent: result.baseDefinition as string,
-        abstract: result.abstract as boolean,
-        resourceType: result.resourceType as string
-      };
-    }
-  }
 }
 
 function addDefinitionToMap(def: any, defMap: Map<string, any>): void {
@@ -381,16 +360,3 @@ export enum Type {
   Type, // NOTE: only defined in FHIR defs, not FSHTanks
   Logical
 }
-
-interface Metadata {
-  id: string;
-  name: string;
-  sdType?: string;
-  resourceType?: string;
-  url?: string;
-  parent?: string;
-  abstract?: boolean;
-  instanceUsage?: InstanceUsage;
-}
-
-type InstanceUsage = 'Example' | 'Definition' | 'Inline';
