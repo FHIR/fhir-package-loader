@@ -47,7 +47,7 @@ export async function loadDependencies(
   return await Promise.all(promises).then(fhirDefs => {
     if (fhirDefs.length > 1) {
       const mainFHIRDefs = new FHIRDefinitions();
-      fhirDefs.forEach(v => mainFHIRDefs.childFHIRDefs.push(v));
+      fhirDefs.forEach(d => mainFHIRDefs.childFHIRDefs.push(d));
       return mainFHIRDefs;
     }
     return fhirDefs[0];
