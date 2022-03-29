@@ -69,8 +69,8 @@ Commands:
   help [command]                       display help for command
 
 Examples:
-  npx fpl install hl7.fhir.r5.core@current
-  fpl install hl7.fhir.r4.core@4.0.1 hl7.fhir.us.core@4.0.0 --cachePath ./myProject
+  npx fpl install hl7.fhir.us.core@current
+  fpl install hl7.fhir.us.core@4.0.0 hl7.fhir.us.mcode@2.0.0 --cachePath ./myProject
 ```
 
 ### API
@@ -87,7 +87,7 @@ fpl(fhirPackages[, options])
 
 `fhirPackages` - An array of strings (or a comma separated string) that specifies the FHIR packages and versions to load. These can be in the format of `package#version` or `package@version`.
 
-- For example: `'hl7.fhir.r4.core@4.0.1, hl7.fhir.us.core@4.0.0'` or `['hl7.fhir.r4.core@4.0.1', 'hl7.fhir.us.core@4.0.0']`
+- For example: `'hl7.fhir.us.core@4.0.0, hl7.fhir.us.mcode@2.0.0'` or `['hl7.fhir.us.core@4.0.0', 'hl7.fhir.us.mcode@2.0.0']`
 
 `options` - An object which can have the following attributes:
 

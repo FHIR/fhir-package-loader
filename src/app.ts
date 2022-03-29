@@ -18,8 +18,8 @@ function getVersion(): string {
 function getHelpText(): string {
   return `
 Examples:
-  npx fpl install hl7.fhir.r5.core@current
-  fpl install hl7.fhir.r4.core@4.0.1 hl7.fhir.us.core@4.0.0 --save ./myProject`;
+  npx fpl install hl7.fhir.us.core@current
+  fpl install hl7.fhir.us.core@4.0.0 hl7.fhir.us.mcode@2.0.0 --cachePath ./myProject`;
 }
 
 async function install(fhirPackages: string[], options: OptionValues) {
