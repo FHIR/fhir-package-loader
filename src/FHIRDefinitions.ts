@@ -300,25 +300,25 @@ export class FHIRDefinitions {
       let def;
       switch (type) {
         case Type.Resource:
-          def = cloneDeep(this.resources.get(item));
+          def = cloneDeep(getDefinition(item, this.allResources()));
           break;
         case Type.Logical:
-          def = cloneDeep(this.logicals.get(item));
+          def = cloneDeep(getDefinition(item, this.allLogicals()));
           break;
         case Type.Type:
-          def = cloneDeep(this.types.get(item));
+          def = cloneDeep(getDefinition(item, this.allTypes()));
           break;
         case Type.Profile:
-          def = cloneDeep(this.profiles.get(item));
+          def = cloneDeep(getDefinition(item, this.allProfiles()));
           break;
         case Type.Extension:
-          def = cloneDeep(this.extensions.get(item));
+          def = cloneDeep(getDefinition(item, this.allExtensions()));
           break;
         case Type.ValueSet:
-          def = cloneDeep(this.valueSets.get(item));
+          def = cloneDeep(getDefinition(item, this.allValueSets()));
           break;
         case Type.CodeSystem:
-          def = cloneDeep(this.codeSystems.get(item));
+          def = cloneDeep(getDefinition(item, this.allCodeSystems()));
           break;
         case Type.Instance: // don't support resolving to FHIR instances
         default:
@@ -329,6 +329,10 @@ export class FHIRDefinitions {
       }
     }
   }
+}
+
+function getDefinition(item: string, all: any[]): any {
+  return all.find((def: any) => def.id === item || def.url === item || def.name === item);
 }
 
 function addDefinitionToMap(def: any, defMap: Map<string, any>): void {
