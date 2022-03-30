@@ -1,10 +1,17 @@
 import axios from 'axios';
 import { cloneDeep } from 'lodash';
 import fs from 'fs-extra';
+import os from 'os';
 import path from 'path';
 import tar from 'tar';
 import * as loadModule from '../src/load';
-import { cleanCachedPackage, loadFromPath, mergeDependency, loadDependencies } from '../src/load';
+import {
+  cleanCachedPackage,
+  loadFromPath,
+  mergeDependency,
+  loadDependencies,
+  loadDependency
+} from '../src/load';
 import { FHIRDefinitions, Type } from '../src/FHIRDefinitions';
 import { PackageLoadError } from '../src/errors';
 import { loggerSpy } from './testhelpers';
@@ -311,6 +318,82 @@ describe('#loadDependencies()', () => {
       expect(loggerSpy.getLastMessage('error')).toMatch(
         /Sometimes this error occurs in corporate or educational environments that use proxies and\/or SSL inspection/s
       );
+    });
+  });
+});
+
+describe('#loadDependency()', () => {
+  const log = (level: string, message: string) => {
+    loggerSpy.log(level, message);
+  };
+  let jestSpy: jest.SpyInstance;
+  let fhirDefs: FHIRDefinitions;
+  beforeAll(async () => {
+    jestSpy = jest
+      .spyOn(loadModule, 'mergeDependency')
+      .mockImplementation(
+        async (packageName: string, version: string, FHIRDefs: FHIRDefinitions) => {
+          // the mock loader can find hl7.fhir.(r2|r3|r4|r5|us).core
+          if (/^hl7.fhir.(r2|r3|r4|r4b|r5|us).core$/.test(packageName)) {
+            return Promise.resolve(FHIRDefs);
+          } else if (/^self-signed.package$/.test(packageName)) {
+            throw new Error('self signed certificate in certificate chain');
+          } else {
+            throw new PackageLoadError(`${packageName}#${version}`);
+          }
+        }
+      );
+  });
+
+  beforeEach(async () => {
+    fhirDefs = await loadDependencies(
+      ['hl7.fhir.r4.core#4.0.1', 'hl7.fhir.r5.core#current'],
+      undefined,
+      log
+    );
+    // Reset after loading dependencies so tests only check their own changes
+    loggerSpy.reset();
+    jestSpy.mockClear();
+  });
+
+  afterAll(() => {
+    jestSpy.mockRestore();
+  });
+
+  it('should call mergeDependency with a blank FHIRDefinition', () => {
+    const packageName = 'hl7.fhir.us.core';
+    const packageVersion = '4.0.1';
+    return loadDependency(packageName, packageVersion, fhirDefs, undefined, log).then(() => {
+      expect(jestSpy).toHaveBeenCalledTimes(1);
+      expect(jestSpy).toHaveBeenLastCalledWith(
+        packageName,
+        packageVersion,
+        new FHIRDefinitions(),
+        path.join(os.homedir(), '.fhir', 'packages'),
+        log
+      );
+    });
+  });
+
+  it('should return a FHIRDefinition with a new childDefs if there were already childDefs before loading another package', () => {
+    const packageName = 'hl7.fhir.us.core';
+    const packageVersion = '4.0.1';
+    return loadDependency(packageName, packageVersion, fhirDefs, undefined, log).then(defs => {
+      expect(jestSpy).toHaveBeenCalledTimes(1);
+      expect(defs.childFHIRDefs).toHaveLength(3);
+    });
+  });
+
+  it('should wrap provided definitions and merged definitions if there were no childDefs before loading another package', async () => {
+    // If only one package is specified, FHIRDefs has packages loaded directly and no childDefs
+    // but loading a second package with loadDependency should then wrap the original defs and
+    // the new package defs in one FHIRDefs with two childDefs
+    const oneFHIRDefs = await loadDependencies(['hl7.fhir.r4.core#4.0.1'], undefined, log);
+    const packageName = 'hl7.fhir.us.core';
+    const packageVersion = '4.0.1';
+    return loadDependency(packageName, packageVersion, oneFHIRDefs, undefined, log).then(defs => {
+      expect(jestSpy).toHaveBeenCalledTimes(2); // Once at the start of the test, once from loadDependency
+      expect(defs.childFHIRDefs).toHaveLength(2);
     });
   });
 });

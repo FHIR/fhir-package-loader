@@ -55,6 +55,39 @@ export async function loadDependencies(
 }
 
 /**
+ * Downloads a dependency from a directory (the user FHIR cache or a specified directory) or from online.
+ * The definitions from the package are added to their own FHIRDefinitions instance, which is then added to
+ * the provided FHIRDefs childDefs. If the provided FHIRDefs does not yet have any children, a wrapper FHIRDefinitions
+ * instance is created and both the original packages and the new package are added to childDefs.
+ * @param {string} packageName - The name of the package to load
+ * @param {string} version - The version of the package to load
+ * @param {FHIRDefinitions} FHIRDefs - The FHIRDefinitions to load the dependencies into
+ * @param {string} [cachePath=path.join(os.homedir(), '.fhir', 'packages')] - The path to load the package into (default: user FHIR cache)
+ * @returns {Promise<FHIRDefinitions>} the loaded FHIRDefs
+ * @throws {PackageLoadError} when the desired package can't be loaded
+ */
+export async function loadDependency(
+  packageName: string,
+  version: string,
+  FHIRDefs: FHIRDefinitions,
+  cachePath: string = path.join(os.homedir(), '.fhir', 'packages'),
+  log: LogFunction = () => {}
+): Promise<FHIRDefinitions> {
+  const newFHIRDefs = new FHIRDefinitions();
+  // Testing Hack: Use exports.mergeDependency instead of mergeDependency so that this function
+  // calls the mocked mergeDependency in unit tests.  In normal (non-test) use, this should
+  // have no negative effects.
+  await exports.mergeDependency(packageName, version, newFHIRDefs, cachePath, log);
+  if (FHIRDefs.childFHIRDefs.length === 0) {
+    const wrapperFHIRDefs = new FHIRDefinitions();
+    wrapperFHIRDefs.childFHIRDefs.push(FHIRDefs, newFHIRDefs);
+    return wrapperFHIRDefs;
+  }
+  FHIRDefs.childFHIRDefs.push(newFHIRDefs);
+  return FHIRDefs;
+}
+
+/**
  * Downloads a dependency from a directory (the user FHIR cache or a specified directory) or from online
  * and then loads it into the FHIRDefinitions class provided
  * Note: You likely want to use loadDependency, which adds the package to its own FHIRDefinitions class instance
