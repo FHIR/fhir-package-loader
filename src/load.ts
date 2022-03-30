@@ -23,11 +23,11 @@ export async function loadDependencies(
   const promises = fhirPackages.map(fhirPackage => {
     const [fhirPackageId, fhirPackageVersion] = fhirPackage.split('#');
     const fhirDefs = new FHIRDefinitions();
-    // Testing Hack: Use exports.loadDependency instead of loadDependency so that this function
-    // calls the mocked loadDependency in unit tests.  In normal (non-test) use, this should
+    // Testing Hack: Use exports.mergeDependency instead of mergeDependency so that this function
+    // calls the mocked mergeDependency in unit tests.  In normal (non-test) use, this should
     // have no negative effects.
     return exports
-      .loadDependency(fhirPackageId, fhirPackageVersion, fhirDefs, cachePath, log)
+      .mergeDependency(fhirPackageId, fhirPackageVersion, fhirDefs, cachePath, log)
       .catch((e: Error) => {
         let message = `Failed to load ${fhirPackageId}#${fhirPackageVersion}: ${e.message}`;
         if (/certificate/.test(e.message)) {
@@ -55,7 +55,11 @@ export async function loadDependencies(
 }
 
 /**
- * Loads a dependency from a directory (the user FHIR cache or a specified directory) or from online
+ * Downloads a dependency from a directory (the user FHIR cache or a specified directory) or from online
+ * and then loads it into the FHIRDefinitions class provided
+ * Note: You likely want to use loadDependency, which adds the package to its own FHIRDefinitions class instance
+ * before appending that package to the provided FHIRDefinitions.childDefs array. This maintains the same structure
+ * that is created with loadDependencies.
  * @param {string} packageName - The name of the package to load
  * @param {string} version - The version of the package to load
  * @param {FHIRDefinitions} FHIRDefs - The FHIRDefinitions to load the dependencies into
@@ -63,7 +67,7 @@ export async function loadDependencies(
  * @returns {Promise<FHIRDefinitions>} the loaded FHIRDefs
  * @throws {PackageLoadError} when the desired package can't be loaded
  */
-export async function loadDependency(
+export async function mergeDependency(
   packageName: string,
   version: string,
   FHIRDefs: FHIRDefinitions,

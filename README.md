@@ -152,7 +152,7 @@ jest.mock('fhir-package-loader', () => {
   const original = jest.requireActual('fhir-package-loader');
   return {
     ...original,
-    loadDependency: jest.fn(), // can optionally include a mock implementation
+    loadDependencies: jest.fn(), // can optionally include a mock implementation
     // any other functions to be mocked out
   }
 }
@@ -174,13 +174,13 @@ npm install
 
 While the CLI and API should be sufficient for the majority of use cases, FHIR Package Loader exposes a few additional functions and classes that can be used within JavaScript/TypeScript projects. Below are the key exports:
 
-| Export             | Description                                                                                                                                                                                                |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fpl`              | API function to download and load definitions for a provided list of packages.                                                                                                                             |
-| `loadDependencies` | Takes a list of FHIR packages, a path to a directory (optional, defaults to FHIR cache), a log function (optional) and returns FHIRDefinitions from the provided packages.                                 |
-| `loadDependency`   | Takes a package name, a package version, an instance of FHIRDefinitions, a path to a directory (optional, defaults to FHIR cache), a log function (optional) and returns FHIRDefinitions from the package. |
-| `loadFromPath`     | Takes a path, a package and version (format: package#version), and an instance of FHIRDefinitions and loads the definitions from the provided package at the provided path into FHIRDefinitions.           |
-| `FHIRDefinitions`  | A class for FHIRDefinitions for one or more packages. This could be extended if there are additional properties that are specific to your implementation.                                                  |
+| Export             | Description                                                                                                                                                                                                                                |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `fpl`              | API function to download and load definitions for a provided list of packages.                                                                                                                                                             |
+| `loadDependencies` | Takes a list of FHIR packages, a path to a directory (optional, defaults to FHIR cache), a log function (optional) and returns FHIRDefinitions from the provided packages.                                                                 |
+| `mergeDependency`  | Takes a package name, a package version, an instance of FHIRDefinitions, a path to a directory (optional, defaults to FHIR cache), a log function (optional) and returns FHIRDefinitions with definitions added directly from the package. |
+| `loadFromPath`     | Takes a path, a package and version (format: package#version), and an instance of FHIRDefinitions and loads the definitions from the provided package at the provided path into FHIRDefinitions.                                           |
+| `FHIRDefinitions`  | A class for FHIRDefinitions for one or more packages. This could be extended if there are additional properties that are specific to your implementation.                                                                                  |
 
 # License
 

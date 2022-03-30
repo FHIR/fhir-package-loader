@@ -4,7 +4,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import tar from 'tar';
 import * as loadModule from '../src/load';
-import { cleanCachedPackage, loadFromPath, loadDependency, loadDependencies } from '../src/load';
+import { cleanCachedPackage, loadFromPath, mergeDependency, loadDependencies } from '../src/load';
 import { FHIRDefinitions, Type } from '../src/FHIRDefinitions';
 import { PackageLoadError } from '../src/errors';
 import { loggerSpy } from './testhelpers';
@@ -242,7 +242,7 @@ describe('#loadDependencies()', () => {
   let jestSpy: jest.SpyInstance;
   beforeAll(() => {
     jestSpy = jest
-      .spyOn(loadModule, 'loadDependency')
+      .spyOn(loadModule, 'mergeDependency')
       .mockImplementation(
         async (packageName: string, version: string, FHIRDefs: FHIRDefinitions) => {
           // the mock loader can find hl7.fhir.(r2|r3|r4|r5|us).core
@@ -315,7 +315,7 @@ describe('#loadDependencies()', () => {
   });
 });
 
-describe('#loadDependency()', () => {
+describe('#mergeDependency()', () => {
   const log = (level: string, message: string) => {
     loggerSpy.log(level, message);
   };
@@ -475,7 +475,7 @@ describe('#loadDependency()', () => {
   it('should not try to download a non-current package that is already in the cache', async () => {
     const expectedDefs = new FHIRDefinitions();
     loadFromPath(cachePath, 'sushi-test#0.1.0', expectedDefs);
-    await expect(loadDependency('sushi-test', '0.1.0', defs, cachePath, log)).resolves.toEqual(
+    await expect(mergeDependency('sushi-test', '0.1.0', defs, cachePath, log)).resolves.toEqual(
       expectedDefs
     );
     expect(axiosSpy.mock.calls.length).toBe(0);
@@ -484,14 +484,14 @@ describe('#loadDependency()', () => {
   it('should recognize a package in the cache with uppercase letters', async () => {
     const expectedDefs = new FHIRDefinitions();
     loadFromPath(cachePath, 'sushi-test-caps#0.1.0', expectedDefs);
-    await expect(loadDependency('sushi-test-caps', '0.1.0', defs, cachePath, log)).resolves.toEqual(
-      expectedDefs
-    );
+    await expect(
+      mergeDependency('sushi-test-caps', '0.1.0', defs, cachePath, log)
+    ).resolves.toEqual(expectedDefs);
     expect(axiosSpy.mock.calls.length).toBe(0);
   });
 
   it('should try to load a package from packages.fhir.org when a non-current package is not cached', async () => {
-    await expect(loadDependency('sushi-test', '0.2.0', defs, 'foo', log)).rejects.toThrow(
+    await expect(mergeDependency('sushi-test', '0.2.0', defs, 'foo', log)).rejects.toThrow(
       'The package sushi-test#0.2.0 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -501,7 +501,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should try to load FHIR R4 (4.0.1) from packages.fhir.org when it is not cached', async () => {
-    await expect(loadDependency('hl7.fhir.r4.core', '4.0.1', defs, 'foo', log)).rejects.toThrow(
+    await expect(mergeDependency('hl7.fhir.r4.core', '4.0.1', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.r4.core#4.0.1 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -511,7 +511,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should try to load prerelease FHIR R4B (4.1.0) from packages2.fhir.org when it is not cached', async () => {
-    await expect(loadDependency('hl7.fhir.r4b.core', '4.1.0', defs, 'foo', log)).rejects.toThrow(
+    await expect(mergeDependency('hl7.fhir.r4b.core', '4.1.0', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.r4b.core#4.1.0 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -524,7 +524,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should try to load FHIR R4B (4.3.0) from packages.fhir.org when it is not cached', async () => {
-    await expect(loadDependency('hl7.fhir.r4b.core', '4.3.0', defs, 'foo', log)).rejects.toThrow(
+    await expect(mergeDependency('hl7.fhir.r4b.core', '4.3.0', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.r4b.core#4.3.0 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -534,7 +534,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should try to load prerelease FHIR R5 (4.5.0) from packages2.fhir.org when it is not cached', async () => {
-    await expect(loadDependency('hl7.fhir.r5.core', '4.5.0', defs, 'foo', log)).rejects.toThrow(
+    await expect(mergeDependency('hl7.fhir.r5.core', '4.5.0', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.r5.core#4.5.0 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -547,7 +547,9 @@ describe('#loadDependency()', () => {
   });
 
   it('should try to load a package from packages2.fhir.org when it is not on packages.fhir.org', async () => {
-    await expect(loadDependency('fhir.dicom', '2021.4.20210910', defs, 'foo', log)).rejects.toThrow(
+    await expect(
+      mergeDependency('fhir.dicom', '2021.4.20210910', defs, 'foo', log)
+    ).rejects.toThrow(
       'The package fhir.dicom#2021.4.20210910 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -560,7 +562,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should throw PackageLoadError when a package with a non-current version is not cached or available on packages.fhir.org', async () => {
-    await expect(loadDependency('sushi-test', '0.3.0', defs, 'foo', log)).rejects.toThrow(
+    await expect(mergeDependency('sushi-test', '0.3.0', defs, 'foo', log)).rejects.toThrow(
       'The package sushi-test#0.3.0 could not be loaded locally or from the FHIR package registry'
     );
     expect(loggerSpy.getLastMessage('info')).toMatch(
@@ -582,7 +584,7 @@ describe('#loadDependency()', () => {
           throw 'Not Found';
         }
       });
-    await expect(loadDependency('fhir.fake', '2022.1.01', defs, 'foo', log)).rejects.toThrow(
+    await expect(mergeDependency('fhir.fake', '2022.1.01', defs, 'foo', log)).rejects.toThrow(
       'The package fhir.fake#2022.1.01 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -598,7 +600,7 @@ describe('#loadDependency()', () => {
   it('should not try to download a current package that is already in the cache and up to date', async () => {
     const expectedDefs = new FHIRDefinitions();
     loadFromPath(cachePath, 'sushi-test#current', expectedDefs);
-    await expect(loadDependency('sushi-test', 'current', defs, cachePath, log)).resolves.toEqual(
+    await expect(mergeDependency('sushi-test', 'current', defs, cachePath, log)).resolves.toEqual(
       expectedDefs
     );
     expect(axiosSpy.mock.calls).toEqual([
@@ -609,7 +611,7 @@ describe('#loadDependency()', () => {
 
   it('should try to load the latest package from build.fhir.org when a current package version is not locally cached', async () => {
     await expect(
-      loadDependency('hl7.fhir.us.core.r4', 'current', defs, 'foo', log)
+      mergeDependency('hl7.fhir.us.core.r4', 'current', defs, 'foo', log)
     ).rejects.toThrow(
       'The package hl7.fhir.us.core.r4#current could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
@@ -622,7 +624,7 @@ describe('#loadDependency()', () => {
 
   it('should try to load the latest package from build.fhir.org when a current package version has an older version that is locally cached', async () => {
     await expect(
-      loadDependency('sushi-test-old', 'current', defs, cachePath, log)
+      mergeDependency('sushi-test-old', 'current', defs, cachePath, log)
     ).resolves.toBeTruthy(); // Since tar is mocked, the actual cache is not updated
     expectDownloadSequence(
       'https://build.fhir.org/ig/sushi/sushi-test-old/package.tgz',
@@ -634,14 +636,14 @@ describe('#loadDependency()', () => {
 
   // This handles the edge case that comes from how SUSHI uses FHIRDefinitions
   it('should successfully load a package even if the FHIRDefinitions.package property does not reflect the current package', async () => {
-    const newDefs = await loadDependency('sushi-test', 'current', defs, cachePath, log);
+    const newDefs = await mergeDependency('sushi-test', 'current', defs, cachePath, log);
     axiosSpy.mockClear(); // Clear the spy between the two calls in the single test
 
     // This mimics the odd SUSHI case because we pass in a FHIRDefinitions that already had definitions loaded into it
     // So instead of creating a new FHIRDefs for a new package, we re-use an old one. Only SUSHI does this.
     // This is not expected and is not the intended pattern for normal use.
     await expect(
-      loadDependency('sushi-test-old', 'current', newDefs, cachePath, log)
+      mergeDependency('sushi-test-old', 'current', newDefs, cachePath, log)
     ).resolves.toBeTruthy();
     expectDownloadSequence(
       'https://build.fhir.org/ig/sushi/sushi-test-old/package.tgz',
@@ -652,7 +654,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should try to load the latest FHIR R5 package from build.fhir.org when it is not locally cached', async () => {
-    await expect(loadDependency('hl7.fhir.r5.core', 'current', defs, 'foo', log)).rejects.toThrow(
+    await expect(mergeDependency('hl7.fhir.r5.core', 'current', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.r5.core#current could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
@@ -666,7 +668,7 @@ describe('#loadDependency()', () => {
     const expectedDefs = new FHIRDefinitions();
     loadFromPath(cachePath, 'sushi-test-no-download#current', expectedDefs);
     await expect(
-      loadDependency('sushi-test-no-download', 'current', defs, cachePath, log)
+      mergeDependency('sushi-test-no-download', 'current', defs, cachePath, log)
     ).resolves.toEqual(expectedDefs);
     expectDownloadSequence(
       'https://build.fhir.org/ig/sushi/sushi-test-no-download/package.tgz',
@@ -680,7 +682,7 @@ describe('#loadDependency()', () => {
   it('should not try to download a dev package that is already in the cache', async () => {
     const expectedDefs = new FHIRDefinitions();
     loadFromPath(cachePath, 'sushi-test#dev', expectedDefs);
-    await expect(loadDependency('sushi-test', 'dev', defs, cachePath, log)).resolves.toEqual(
+    await expect(mergeDependency('sushi-test', 'dev', defs, cachePath, log)).resolves.toEqual(
       expectedDefs
     );
     expect(axiosSpy.mock.calls).toHaveLength(0);
@@ -688,7 +690,7 @@ describe('#loadDependency()', () => {
 
   it('should load the current package from build.fhir.org when a dev package is loaded and not locally cached', async () => {
     await expect(
-      loadDependency('sushi-test-old', 'dev', defs, cachePath, log)
+      mergeDependency('sushi-test-old', 'dev', defs, cachePath, log)
     ).resolves.toBeTruthy();
     expect(
       loggerSpy
@@ -708,7 +710,7 @@ describe('#loadDependency()', () => {
   });
 
   it('should throw CurrentPackageLoadError when a current package is not listed', async () => {
-    await expect(loadDependency('hl7.fhir.us.core', 'current', defs, 'foo', log)).rejects.toThrow(
+    await expect(mergeDependency('hl7.fhir.us.core', 'current', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.us.core#current is not available on https://build.fhir.org/ig/qas.json, so no current version can be loaded'
     );
     expect(axiosSpy.mock.calls.length).toBe(1);
@@ -717,7 +719,7 @@ describe('#loadDependency()', () => {
 
   it('should throw CurrentPackageLoadError when https://build.fhir.org/ig/qas.json gives a bad response', async () => {
     axiosSpy.mockImplementationOnce(() => {});
-    await expect(loadDependency('bad.response', 'current', defs, 'foo', log)).rejects.toThrow(
+    await expect(mergeDependency('bad.response', 'current', defs, 'foo', log)).rejects.toThrow(
       'The package bad.response#current is not available on https://build.fhir.org/ig/qas.json, so no current version can be loaded'
     );
     expect(axiosSpy.mock.calls.length).toBe(1);
