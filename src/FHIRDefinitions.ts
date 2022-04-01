@@ -220,6 +220,25 @@ export class FHIRDefinitions {
   }
 
   /**
+   * Get a list of all packages that are contained in this FHIRDefinitions
+   * @param {string} [fhirPackage] The package (packageId#version) to get all packages from. If not provided, all packages are returned.
+   * @returns array of packages (packageId#version) that are loaded
+   */
+  allPackages(fhirPackage?: string): string[] {
+    const childValues = this.childFHIRDefs
+      .map(def => def.allPackages(fhirPackage))
+      .reduce((a, b) => a.concat(b), []);
+    if (fhirPackage) {
+      if (this.package === fhirPackage && this.package !== '') {
+        return childValues.concat(this.package);
+      }
+    } else if (this.package !== '') {
+      return childValues.concat(this.package);
+    }
+    return childValues;
+  }
+
+  /**
    * Add a definition
    * @param definition - The definition to add
    */

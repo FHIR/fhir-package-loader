@@ -17,10 +17,11 @@ import { PackageLoadError } from '../src/errors';
 import { loggerSpy } from './testhelpers';
 
 describe('#loadFromPath()', () => {
-  const defsWithChildDefs = new FHIRDefinitions();
+  let defsWithChildDefs: FHIRDefinitions;
   let defs: FHIRDefinitions;
   beforeAll(() => {
     defs = new FHIRDefinitions();
+    defsWithChildDefs = new FHIRDefinitions();
     loadFromPath(path.join(__dirname, 'testhelpers', 'testdefs'), 'r4-definitions', defs);
     defs.fishForFHIR('Condition');
     defs.fishForFHIR('boolean');
@@ -239,6 +240,19 @@ describe('#loadFromPath()', () => {
     failedPackage.childFHIRDefs.push(failedChildPackage, successfulPackageLoad);
     expect(failedPackage.allUnsuccessfulPackageLoads('my-package')).toHaveLength(1);
     expect(failedPackage.allUnsuccessfulPackageLoads('my-package')).toEqual(['my-package']);
+  });
+
+  it('should get all packages from FHIRDefs with no children', () => {
+    expect(defs.allPackages()).toHaveLength(1);
+  });
+
+  it('should get all packages from all child FHIRDefs', () => {
+    expect(defsWithChildDefs.allPackages()).toHaveLength(2);
+  });
+
+  it('should get all packages from specified package', () => {
+    expect(defs.allPackages('r4-definitions')).toHaveLength(1);
+    expect(defsWithChildDefs.allPackages('r4-definitions')).toHaveLength(1);
   });
 });
 
