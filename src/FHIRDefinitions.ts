@@ -296,6 +296,30 @@ export class FHIRDefinitions {
   }
 
   /**
+   * Private function for search through current FHIRDefinitions and all childFHIRDefs
+   * for a specified definition. Uses get for efficient retrieves.
+   * Breath-first search through childFHIRDefinitions for the item.
+   * @param item name, id, or url of definition to find
+   * @param map name of the map to search in
+   * @returns definition or undefined if it is not found
+   */
+  private getDefinition(item: string, map: maps): any | undefined {
+    const defsToSearch: FHIRDefinitions[] = [this];
+    while (defsToSearch.length > 0) {
+      const currentFHIRDefs = defsToSearch.shift();
+      const def = currentFHIRDefs[map].get(item);
+      if (def) {
+        return def;
+      }
+      if (currentFHIRDefs.childFHIRDefs.length > 0) {
+        defsToSearch.push(...currentFHIRDefs.childFHIRDefs);
+      }
+    }
+
+    return;
+  }
+
+  /**
    * Search for a definition based on the type it could be
    * @param {string} item - the item to search for
    * @param {Type[]} types - the possible type the item could be
@@ -319,25 +343,25 @@ export class FHIRDefinitions {
       let def;
       switch (type) {
         case Type.Resource:
-          def = cloneDeep(getDefinition(item, this.allResources()));
+          def = cloneDeep(this.getDefinition(item, 'resources'));
           break;
         case Type.Logical:
-          def = cloneDeep(getDefinition(item, this.allLogicals()));
+          def = cloneDeep(this.getDefinition(item, 'logicals'));
           break;
         case Type.Type:
-          def = cloneDeep(getDefinition(item, this.allTypes()));
+          def = cloneDeep(this.getDefinition(item, 'types'));
           break;
         case Type.Profile:
-          def = cloneDeep(getDefinition(item, this.allProfiles()));
+          def = cloneDeep(this.getDefinition(item, 'profiles'));
           break;
         case Type.Extension:
-          def = cloneDeep(getDefinition(item, this.allExtensions()));
+          def = cloneDeep(this.getDefinition(item, 'extensions'));
           break;
         case Type.ValueSet:
-          def = cloneDeep(getDefinition(item, this.allValueSets()));
+          def = cloneDeep(this.getDefinition(item, 'valueSets'));
           break;
         case Type.CodeSystem:
-          def = cloneDeep(getDefinition(item, this.allCodeSystems()));
+          def = cloneDeep(this.getDefinition(item, 'codeSystems'));
           break;
         case Type.Instance: // don't support resolving to FHIR instances
         default:
@@ -348,10 +372,6 @@ export class FHIRDefinitions {
       }
     }
   }
-}
-
-function getDefinition(item: string, all: any[]): any {
-  return all.find((def: any) => def.id === item || def.url === item || def.name === item);
 }
 
 function addDefinitionToMap(def: any, defMap: Map<string, any>): void {
@@ -383,3 +403,13 @@ export enum Type {
   Type = 'Type', // NOTE: only defined in FHIR defs, not FSHTanks
   Logical = 'Logical'
 }
+
+// Type to represent the names of the FHIRDefinition maps of definitions
+type maps =
+  | 'resources'
+  | 'logicals'
+  | 'profiles'
+  | 'extensions'
+  | 'types'
+  | 'valueSets'
+  | 'codeSystems';

@@ -335,5 +335,34 @@ describe('FHIRDefinitions', () => {
         defs.fishForFHIR('http://hl7.org/fhir/us/eltss/StructureDefinition/eLTSSServiceModel')
       ).toEqual(eLTSSServiceModelByID);
     });
+
+    it('should find definition in parent defs before searching in children', () => {
+      const defsWithChildDefs = new FHIRDefinitions();
+
+      // package1 does not contain a Condition resource
+      const childDefs1 = new FHIRDefinitions();
+      loadFromPath(path.join(__dirname, 'testhelpers', 'testdefs'), 'package1', childDefs1);
+      childDefs1.package = 'package1';
+
+      // package2 contains a Condition resource with version 4.0.2
+      const childDefs2 = new FHIRDefinitions();
+      loadFromPath(path.join(__dirname, 'testhelpers', 'testdefs'), 'package2', childDefs2);
+      childDefs2.package = 'package2';
+
+      // package3 contains a Condition resource with version 4.0.3
+      const childDefs3 = new FHIRDefinitions();
+      loadFromPath(path.join(__dirname, 'testhelpers', 'testdefs'), 'package3', childDefs3);
+      childDefs3.package = 'package3';
+
+      // childDefs1 and childDefs2 are siblings, childDef3 is child of childDef1
+      childDefs1.childFHIRDefs.push(childDefs3);
+      defsWithChildDefs.childFHIRDefs.push(childDefs1);
+      defsWithChildDefs.childFHIRDefs.push(childDefs2);
+
+      // fishForFHIR should find the first level child (childDefs2) Condition before
+      // it finds the second level child (childDefs3) Condition
+      const conditionByID = defsWithChildDefs.fishForFHIR('Condition', Type.Resource);
+      expect(conditionByID.version).toEqual('4.0.2');
+    });
   });
 });
