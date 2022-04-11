@@ -69,7 +69,7 @@ Commands:
   help [command]                       display help for command
 
 Examples:
-  npx fpl install hl7.fhir.us.core@current
+  fpl install hl7.fhir.us.core@current
   fpl install hl7.fhir.us.core@4.0.0 hl7.fhir.us.mcode@2.0.0 --cachePath ./myProject
 ```
 
