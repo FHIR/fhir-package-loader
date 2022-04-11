@@ -18,15 +18,15 @@ function getVersion(): string {
 function getHelpText(): string {
   return `
 Examples:
-  npx fpl install hl7.fhir.r5.core@current
-  fpl install hl7.fhir.r4.core@4.0.1 hl7.fhir.us.core@4.0.0 --save ./myProject`;
+  npx fpl install hl7.fhir.us.core@current
+  fpl install hl7.fhir.us.core@4.0.0 hl7.fhir.us.mcode@2.0.0 --cachePath ./myProject`;
 }
 
 async function install(fhirPackages: string[], options: OptionValues) {
   if (options.debug) logger.level = 'debug';
 
   const packages = fhirPackages.map(dep => dep.replace('@', '#'));
-  const cachePath = options.save;
+  const cachePath = options.cachePath;
 
   const logMessage = (level: string, message: string) => {
     logger.log(level, message);
@@ -51,7 +51,7 @@ async function app() {
       'list of FHIR packages to load using the format packageId@packageVersion...'
     )
     .option(
-      '-s, --save <dir>',
+      '-c, --cachePath <dir>',
       'where to save packages to and load definitions from (default is the local FHIR cache)'
     )
     .option('-d, --debug', 'output extra debugging information')

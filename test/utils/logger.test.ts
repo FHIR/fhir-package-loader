@@ -1,4 +1,4 @@
-import { ErrorsAndWarnings, wrapLogger, LogFunction } from '../../src/utils/Logger';
+import { ErrorsAndWarnings, wrapLogger, LogFunction } from '../../src/utils/logger';
 
 describe('wrapLogger', () => {
   const basicLog = jest.fn();

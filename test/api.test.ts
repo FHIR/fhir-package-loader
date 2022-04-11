@@ -1,10 +1,11 @@
 import path from 'path';
-import { fpl } from '../src/fplAPI';
-import { ErrorsAndWarnings, FHIRDefinitions } from '../src/utils';
+import { fpl } from '../src/api';
+import { FHIRDefinitions } from '../src/FHIRDefinitions';
+import { ErrorsAndWarnings } from '../src/utils';
 import * as loadModule from '../src/load';
 import * as logModule from '../src/utils/logger';
 
-describe('fplAPI', () => {
+describe('fpl (API)', () => {
   let loadSpy: jest.SpyInstance;
   const cachePath = path.join(__dirname, 'testhelpers', 'fixtures');
   const log = jest.fn();
@@ -132,10 +133,10 @@ describe('fplAPI', () => {
   });
 
   it('should return errors and warnings when present', async () => {
-    // Remove the loadSpy mock so we can reach the error that gets thrown and caught from loadDependency
+    // Remove the loadSpy mock so we can reach the error that gets thrown and caught from mergeDependency
     loadSpy.mockRestore();
-    // Spy on loadDependency and reject so we can test an error is logged
-    jest.spyOn(loadModule, 'loadDependency').mockRejectedValue(new Error('bad'));
+    // Spy on mergeDependency and reject so we can test an error is logged
+    jest.spyOn(loadModule, 'mergeDependency').mockRejectedValue(new Error('bad'));
 
     const fhirPackages = 'hl7.fake.test.package@1.0.0';
     const failedFhirDefs = new FHIRDefinitions();

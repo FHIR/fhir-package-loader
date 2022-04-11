@@ -1,4 +1,5 @@
-import { FHIRDefinitions, ErrorsAndWarnings, LogFunction, wrapLogger } from './utils';
+import { FHIRDefinitions } from './FHIRDefinitions';
+import { ErrorsAndWarnings, LogFunction, wrapLogger } from './utils';
 import { loadDependencies } from './load';
 
 export async function fpl(

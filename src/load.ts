@@ -1,5 +1,6 @@
 import { PackageLoadError, CurrentPackageLoadError } from './errors';
-import { FHIRDefinitions, LogFunction } from './utils';
+import { FHIRDefinitions } from './FHIRDefinitions';
+import { LogFunction } from './utils';
 import axios from 'axios';
 import fs from 'fs-extra';
 import path from 'path';
@@ -7,6 +8,13 @@ import os from 'os';
 import tar from 'tar';
 import temp from 'temp';
 
+/**
+ * Loads multiple dependencies from a directory (the user FHIR cache or a specified directory) or from online
+ * @param {string[]} fhirPackages - An array of FHIR packages to download and load definitions from (format: packageId#version)
+ * @param {string} [cachePath=path.join(os.homedir(), '.fhir', 'packages')] - Path to look for the package and download to if not already present. Defaults to local FHIR cache.
+ * @param {LogFunction} [log=() => {}] - A function for logging. Defaults to no-op.
+ * @returns {Promise<FHIRDefinitions>} the loaded FHIRDefinitions
+ */
 export async function loadDependencies(
   fhirPackages: string[],
   cachePath: string = path.join(os.homedir(), '.fhir', 'packages'),
@@ -15,11 +23,11 @@ export async function loadDependencies(
   const promises = fhirPackages.map(fhirPackage => {
     const [fhirPackageId, fhirPackageVersion] = fhirPackage.split('#');
     const fhirDefs = new FHIRDefinitions();
-    // Testing Hack: Use exports.loadDependency instead of loadDependency so that this function
-    // calls the mocked loadDependency in unit tests.  In normal (non-test) use, this should
+    // Testing Hack: Use exports.mergeDependency instead of mergeDependency so that this function
+    // calls the mocked mergeDependency in unit tests.  In normal (non-test) use, this should
     // have no negative effects.
     return exports
-      .loadDependency(fhirPackageId, fhirPackageVersion, fhirDefs, cachePath, log)
+      .mergeDependency(fhirPackageId, fhirPackageVersion, fhirDefs, cachePath, log)
       .catch((e: Error) => {
         let message = `Failed to load ${fhirPackageId}#${fhirPackageVersion}: ${e.message}`;
         if (/certificate/.test(e.message)) {
@@ -39,7 +47,7 @@ export async function loadDependencies(
   return await Promise.all(promises).then(fhirDefs => {
     if (fhirDefs.length > 1) {
       const mainFHIRDefs = new FHIRDefinitions();
-      fhirDefs.forEach(v => mainFHIRDefs.childFHIRDefs.push(v));
+      fhirDefs.forEach(d => mainFHIRDefs.childFHIRDefs.push(d));
       return mainFHIRDefs;
     }
     return fhirDefs[0];
@@ -47,15 +55,52 @@ export async function loadDependencies(
 }
 
 /**
- * Loads a dependency from user FHIR cache or from online
+ * Downloads a dependency from a directory (the user FHIR cache or a specified directory) or from online.
+ * The definitions from the package are added to their own FHIRDefinitions instance, which is then added to
+ * the provided FHIRDefs childDefs. If the provided FHIRDefs does not yet have any children, a wrapper FHIRDefinitions
+ * instance is created and both the original packages and the new package are added to childDefs.
  * @param {string} packageName - The name of the package to load
  * @param {string} version - The version of the package to load
  * @param {FHIRDefinitions} FHIRDefs - The FHIRDefinitions to load the dependencies into
- * @param {string} cachePath - The path to load the package into
+ * @param {string} [cachePath=path.join(os.homedir(), '.fhir', 'packages')] - The path to load the package into (default: user FHIR cache)
  * @returns {Promise<FHIRDefinitions>} the loaded FHIRDefs
  * @throws {PackageLoadError} when the desired package can't be loaded
  */
 export async function loadDependency(
+  packageName: string,
+  version: string,
+  FHIRDefs: FHIRDefinitions,
+  cachePath: string = path.join(os.homedir(), '.fhir', 'packages'),
+  log: LogFunction = () => {}
+): Promise<FHIRDefinitions> {
+  const newFHIRDefs = new FHIRDefinitions();
+  // Testing Hack: Use exports.mergeDependency instead of mergeDependency so that this function
+  // calls the mocked mergeDependency in unit tests.  In normal (non-test) use, this should
+  // have no negative effects.
+  await exports.mergeDependency(packageName, version, newFHIRDefs, cachePath, log);
+  if (FHIRDefs.childFHIRDefs.length === 0) {
+    const wrapperFHIRDefs = new FHIRDefinitions();
+    wrapperFHIRDefs.childFHIRDefs.push(FHIRDefs, newFHIRDefs);
+    return wrapperFHIRDefs;
+  }
+  FHIRDefs.childFHIRDefs.push(newFHIRDefs);
+  return FHIRDefs;
+}
+
+/**
+ * Downloads a dependency from a directory (the user FHIR cache or a specified directory) or from online
+ * and then loads it into the FHIRDefinitions class provided
+ * Note: You likely want to use loadDependency, which adds the package to its own FHIRDefinitions class instance
+ * before appending that package to the provided FHIRDefinitions.childDefs array. This maintains the same structure
+ * that is created with loadDependencies.
+ * @param {string} packageName - The name of the package to load
+ * @param {string} version - The version of the package to load
+ * @param {FHIRDefinitions} FHIRDefs - The FHIRDefinitions to load the dependencies into
+ * @param {string} [cachePath=path.join(os.homedir(), '.fhir', 'packages')] - The path to load the package into (default: user FHIR cache)
+ * @returns {Promise<FHIRDefinitions>} the loaded FHIRDefs
+ * @throws {PackageLoadError} when the desired package can't be loaded
+ */
+export async function mergeDependency(
   packageName: string,
   version: string,
   FHIRDefs: FHIRDefinitions,
@@ -276,7 +321,14 @@ export function loadFromPath(
     return targetPackage;
   }
   // If the package has already been loaded, just return the targetPackage string
-  if (originalSize > 0) {
+  if (FHIRDefs.package === targetPackage) {
+    return targetPackage;
+  }
+  // This last case is to ensure SUSHI (which uses a single FHIRDefinitions class for many packages)
+  // can tell if a package has already be loaded. We don't have access to the array of package names
+  // that SUSHI keeps track of, so we check for the package.json of the targetPackage. If it's there,
+  // the package has already been loaded, so just return the targetPackage string.
+  if (FHIRDefs.getPackageJson(targetPackage)) {
     return targetPackage;
   }
 }
