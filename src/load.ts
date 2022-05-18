@@ -107,7 +107,6 @@ export async function mergeDependency(
   cachePath: string = path.join(os.homedir(), '.fhir', 'packages'),
   log: LogFunction = () => {}
 ): Promise<FHIRDefinitions> {
-  log('info', 'mergedependency');
   let fullPackageName = `${packageName}#${version}`;
   const loadPath = path.join(cachePath, fullPackageName, 'package');
   let loadedPackage: string;
