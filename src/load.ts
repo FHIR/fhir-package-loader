@@ -1,7 +1,7 @@
 import { PackageLoadError, CurrentPackageLoadError } from './errors';
 import { FHIRDefinitions } from './FHIRDefinitions';
 import { LogFunction } from './utils';
-import axios from 'axios';
+import { axiosGet } from './utils/axiosUtils';
 import fs from 'fs-extra';
 import path from 'path';
 import os from 'os';
@@ -147,7 +147,7 @@ export async function mergeDependency(
     // Even if a local current package is loaded, we must still check that the local package date matches
     // the date on the most recent version on build.fhir.org. If the date does not match, we re-download to the cache
     const baseUrl = 'https://build.fhir.org/ig';
-    const res = await axios.get(`${baseUrl}/qas.json`);
+    const res = await axiosGet(`${baseUrl}/qas.json`);
     const qaData: { 'package-id': string; date: string; repo: string }[] = res?.data;
     // Find matching packages and sort by date to get the most recent
     let newestPackage;
@@ -163,7 +163,7 @@ export async function mergeDependency(
       const packagePath = newestPackage.repo.slice(0, -8); // remove "/qa.json" from end
       const igUrl = `${baseUrl}/${packagePath}`;
       // get the package.manifest.json for the newest version of the package on build.fhir.org
-      const manifest = await axios.get(`${igUrl}/package.manifest.json`);
+      const manifest = await axiosGet(`${igUrl}/package.manifest.json`);
       let cachedPackageJSON;
       if (fs.existsSync(path.join(loadPath, 'package.json'))) {
         cachedPackageJSON = fs.readJSONSync(path.join(loadPath, 'package.json'));
@@ -207,7 +207,7 @@ export async function mergeDependency(
   if (packageUrl) {
     const doDownload = async (url: string) => {
       log('info', `Downloading ${fullPackageName}... ${url}`);
-      const res = await axios.get(url, {
+      const res = await axiosGet(url, {
         responseType: 'arraybuffer'
       });
       if (res?.data) {
