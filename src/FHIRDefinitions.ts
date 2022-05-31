@@ -1,4 +1,5 @@
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEqual, uniqWith, uniq } from 'lodash';
+import { DoubleMap } from './utils';
 
 /** Class representing the FHIR definitions in one or more FHIR packages */
 export class FHIRDefinitions {
@@ -18,15 +19,15 @@ export class FHIRDefinitions {
   /** Create a FHIRDefinitions */
   constructor() {
     this.package = '';
-    this.resources = new Map();
-    this.logicals = new Map();
-    this.profiles = new Map();
-    this.extensions = new Map();
-    this.types = new Map();
-    this.valueSets = new Map();
-    this.codeSystems = new Map();
-    this.implementationGuides = new Map();
-    this.packageJsons = new Map();
+    this.resources = new DoubleMap();
+    this.logicals = new DoubleMap();
+    this.profiles = new DoubleMap();
+    this.extensions = new DoubleMap();
+    this.types = new DoubleMap();
+    this.valueSets = new DoubleMap();
+    this.codeSystems = new DoubleMap();
+    this.implementationGuides = new DoubleMap();
+    this.packageJsons = new DoubleMap();
     this.childFHIRDefs = [];
     this.unsuccessfulPackageLoad = false;
   }
@@ -34,28 +35,37 @@ export class FHIRDefinitions {
   /** Get the total number of definitions */
   size(): number {
     return (
-      this.resources.size +
-      this.logicals.size +
-      this.profiles.size +
-      this.extensions.size +
-      this.types.size +
-      this.valueSets.size +
-      this.codeSystems.size +
-      this.implementationGuides.size +
-      this.childFHIRDefs.map(def => def.size()).reduce((a, b) => a + b, 0)
+      this.allResources().length +
+      this.allLogicals().length +
+      this.allProfiles().length +
+      this.allExtensions().length +
+      this.allTypes().length +
+      this.allValueSets().length +
+      this.allCodeSystems().length +
+      this.allImplementationGuides().length
     );
   }
 
   // NOTE: These all return clones of the JSON to prevent the source values from being overwritten
 
   /**
-   * Get all resources
+   * Get all resources. The array will not contain duplicates.
    * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
    * @returns array of resources
    */
   allResources(fhirPackage?: string): any[] {
+    if (
+      (this.resources.size > 0 && this.childFHIRDefs.length > 0) ||
+      this.childFHIRDefs.length > 1
+    ) {
+      return uniqWith(this.collectResources(fhirPackage), isEqual);
+    }
+    return this.collectResources(fhirPackage);
+  }
+
+  protected collectResources(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
-      .map(def => def.allResources(fhirPackage))
+      .map(def => def.collectResources(fhirPackage))
       .reduce((a, b) => a.concat(b), []);
     let resources = this.resources;
     if (fhirPackage) {
@@ -68,13 +78,23 @@ export class FHIRDefinitions {
   }
 
   /**
-   * Get all logicals
+   * Get all logicals. The array will not contain duplicates.
    * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
    * @returns array of logicals
    */
   allLogicals(fhirPackage?: string): any[] {
+    if (
+      (this.logicals.size > 0 && this.childFHIRDefs.length > 0) ||
+      this.childFHIRDefs.length > 1
+    ) {
+      return uniqWith(this.collectLogicals(fhirPackage), isEqual);
+    }
+    return uniqWith(this.collectLogicals(fhirPackage), isEqual);
+  }
+
+  protected collectLogicals(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
-      .map(def => def.allLogicals(fhirPackage))
+      .map(def => def.collectLogicals(fhirPackage))
       .reduce((a, b) => a.concat(b), []);
     let logicals = this.logicals;
     if (fhirPackage) {
@@ -87,13 +107,23 @@ export class FHIRDefinitions {
   }
 
   /**
-   * Get all profiles
+   * Get all profiles. The array will not contain duplicates.
    * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
    * @returns array of profiles
    */
   allProfiles(fhirPackage?: string): any[] {
+    if (
+      (this.profiles.size > 0 && this.childFHIRDefs.length > 0) ||
+      this.childFHIRDefs.length > 1
+    ) {
+      return uniqWith(this.collectProfiles(fhirPackage), isEqual);
+    }
+    return this.collectProfiles(fhirPackage);
+  }
+
+  protected collectProfiles(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
-      .map(def => def.allProfiles(fhirPackage))
+      .map(def => def.collectProfiles(fhirPackage))
       .reduce((a, b) => a.concat(b), []);
     let profiles = this.profiles;
     if (fhirPackage) {
@@ -106,13 +136,23 @@ export class FHIRDefinitions {
   }
 
   /**
-   * Get all extensions
+   * Get all extensions. The array will not contain duplicates.
    * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
    * @returns array of extensions
    */
   allExtensions(fhirPackage?: string): any[] {
+    if (
+      (this.extensions.size > 0 && this.childFHIRDefs.length > 0) ||
+      this.childFHIRDefs.length > 1
+    ) {
+      return uniqWith(this.collectExtensions(fhirPackage), isEqual);
+    }
+    return this.collectExtensions(fhirPackage);
+  }
+
+  protected collectExtensions(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
-      .map(def => def.allExtensions(fhirPackage))
+      .map(def => def.collectExtensions(fhirPackage))
       .reduce((a, b) => a.concat(b), []);
     let extensions = this.extensions;
     if (fhirPackage) {
@@ -125,13 +165,20 @@ export class FHIRDefinitions {
   }
 
   /**
-   * Get all types
+   * Get all types. The array will not contain duplicates.
    * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
    * @returns array of types
    */
   allTypes(fhirPackage?: string): any[] {
+    if ((this.types.size > 0 && this.childFHIRDefs.length > 0) || this.childFHIRDefs.length > 1) {
+      return uniqWith(this.collectTypes(fhirPackage), isEqual);
+    }
+    return this.collectTypes(fhirPackage);
+  }
+
+  protected collectTypes(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
-      .map(def => def.allTypes(fhirPackage))
+      .map(def => def.collectTypes(fhirPackage))
       .reduce((a, b) => a.concat(b), []);
     let types = this.types;
     if (fhirPackage) {
@@ -144,13 +191,23 @@ export class FHIRDefinitions {
   }
 
   /**
-   * Get all value sets
+   * Get all value sets. The array will not contain duplicates.
    * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
    * @returns array of value sets
    */
   allValueSets(fhirPackage?: string): any[] {
+    if (
+      (this.valueSets.size > 0 && this.childFHIRDefs.length > 0) ||
+      this.childFHIRDefs.length > 1
+    ) {
+      return uniqWith(this.collectValueSets(fhirPackage), isEqual);
+    }
+    return this.collectValueSets(fhirPackage);
+  }
+
+  protected collectValueSets(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
-      .map(def => def.allValueSets(fhirPackage))
+      .map(def => def.collectValueSets(fhirPackage))
       .reduce((a, b) => a.concat(b), []);
     let valueSets = this.valueSets;
     if (fhirPackage) {
@@ -163,13 +220,23 @@ export class FHIRDefinitions {
   }
 
   /**
-   * Get all code systems
+   * Get all code systems. The array will not contain duplicates.
    * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
    * @returns array of code systems
    */
   allCodeSystems(fhirPackage?: string): any[] {
+    if (
+      (this.codeSystems.size > 0 && this.childFHIRDefs.length > 0) ||
+      this.childFHIRDefs.length > 1
+    ) {
+      return uniqWith(this.collectCodeSystems(fhirPackage), isEqual);
+    }
+    return this.collectCodeSystems(fhirPackage);
+  }
+
+  protected collectCodeSystems(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
-      .map(def => def.allCodeSystems(fhirPackage))
+      .map(def => def.collectCodeSystems(fhirPackage))
       .reduce((a, b) => a.concat(b), []);
     let codeSystems = this.codeSystems;
     if (fhirPackage) {
@@ -182,13 +249,23 @@ export class FHIRDefinitions {
   }
 
   /**
-   * Get all implementation guides
+   * Get all implementation guides. The array will not contain duplicates.
    * @param {string} [fhirPackage] - The package (packageId#version) to search in. If not provided, searches all packages.
    * @returns array of implementation guides
    */
   allImplementationGuides(fhirPackage?: string): any[] {
+    if (
+      (this.implementationGuides.size > 0 && this.childFHIRDefs.length > 0) ||
+      this.childFHIRDefs.length > 1
+    ) {
+      return uniqWith(this.collectImplementationGuides(fhirPackage), isEqual);
+    }
+    return this.collectImplementationGuides(fhirPackage);
+  }
+
+  protected collectImplementationGuides(fhirPackage?: string): any[] {
     const childValues = this.childFHIRDefs
-      .map(def => def.allImplementationGuides(fhirPackage))
+      .map(def => def.collectImplementationGuides(fhirPackage))
       .reduce((a, b) => a.concat(b), []);
     let implementationGuides = this.implementationGuides;
     if (fhirPackage) {
@@ -206,8 +283,12 @@ export class FHIRDefinitions {
    * @returns array of packages (packageId#version) that were not successfully loaded
    */
   allUnsuccessfulPackageLoads(fhirPackage?: string): string[] {
+    return uniq(this.collectUnsuccessfulPackageLoads(fhirPackage));
+  }
+
+  protected collectUnsuccessfulPackageLoads(fhirPackage?: string): string[] {
     const childValues = this.childFHIRDefs
-      .map(def => def.allUnsuccessfulPackageLoads(fhirPackage))
+      .map(def => def.collectUnsuccessfulPackageLoads(fhirPackage))
       .reduce((a, b) => a.concat(b), []);
     if (fhirPackage) {
       if (this.package === fhirPackage && this.unsuccessfulPackageLoad) {
@@ -225,8 +306,12 @@ export class FHIRDefinitions {
    * @returns array of packages (packageId#version) that are loaded
    */
   allPackages(fhirPackage?: string): string[] {
+    return uniq(this.collectPackages(fhirPackage));
+  }
+
+  protected collectPackages(fhirPackage?: string): string[] {
     const childValues = this.childFHIRDefs
-      .map(def => def.allPackages(fhirPackage))
+      .map(def => def.collectPackages(fhirPackage))
       .reduce((a, b) => a.concat(b), []);
     if (fhirPackage) {
       if (this.package === fhirPackage && this.package !== '') {
