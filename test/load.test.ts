@@ -40,170 +40,172 @@ describe('#loadFromPath()', () => {
   });
 
   it('should load base FHIR resources from FHIRDefs with no children', () => {
-    expect(defs.allResources().filter(r => r.id === 'Condition')).toHaveLength(2); // added by id/name and url
+    expect(defs.allResources().filter(r => r.id === 'Condition')).toHaveLength(1);
   });
 
   it('should load base FHIR resources from all child FHIRDefs', () => {
-    expect(defsWithChildDefs.allResources().filter(r => r.id === 'Condition')).toHaveLength(4); // added by id/name and url in both childDefs
+    expect(defsWithChildDefs.allResources().filter(r => r.id === 'Condition')).toHaveLength(1);
   });
 
   it('should load base FHIR resources only from specified package', () => {
-    expect(defs.allResources('r4-definitions').filter(r => r.id === 'Condition')).toHaveLength(2); // added by id/name and url in both childDefs
+    expect(defs.allResources('r4-definitions').filter(r => r.id === 'Condition')).toHaveLength(1);
     expect(
       defsWithChildDefs.allResources('r4-definitions').filter(r => r.id === 'Condition')
-    ).toHaveLength(2); // added by id/name and url in both childDefs
+    ).toHaveLength(1); // added in both childDefs, but identical resources are returned only once
   });
 
   it('should load base FHIR primitive types from FHIRDefs with no children', () => {
-    expect(defs.allTypes().filter(r => r.id === 'boolean')).toHaveLength(2);
+    expect(defs.allTypes().filter(r => r.id === 'boolean')).toHaveLength(1);
   });
 
   it('should load base FHIR primitive types from all child FHIRDefs', () => {
-    expect(defsWithChildDefs.allTypes().filter(r => r.id === 'boolean')).toHaveLength(4);
+    expect(defsWithChildDefs.allTypes().filter(r => r.id === 'boolean')).toHaveLength(1);
   });
 
   it('should load base FHIR primitive types only from specified package', () => {
-    expect(defs.allTypes('r4-definitions').filter(r => r.id === 'boolean')).toHaveLength(2);
+    expect(defs.allTypes('r4-definitions').filter(r => r.id === 'boolean')).toHaveLength(1);
     expect(
       defsWithChildDefs.allTypes('r4-definitions').filter(r => r.id === 'boolean')
-    ).toHaveLength(2);
+    ).toHaveLength(1);
   });
 
   it('should load base FHIR complex types from FHIRDefs with no children', () => {
-    expect(defs.allTypes().filter(r => r.id === 'Address')).toHaveLength(2);
+    expect(defs.allTypes().filter(r => r.id === 'Address')).toHaveLength(1);
   });
 
   it('should load base FHIR complex types from all child FHIRDefs', () => {
-    expect(defsWithChildDefs.allTypes().filter(r => r.id === 'Address')).toHaveLength(4);
+    expect(defsWithChildDefs.allTypes().filter(r => r.id === 'Address')).toHaveLength(1);
   });
 
   it('should load base FHIR complex types from specified package', () => {
-    expect(defs.allTypes('r4-definitions').filter(r => r.id === 'Address')).toHaveLength(2);
+    expect(defs.allTypes('r4-definitions').filter(r => r.id === 'Address')).toHaveLength(1);
     expect(
       defsWithChildDefs.allTypes('r4-definitions').filter(r => r.id === 'Address')
-    ).toHaveLength(2);
+    ).toHaveLength(1);
   });
 
   it('should load base FHIR profiles from FHIRDefs with no children', () => {
-    expect(defs.allProfiles().filter(r => r.id === 'vitalsigns')).toHaveLength(3); // added by id, name, and url
+    expect(defs.allProfiles().filter(r => r.id === 'vitalsigns')).toHaveLength(1);
   });
 
   it('should load base FHIR profiles from all child FHIRDefs', () => {
-    expect(defsWithChildDefs.allProfiles().filter(r => r.id === 'vitalsigns')).toHaveLength(6); // added by id, name, and url in all childDefs
+    expect(defsWithChildDefs.allProfiles().filter(r => r.id === 'vitalsigns')).toHaveLength(1);
   });
 
   it('should load base FHIR profiles from specified package', () => {
-    expect(defs.allProfiles('r4-definitions').filter(r => r.id === 'vitalsigns')).toHaveLength(3);
+    expect(defs.allProfiles('r4-definitions').filter(r => r.id === 'vitalsigns')).toHaveLength(1);
     expect(
       defsWithChildDefs.allProfiles('r4-definitions').filter(r => r.id === 'vitalsigns')
-    ).toHaveLength(3);
+    ).toHaveLength(1);
   });
 
   it('should load base FHIR extensions from FHIRDefs with no children', () => {
-    expect(defs.allExtensions().filter(r => r.id === 'patient-mothersMaidenName')).toHaveLength(3);
+    expect(defs.allExtensions().filter(r => r.id === 'patient-mothersMaidenName')).toHaveLength(1);
   });
 
   it('should load base FHIR extensions from all child FHIRDefs', () => {
     expect(
       defsWithChildDefs.allExtensions().filter(r => r.id === 'patient-mothersMaidenName')
-    ).toHaveLength(6);
+    ).toHaveLength(1);
   });
 
   it('should load base FHIR extensions from specified package', () => {
     expect(
       defs.allExtensions('r4-definitions').filter(r => r.id === 'patient-mothersMaidenName')
-    ).toHaveLength(3);
+    ).toHaveLength(1);
     expect(
       defsWithChildDefs
         .allExtensions('r4-definitions')
         .filter(r => r.id === 'patient-mothersMaidenName')
-    ).toHaveLength(3);
+    ).toHaveLength(1);
   });
 
   it('should load base FHIR value sets from FHIRDefs with no children', () => {
-    expect(defs.allValueSets().filter(r => r.id === 'allergyintolerance-clinical')).toHaveLength(3);
+    expect(defs.allValueSets().filter(r => r.id === 'allergyintolerance-clinical')).toHaveLength(1);
   });
 
   it('should load base FHIR value sets from all child FHIRDefs', () => {
     expect(
       defsWithChildDefs.allValueSets().filter(r => r.id === 'allergyintolerance-clinical')
-    ).toHaveLength(6);
+    ).toHaveLength(1);
   });
 
   it('should load base FHIR value sets from specified package', () => {
     expect(
       defs.allValueSets('r4-definitions').filter(r => r.id === 'allergyintolerance-clinical')
-    ).toHaveLength(3);
+    ).toHaveLength(1);
     expect(
       defsWithChildDefs
         .allValueSets('r4-definitions')
         .filter(r => r.id === 'allergyintolerance-clinical')
-    ).toHaveLength(3);
+    ).toHaveLength(1);
   });
 
   it('should load base FHIR code systems from FHIRDefs with no children', () => {
     expect(defs.allCodeSystems().filter(r => r.id === 'allergyintolerance-clinical')).toHaveLength(
-      3
+      1
     );
   });
 
   it('should load base FHIR code systems from all child FHIRDefs', () => {
     expect(
       defsWithChildDefs.allCodeSystems().filter(r => r.id === 'allergyintolerance-clinical')
-    ).toHaveLength(6);
+    ).toHaveLength(1);
   });
 
   it('should load base FHIR code systems from specified package', () => {
     expect(
       defs.allCodeSystems('r4-definitions').filter(r => r.id === 'allergyintolerance-clinical')
-    ).toHaveLength(3);
+    ).toHaveLength(1);
     expect(
       defsWithChildDefs
         .allCodeSystems('r4-definitions')
         .filter(r => r.id === 'allergyintolerance-clinical')
-    ).toHaveLength(3);
+    ).toHaveLength(1);
   });
 
   it('should load base FHIR implementation guides from FHIRDefs with no children', () => {
-    expect(defs.allImplementationGuides().filter(r => r.id === 'MyIG')).toHaveLength(2);
+    expect(defs.allImplementationGuides().filter(r => r.id === 'MyIG')).toHaveLength(1);
   });
 
-  it('should load base FHIR implementation guilds from all child FHIRDefs', () => {
+  it('should load base FHIR implementation guides from all child FHIRDefs', () => {
     expect(defsWithChildDefs.allImplementationGuides().filter(r => r.id === 'MyIG')).toHaveLength(
-      4
+      1
     );
   });
 
   it('should load base FHIR implementation guides from specified package', () => {
     expect(
       defs.allImplementationGuides('r4-definitions').filter(r => r.id === 'MyIG')
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     expect(
       defsWithChildDefs.allImplementationGuides('r4-definitions').filter(r => r.id === 'MyIG')
-    ).toHaveLength(2);
+    ).toHaveLength(1);
   });
 
   it('should load base FHIR logicals from FHIRDefs with no children', () => {
-    expect(defs.allLogicals().filter(r => r.id === 'MyLM')).toHaveLength(2);
+    expect(defs.allLogicals().filter(r => r.id === 'MyLM')).toHaveLength(1);
   });
 
   it('should load base FHIR logicals from all child FHIRDefs', () => {
-    expect(defsWithChildDefs.allLogicals().filter(r => r.id === 'MyLM')).toHaveLength(4);
+    expect(defsWithChildDefs.allLogicals().filter(r => r.id === 'MyLM')).toHaveLength(1);
   });
 
   it('should load base FHIR logicals from specified package', () => {
-    expect(defs.allLogicals('r4-definitions').filter(r => r.id === 'MyLM')).toHaveLength(2);
+    expect(defs.allLogicals('r4-definitions').filter(r => r.id === 'MyLM')).toHaveLength(1);
     expect(
       defsWithChildDefs.allLogicals('r4-definitions').filter(r => r.id === 'MyLM')
-    ).toHaveLength(2);
+    ).toHaveLength(1);
   });
 
   it('should load the package.json file', () => {
     expect(defs.getPackageJson('r4-definitions')).toBeDefined();
   });
 
-  it('should count size of each child FHIRDefs in total', () => {
-    expect(defsWithChildDefs.size()).toEqual(2 * defs.size());
+  it('should count size of each unique definition from child FHIRDefs in total', () => {
+    // the two child FHIRDefs are identical,
+    // so the size of the parent is equal to the size of each child.
+    expect(defsWithChildDefs.size()).toEqual(defs.size());
   });
 
   it('should get all unsuccessfully loaded packages from FHIRDefs with no children', () => {
