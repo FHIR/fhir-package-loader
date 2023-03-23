@@ -162,7 +162,7 @@ jest.mock('fhir-package-loader', () => {
 
 ### Installation
 
-FHIR Package Loader is a [TypeScript](https://www.typescriptlang.org/) project. At a minimum, it requires [Node.js](https://nodejs.org/) to build, test, and run the CLI. Developers should install Node.js 12 (LTS), although the previous LTS version (Node.js 10) and other current LTS versions (Node.js 14 and Node.js 16) are also expected to work.
+FHIR Package Loader is a [TypeScript](https://www.typescriptlang.org/) project. At a minimum, it requires [Node.js](https://nodejs.org/) to build, test, and run the CLI. Developers should install Node.js 16 (LTS), although other current LTS versions are also expected to work.
 
 Once Node.js is installed, run the following command from this project's root folder:
 
