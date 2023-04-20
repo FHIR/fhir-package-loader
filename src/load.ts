@@ -4,6 +4,7 @@ import { LogFunction } from './utils';
 import { axiosGet } from './utils/axiosUtils';
 import fs from 'fs-extra';
 import path from 'path';
+import process from 'process';
 import os from 'os';
 import tar from 'tar';
 import temp from 'temp';
@@ -211,7 +212,11 @@ export async function mergeDependency(
       throw new CurrentPackageLoadError(fullPackageName);
     }
   } else if (!loadedPackage) {
-    packageUrl = `https://packages.fhir.org/${packageName}/${version}`;
+    if (process.env.FPL_CUSTOM_REGISTRY) {
+      packageUrl = `${process.env.FPL_CUSTOM_REGISTRY}/${packageName}/${version}`;
+    } else {
+      packageUrl = `https://packages.fhir.org/${packageName}/${version}`;
+    }
   }
 
   // If the packageUrl is set, we must download the package from that url, and extract it to our local cache

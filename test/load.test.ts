@@ -2,6 +2,7 @@ import axios from 'axios';
 import { cloneDeep } from 'lodash';
 import fs from 'fs-extra';
 import os from 'os';
+import process from 'process';
 import path from 'path';
 import tar from 'tar';
 import * as loadModule from '../src/load';
@@ -559,7 +560,8 @@ describe('#mergeDependency()', () => {
         uri === 'https://packages.fhir.org/hl7.fhir.r4b.core/4.3.0' ||
         uri === 'https://packages2.fhir.org/packages/hl7.fhir.r5.core/4.5.0' ||
         uri === 'https://packages.fhir.org/hl7.fhir.r4.core/4.0.1' ||
-        uri === 'https://packages2.fhir.org/packages/fhir.dicom/2021.4.20210910'
+        uri === 'https://packages2.fhir.org/packages/fhir.dicom/2021.4.20210910' ||
+        uri === 'https://custom-registry.example.org/good-thing/0.3.6'
       ) {
         return {
           data: {
@@ -584,6 +586,7 @@ describe('#mergeDependency()', () => {
     removeSpy = jest.spyOn(fs, 'removeSync').mockImplementation(() => {});
     moveSpy = jest.spyOn(fs, 'moveSync').mockImplementation(() => {});
     cachePath = path.join(__dirname, 'testhelpers', 'fixtures');
+    delete process.env.FPL_CUSTOM_REGISTRY;
   });
 
   beforeEach(() => {
@@ -595,6 +598,10 @@ describe('#mergeDependency()', () => {
     writeSpy.mockClear();
     moveSpy.mockClear();
     removeSpy.mockClear();
+  });
+
+  afterEach(() => {
+    delete process.env.FPL_CUSTOM_REGISTRY;
   });
 
   // Packages with numerical versions
@@ -684,6 +691,17 @@ describe('#mergeDependency()', () => {
         'https://packages2.fhir.org/packages/fhir.dicom/2021.4.20210910'
       ],
       path.join('foo', 'fhir.dicom#2021.4.20210910')
+    );
+  });
+
+  it('should try to load a package from a custom registry', async () => {
+    process.env.FPL_CUSTOM_REGISTRY = 'https://custom-registry.example.org';
+    await expect(mergeDependency('good-thing', '0.3.6', defs, 'foo', log)).rejects.toThrow(
+      'The package good-thing#0.3.6 could not be loaded locally or from the FHIR package registry'
+    ); // the package is never actually added to the cache, since tar is mocked
+    expectDownloadSequence(
+      'https://custom-registry.example.org/good-thing/0.3.6',
+      path.join('foo', 'good-thing#0.3.6')
     );
   });
 
