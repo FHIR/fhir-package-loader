@@ -586,7 +586,7 @@ describe('#mergeDependency()', () => {
     removeSpy = jest.spyOn(fs, 'removeSync').mockImplementation(() => {});
     moveSpy = jest.spyOn(fs, 'moveSync').mockImplementation(() => {});
     cachePath = path.join(__dirname, 'testhelpers', 'fixtures');
-    delete process.env.FPL_CUSTOM_REGISTRY;
+    delete process.env.FPL_REGISTRY;
   });
 
   beforeEach(() => {
@@ -601,7 +601,7 @@ describe('#mergeDependency()', () => {
   });
 
   afterEach(() => {
-    delete process.env.FPL_CUSTOM_REGISTRY;
+    delete process.env.FPL_REGISTRY;
   });
 
   // Packages with numerical versions
@@ -695,9 +695,20 @@ describe('#mergeDependency()', () => {
   });
 
   it('should try to load a package from a custom registry', async () => {
-    process.env.FPL_CUSTOM_REGISTRY = 'https://custom-registry.example.org';
+    process.env.FPL_REGISTRY = 'https://custom-registry.example.org';
     await expect(mergeDependency('good-thing', '0.3.6', defs, 'foo', log)).rejects.toThrow(
-      'The package good-thing#0.3.6 could not be loaded locally or from the FHIR package registry'
+      'The package good-thing#0.3.6 could not be loaded locally or from the custom FHIR package registry https://custom-registry.example.org'
+    ); // the package is never actually added to the cache, since tar is mocked
+    expectDownloadSequence(
+      'https://custom-registry.example.org/good-thing/0.3.6',
+      path.join('foo', 'good-thing#0.3.6')
+    );
+  });
+
+  it('should try to load a package from a custom registry specified with a trailing slash', async () => {
+    process.env.FPL_REGISTRY = 'https://custom-registry.example.org/';
+    await expect(mergeDependency('good-thing', '0.3.6', defs, 'foo', log)).rejects.toThrow(
+      'The package good-thing#0.3.6 could not be loaded locally or from the custom FHIR package registry https://custom-registry.example.org/'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
       'https://custom-registry.example.org/good-thing/0.3.6',

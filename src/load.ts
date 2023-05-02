@@ -4,10 +4,10 @@ import { LogFunction } from './utils';
 import { axiosGet } from './utils/axiosUtils';
 import fs from 'fs-extra';
 import path from 'path';
-import process from 'process';
 import os from 'os';
 import tar from 'tar';
 import temp from 'temp';
+import { getCustomRegistry } from './utils/customRegistry';
 
 /**
  * Loads multiple dependencies from a directory (the user FHIR cache or a specified directory) or from online
@@ -212,8 +212,9 @@ export async function mergeDependency(
       throw new CurrentPackageLoadError(fullPackageName);
     }
   } else if (!loadedPackage) {
-    if (process.env.FPL_CUSTOM_REGISTRY) {
-      packageUrl = `${process.env.FPL_CUSTOM_REGISTRY}/${packageName}/${version}`;
+    const customRegistry = getCustomRegistry(log);
+    if (customRegistry) {
+      packageUrl = `${customRegistry.replace(/\/$/, '')}/${packageName}/${version}`;
     } else {
       packageUrl = `https://packages.fhir.org/${packageName}/${version}`;
     }
@@ -267,14 +268,14 @@ export async function mergeDependency(
           throw new PackageLoadError(fullPackageName);
         }
       } else {
-        throw new PackageLoadError(fullPackageName);
+        throw new PackageLoadError(fullPackageName, getCustomRegistry());
       }
     }
   }
 
   if (!loadedPackage) {
     // If we fail again, then we couldn't get the package locally or from online
-    throw new PackageLoadError(fullPackageName);
+    throw new PackageLoadError(fullPackageName, getCustomRegistry());
   }
   log('info', `Loaded package ${fullPackageName}`);
   return FHIRDefs;
