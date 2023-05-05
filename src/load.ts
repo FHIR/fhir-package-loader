@@ -7,6 +7,7 @@ import path from 'path';
 import os from 'os';
 import tar from 'tar';
 import temp from 'temp';
+import { getCustomRegistry } from './utils/customRegistry';
 
 /**
  * Loads multiple dependencies from a directory (the user FHIR cache or a specified directory) or from online
@@ -211,7 +212,12 @@ export async function mergeDependency(
       throw new CurrentPackageLoadError(fullPackageName);
     }
   } else if (!loadedPackage) {
-    packageUrl = `https://packages.fhir.org/${packageName}/${version}`;
+    const customRegistry = getCustomRegistry(log);
+    if (customRegistry) {
+      packageUrl = `${customRegistry.replace(/\/$/, '')}/${packageName}/${version}`;
+    } else {
+      packageUrl = `https://packages.fhir.org/${packageName}/${version}`;
+    }
   }
 
   // If the packageUrl is set, we must download the package from that url, and extract it to our local cache
@@ -262,14 +268,14 @@ export async function mergeDependency(
           throw new PackageLoadError(fullPackageName);
         }
       } else {
-        throw new PackageLoadError(fullPackageName);
+        throw new PackageLoadError(fullPackageName, getCustomRegistry());
       }
     }
   }
 
   if (!loadedPackage) {
     // If we fail again, then we couldn't get the package locally or from online
-    throw new PackageLoadError(fullPackageName);
+    throw new PackageLoadError(fullPackageName, getCustomRegistry());
   }
   log('info', `Loaded package ${fullPackageName}`);
   return FHIRDefs;
