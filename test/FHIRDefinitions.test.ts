@@ -8,15 +8,6 @@ describe('FHIRDefinitions', () => {
   beforeAll(() => {
     defs = new FHIRDefinitions();
     loadFromPath(path.join(__dirname, 'testhelpers', 'testdefs'), 'r4-definitions', defs);
-    defs.fishForFHIR('Condition');
-    defs.fishForFHIR('eLTSSServiceModel');
-    defs.fishForFHIR('boolean');
-    defs.fishForFHIR('Address');
-    defs.fishForFHIR('vitalsigns');
-    defs.fishForFHIR('patient-mothersMaidenName');
-    defs.fishForFHIR('allergyintolerance-clinical', Type.ValueSet);
-    defs.fishForFHIR('allergyintolerance-clinical', Type.CodeSystem);
-    defs.fishForFHIR('w3c-provenance-activity-type');
   });
 
   beforeEach(() => {
@@ -126,7 +117,7 @@ describe('FHIRDefinitions', () => {
       ).toEqual(allergyStatusValueSetByID);
     });
 
-    it('should find base FHIR code sytems', () => {
+    it('should find base FHIR code systems', () => {
       // Surprise!  It turns out that the AllergyIntolerance status value set and code system
       // have the same ID!
       const allergyStatusCodeSystemByID = defs.fishForFHIR(
@@ -363,6 +354,53 @@ describe('FHIRDefinitions', () => {
       // it finds the second level child (childDefs3) Condition
       const conditionByID = defsWithChildDefs.fishForFHIR('Condition', Type.Resource);
       expect(conditionByID.version).toEqual('4.0.2');
+    });
+
+    it('should find definitions when fished by id with version', () => {
+      const vitalSignsById = defs.fishForFHIR('vitalsigns|4.0.1', Type.Profile);
+      expect(vitalSignsById).toBeDefined();
+      expect(vitalSignsById.name).toBe('observation-vitalsigns');
+      expect(vitalSignsById.url).toBe('http://hl7.org/fhir/StructureDefinition/vitalsigns');
+      expect(vitalSignsById.version).toBe('4.0.1');
+    });
+
+    it('should find definitions when fished by name with version', () => {
+      const vitalSignsByName = defs.fishForFHIR('observation-vitalsigns|4.0.1', Type.Profile);
+      expect(vitalSignsByName).toBeDefined();
+      expect(vitalSignsByName.id).toBe('vitalsigns');
+      expect(vitalSignsByName.url).toBe('http://hl7.org/fhir/StructureDefinition/vitalsigns');
+      expect(vitalSignsByName.version).toBe('4.0.1');
+    });
+
+    it('should find definitions when fished by url with version', () => {
+      const vitalSignsByUrl = defs.fishForFHIR(
+        'http://hl7.org/fhir/StructureDefinition/vitalsigns|4.0.1',
+        Type.Profile
+      );
+      expect(vitalSignsByUrl).toBeDefined();
+      expect(vitalSignsByUrl.id).toBe('vitalsigns');
+      expect(vitalSignsByUrl.name).toBe('observation-vitalsigns');
+      expect(vitalSignsByUrl.version).toBe('4.0.1');
+    });
+
+    it('should find definitions with a version with | in the version', () => {
+      const simpleProfileById = defs.fishForFHIR('SimpleProfile|1.0.0|a');
+      expect(simpleProfileById).toBeDefined();
+      expect(simpleProfileById.id).toBe('SimpleProfile');
+      expect(simpleProfileById.name).toBe('SimpleProfile');
+      expect(simpleProfileById.version).toBe('1.0.0|a');
+    });
+
+    it('should return nothing if a definition with matching version is not found', () => {
+      const vitalSignsById = defs.fishForFHIR('vitalsigns|1.0.0', Type.Profile);
+      const vitalSignsByName = defs.fishForFHIR('observation-vitalsigns|1.0.0', Type.Profile);
+      const vitalSignsByUrl = defs.fishForFHIR(
+        'http://hl7.org/fhir/StructureDefinition/vitalsigns|1.0.0',
+        Type.Profile
+      );
+      expect(vitalSignsById).toBeUndefined();
+      expect(vitalSignsByName).toBeUndefined();
+      expect(vitalSignsByUrl).toBeUndefined();
     });
   });
 });

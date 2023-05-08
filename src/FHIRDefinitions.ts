@@ -392,9 +392,14 @@ export class FHIRDefinitions {
     const defsToSearch: FHIRDefinitions[] = [this];
     while (defsToSearch.length > 0) {
       const currentFHIRDefs = defsToSearch.shift();
-      const def = currentFHIRDefs[map].get(item);
+      const [base, ...versionParts] = item?.split('|') ?? ['', ''];
+      const version = versionParts.join('|') || null;
+      const def = currentFHIRDefs[map].get(base);
       if (def) {
-        return def;
+        if (version == null || def.version == null || version === def.version) {
+          // Only return the found definition if the version matches (if provided)
+          return def;
+        }
       }
       if (currentFHIRDefs.childFHIRDefs.length > 0) {
         defsToSearch.push(...currentFHIRDefs.childFHIRDefs);
