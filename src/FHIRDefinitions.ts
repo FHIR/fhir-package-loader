@@ -396,7 +396,7 @@ export class FHIRDefinitions {
       const version = versionParts.join('|') || null;
       const def = currentFHIRDefs[map].get(base);
       if (def) {
-        if (version == null || def.version == null || version === def.version) {
+        if (version == null || version === def?.version) {
           // Only return the found definition if the version matches (if provided)
           return def;
         }

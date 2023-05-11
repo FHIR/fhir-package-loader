@@ -402,5 +402,10 @@ describe('FHIRDefinitions', () => {
       expect(vitalSignsByName).toBeUndefined();
       expect(vitalSignsByUrl).toBeUndefined();
     });
+
+    it('should return nothing if a definition without a version is found when fishing with a version', () => {
+      const simpleProfileById = defs.fishForFHIR('SimpleProfileNoVersion|1.0.0');
+      expect(simpleProfileById).toBeUndefined();
+    });
   });
 });
