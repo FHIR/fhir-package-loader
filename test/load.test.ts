@@ -12,7 +12,7 @@ import {
   mergeDependency,
   loadDependencies,
   loadDependency,
-  getLatestVersion
+  lookUpLatestVersion
 } from '../src/load';
 import { FHIRDefinitions, Type } from '../src/FHIRDefinitions';
 import { PackageLoadError } from '../src/errors';
@@ -960,7 +960,7 @@ describe('#mergeDependency()', () => {
   });
 
   it('should load the latest version when the given version is "latest"', async () => {
-    jest.spyOn(loadModule, 'getLatestVersion').mockResolvedValueOnce('0.2.0');
+    jest.spyOn(loadModule, 'lookUpLatestVersion').mockResolvedValueOnce('0.2.0');
     await expect(mergeDependency('sushi-test', 'latest', defs, 'foo', log)).rejects.toThrow(
       'The package sushi-test#0.2.0 could not be loaded locally or from the FHIR package registry'
     ); // the package is never actually added to the cache, since tar is mocked
@@ -1028,7 +1028,7 @@ describe('#cleanCachedPackage', () => {
   });
 });
 
-describe('#getLatestVersion', () => {
+describe('#lookUpLatestVersion', () => {
   let axiosSpy: jest.SpyInstance;
 
   beforeAll(() => {
@@ -1065,22 +1065,24 @@ describe('#getLatestVersion', () => {
   });
 
   it('should get the latest version for a package on the packages server', async () => {
-    const latest = await getLatestVersion('hl7.terminology.r4');
+    const latest = await lookUpLatestVersion('hl7.terminology.r4');
     expect(latest).toBe('1.2.3-test');
   });
 
   it('should get the latest version for a package on the packages2 server', async () => {
-    const latest = await getLatestVersion('hl7.fhir.uv.extensions');
+    const latest = await lookUpLatestVersion('hl7.fhir.uv.extensions');
     expect(latest).toBe('4.5.6-test');
   });
 
   it('should get the latest version for a package on a custom server', async () => {
     process.env.FPL_REGISTRY = 'https://custom-registry.example.org/';
-    const latest = await getLatestVersion('hl7.terminology.r4');
+    const latest = await lookUpLatestVersion('hl7.terminology.r4');
     expect(latest).toBe('1.2.3-test');
   });
 
   it('should throw LatestVersionUnavailableError when the package exists, but has no latest tag', async () => {
-    await expect(getLatestVersion('hl7.no.latest')).rejects.toThrow(LatestVersionUnavailableError);
+    await expect(lookUpLatestVersion('hl7.no.latest')).rejects.toThrow(
+      LatestVersionUnavailableError
+    );
   });
 });

@@ -111,7 +111,7 @@ export async function mergeDependency(
   log: LogFunction = () => {}
 ): Promise<FHIRDefinitions> {
   if (version === 'latest') {
-    version = await exports.getLatestVersion(packageName, log);
+    version = await exports.lookUpLatestVersion(packageName, log);
   }
   let fullPackageName = `${packageName}#${version}`;
   const loadPath = path.join(cachePath, fullPackageName, 'package');
@@ -357,7 +357,7 @@ export function loadFromPath(
   }
 }
 
-export async function getLatestVersion(
+export async function lookUpLatestVersion(
   packageName: string,
   log: LogFunction = () => {}
 ): Promise<string> {
