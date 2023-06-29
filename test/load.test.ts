@@ -1080,6 +1080,12 @@ describe('#lookUpLatestVersion', () => {
     expect(latest).toBe('1.2.3-test');
   });
 
+  it('should throw LatestVersionUnavailableError when the request to get package information fails', async () => {
+    await expect(lookUpLatestVersion('hl7.bogus.package')).rejects.toThrow(
+      LatestVersionUnavailableError
+    );
+  });
+
   it('should throw LatestVersionUnavailableError when the package exists, but has no latest tag', async () => {
     await expect(lookUpLatestVersion('hl7.no.latest')).rejects.toThrow(
       LatestVersionUnavailableError

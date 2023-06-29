@@ -111,6 +111,7 @@ export async function mergeDependency(
   log: LogFunction = () => {}
 ): Promise<FHIRDefinitions> {
   if (version === 'latest') {
+    // using the exported function here to allow for easier mocking in tests
     version = await exports.lookUpLatestVersion(packageName, log);
   }
   let fullPackageName = `${packageName}#${version}`;
@@ -363,25 +364,27 @@ export async function lookUpLatestVersion(
 ): Promise<string> {
   const customRegistry = getCustomRegistry(log);
   let res: AxiosResponse;
-  if (customRegistry) {
-    res = await axiosGet(`${customRegistry.replace(/\/$/, '')}/${packageName}`, {
-      responseType: 'json'
-    });
-  } else {
-    try {
-      res = await axiosGet(`https://packages.fhir.org/${packageName}`, {
+  try {
+    if (customRegistry) {
+      res = await axiosGet(`${customRegistry.replace(/\/$/, '')}/${packageName}`, {
         responseType: 'json'
       });
-    } catch (e) {
-      // Fallback to trying packages2.fhir.org
-      res = await axiosGet(`https://packages2.fhir.org/packages/${packageName}`, {
-        responseType: 'json'
-      }).catch(() => {
-        // If the fallback failed too, just throw the original error
-        throw e;
-      });
+    } else {
+      try {
+        res = await axiosGet(`https://packages.fhir.org/${packageName}`, {
+          responseType: 'json'
+        });
+      } catch (e) {
+        // Fallback to trying packages2.fhir.org
+        res = await axiosGet(`https://packages2.fhir.org/packages/${packageName}`, {
+          responseType: 'json'
+        });
+      }
     }
+  } catch {
+    throw new LatestVersionUnavailableError(packageName, customRegistry);
   }
+
   if (res?.data?.['dist-tags']?.latest?.length) {
     return res.data['dist-tags'].latest;
   } else {
