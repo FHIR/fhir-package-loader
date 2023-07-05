@@ -8,6 +8,8 @@ import os from 'os';
 import tar from 'tar';
 import temp from 'temp';
 import { getCustomRegistry } from './utils/customRegistry';
+import { AxiosResponse } from 'axios';
+import { LatestVersionUnavailableError } from './errors/LatestVersionUnavailableError';
 
 /**
  * Loads multiple dependencies from a directory (the user FHIR cache or a specified directory) or from online
@@ -108,6 +110,10 @@ export async function mergeDependency(
   cachePath: string = path.join(os.homedir(), '.fhir', 'packages'),
   log: LogFunction = () => {}
 ): Promise<FHIRDefinitions> {
+  if (version === 'latest') {
+    // using the exported function here to allow for easier mocking in tests
+    version = await exports.lookUpLatestVersion(packageName, log);
+  }
   let fullPackageName = `${packageName}#${version}`;
   const loadPath = path.join(cachePath, fullPackageName, 'package');
   let loadedPackage: string;
@@ -349,6 +355,40 @@ export function loadFromPath(
   // the package has already been loaded, so just return the targetPackage string.
   if (FHIRDefs.getPackageJson(targetPackage)) {
     return targetPackage;
+  }
+}
+
+export async function lookUpLatestVersion(
+  packageName: string,
+  log: LogFunction = () => {}
+): Promise<string> {
+  const customRegistry = getCustomRegistry(log);
+  let res: AxiosResponse;
+  try {
+    if (customRegistry) {
+      res = await axiosGet(`${customRegistry.replace(/\/$/, '')}/${packageName}`, {
+        responseType: 'json'
+      });
+    } else {
+      try {
+        res = await axiosGet(`https://packages.fhir.org/${packageName}`, {
+          responseType: 'json'
+        });
+      } catch (e) {
+        // Fallback to trying packages2.fhir.org
+        res = await axiosGet(`https://packages2.fhir.org/packages/${packageName}`, {
+          responseType: 'json'
+        });
+      }
+    }
+  } catch {
+    throw new LatestVersionUnavailableError(packageName, customRegistry);
+  }
+
+  if (res?.data?.['dist-tags']?.latest?.length) {
+    return res.data['dist-tags'].latest;
+  } else {
+    throw new LatestVersionUnavailableError(packageName, customRegistry);
   }
 }
 

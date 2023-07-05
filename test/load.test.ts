@@ -11,11 +11,53 @@ import {
   loadFromPath,
   mergeDependency,
   loadDependencies,
-  loadDependency
+  loadDependency,
+  lookUpLatestVersion
 } from '../src/load';
 import { FHIRDefinitions, Type } from '../src/FHIRDefinitions';
 import { PackageLoadError } from '../src/errors';
 import { loggerSpy } from './testhelpers';
+import { LatestVersionUnavailableError } from '../src/errors/LatestVersionUnavailableError';
+
+// Represents a typical response from packages.fhir.org
+const TERM_PKG_RESPONSE = {
+  _id: 'hl7.terminology.r4',
+  name: 'hl7.terminology.r4',
+  'dist-tags': { latest: '1.2.3-test' },
+  versions: {
+    '1.2.3-test': {
+      name: 'hl7.terminology.r4',
+      version: '1.2.3-test',
+      description: 'None.',
+      dist: {
+        shasum: '1a1467bce19aace45771e0a51ef2ad9c3fe74983',
+        tarball: 'https://packages.simplifier.net/hl7.terminology.r4/1.2.3-test'
+      },
+      fhirVersion: 'R4',
+      url: 'https://packages.simplifier.net/hl7.terminology.r4/1.2.3-test'
+    }
+  }
+};
+
+// Represents a typical response from packages2.fhir.org (note: not on packages.fhir.org)
+const EXT_PKG_RESPONSE = {
+  _id: 'hl7.fhir.uv.extensions',
+  name: 'hl7.fhir.uv.extensions',
+  'dist-tags': { latest: '4.5.6-test' },
+  versions: {
+    '4.5.6-test': {
+      name: 'hl7.fhir.uv.extensions',
+      date: '2023-03-26T08:46:31-00:00',
+      version: '1.0.0',
+      fhirVersion: '??',
+      kind: '??',
+      count: '18',
+      canonical: 'http://hl7.org/fhir/extensions',
+      description: 'None',
+      url: 'https://packages2.fhir.org/packages/hl7.fhir.uv.extensions/4.5.6-test'
+    }
+  }
+};
 
 describe('#loadFromPath()', () => {
   let defsWithChildDefs: FHIRDefinitions;
@@ -917,6 +959,17 @@ describe('#mergeDependency()', () => {
     expect(removeSpy.mock.calls[0][0]).toBe(path.join(cachePath, 'sushi-test-old#current'));
   });
 
+  it('should load the latest version when the given version is "latest"', async () => {
+    jest.spyOn(loadModule, 'lookUpLatestVersion').mockResolvedValueOnce('0.2.0');
+    await expect(mergeDependency('sushi-test', 'latest', defs, 'foo', log)).rejects.toThrow(
+      'The package sushi-test#0.2.0 could not be loaded locally or from the FHIR package registry'
+    ); // the package is never actually added to the cache, since tar is mocked
+    expectDownloadSequence(
+      'https://packages.fhir.org/sushi-test/0.2.0',
+      path.join('foo', 'sushi-test#0.2.0')
+    );
+  });
+
   it('should throw CurrentPackageLoadError when a current package is not listed', async () => {
     await expect(mergeDependency('hl7.fhir.us.core', 'current', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.us.core#current is not available on https://build.fhir.org/ig/qas.json, so no current version can be loaded'
@@ -972,5 +1025,70 @@ describe('#cleanCachedPackage', () => {
     const packagePath = path.join(cachePath, 'sushi-test#current');
     cleanCachedPackage(packagePath);
     expect(renameSpy.mock.calls.length).toBe(0);
+  });
+});
+
+describe('#lookUpLatestVersion', () => {
+  let axiosSpy: jest.SpyInstance;
+
+  beforeAll(() => {
+    axiosSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string): any => {
+      if (
+        uri === 'https://custom-registry.example.org/hl7.terminology.r4' ||
+        uri === 'https://packages.fhir.org/hl7.terminology.r4'
+      ) {
+        return { data: TERM_PKG_RESPONSE };
+      } else if (uri === 'https://packages2.fhir.org/packages/hl7.fhir.uv.extensions') {
+        return { data: EXT_PKG_RESPONSE };
+      } else if (uri === 'https://packages.fhir.org/hl7.no.latest') {
+        return {
+          data: {
+            name: 'hl7.no.latest',
+            'dist-tags': {
+              v1: '1.5.1',
+              v2: '2.1.1'
+            }
+          }
+        };
+      } else {
+        throw new Error('Not found');
+      }
+    });
+  });
+
+  afterEach(() => {
+    delete process.env.FPL_REGISTRY;
+  });
+
+  afterAll(() => {
+    axiosSpy.mockRestore();
+  });
+
+  it('should get the latest version for a package on the packages server', async () => {
+    const latest = await lookUpLatestVersion('hl7.terminology.r4');
+    expect(latest).toBe('1.2.3-test');
+  });
+
+  it('should get the latest version for a package on the packages2 server', async () => {
+    const latest = await lookUpLatestVersion('hl7.fhir.uv.extensions');
+    expect(latest).toBe('4.5.6-test');
+  });
+
+  it('should get the latest version for a package on a custom server', async () => {
+    process.env.FPL_REGISTRY = 'https://custom-registry.example.org/';
+    const latest = await lookUpLatestVersion('hl7.terminology.r4');
+    expect(latest).toBe('1.2.3-test');
+  });
+
+  it('should throw LatestVersionUnavailableError when the request to get package information fails', async () => {
+    await expect(lookUpLatestVersion('hl7.bogus.package')).rejects.toThrow(
+      LatestVersionUnavailableError
+    );
+  });
+
+  it('should throw LatestVersionUnavailableError when the package exists, but has no latest tag', async () => {
+    await expect(lookUpLatestVersion('hl7.no.latest')).rejects.toThrow(
+      LatestVersionUnavailableError
+    );
   });
 });

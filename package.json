@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc -w",
-    "test": "jest --maxWorkers=4 --coverage",
+    "test": "jest --coverage",
     "test:watch": "npm run test -- --watchAll",
     "coverage": "opener coverage/lcov-report/index.html",
     "lint": "tsc && eslint \"**/*.{js,ts}\"",

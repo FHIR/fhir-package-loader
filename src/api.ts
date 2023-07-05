@@ -1,6 +1,7 @@
 import { FHIRDefinitions } from './FHIRDefinitions';
 import { ErrorsAndWarnings, LogFunction, wrapLogger } from './utils';
 import { loadDependencies } from './load';
+export { lookUpLatestVersion as getLatestVersion } from './load';
 
 export async function fpl(
   fhirPackages: string | string[],
