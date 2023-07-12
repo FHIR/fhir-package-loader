@@ -12,7 +12,8 @@ import {
   mergeDependency,
   loadDependencies,
   loadDependency,
-  lookUpLatestVersion
+  lookUpLatestVersion,
+  lookUpLatestPatchVersion
 } from '../src/load';
 import { FHIRDefinitions, Type } from '../src/FHIRDefinitions';
 import { PackageLoadError } from '../src/errors';
@@ -35,6 +36,39 @@ const TERM_PKG_RESPONSE = {
       },
       fhirVersion: 'R4',
       url: 'https://packages.simplifier.net/hl7.terminology.r4/1.2.3-test'
+    },
+    '2.0.0': {
+      name: 'hl7.terminology.r4',
+      version: '2.0.0',
+      description: 'None.',
+      dist: {
+        shasum: '1a1467bce19aace45771e0a51ef2ad9c3fe749820',
+        tarball: 'https://packages.simplifier.net/hl7.terminology.r4/2.0.0'
+      },
+      fhirVersion: 'R4',
+      url: 'https://packages.simplifier.net/hl7.terminology.r4/2.0.0'
+    },
+    '2.0.2': {
+      name: 'hl7.terminology.r4',
+      version: '2.0.2',
+      description: 'None.',
+      dist: {
+        shasum: '1a1467bce19aace45771e0a51ef2ad9c3fe749822',
+        tarball: 'https://packages.simplifier.net/hl7.terminology.r4/2.0.2'
+      },
+      fhirVersion: 'R4',
+      url: 'https://packages.simplifier.net/hl7.terminology.r4/2.0.2'
+    },
+    '2.0.1': {
+      name: 'hl7.terminology.r4',
+      version: '2.0.1',
+      description: 'None.',
+      dist: {
+        shasum: '1a1467bce19aace45771e0a51ef2ad9c3fe749821',
+        tarball: 'https://packages.simplifier.net/hl7.terminology.r4/2.0.1'
+      },
+      fhirVersion: 'R4',
+      url: 'https://packages.simplifier.net/hl7.terminology.r4/2.0.1'
     }
   }
 };
@@ -55,6 +89,39 @@ const EXT_PKG_RESPONSE = {
       canonical: 'http://hl7.org/fhir/extensions',
       description: 'None',
       url: 'https://packages2.fhir.org/packages/hl7.fhir.uv.extensions/4.5.6-test'
+    },
+    '2.0.0': {
+      name: 'hl7.fhir.uv.extensions',
+      date: '2023-03-26T08:46:31-00:00',
+      version: '2.0.0',
+      fhirVersion: '??',
+      kind: '??',
+      count: '18',
+      canonical: 'http://hl7.org/fhir/extensions',
+      description: 'None',
+      url: 'https://packages2.fhir.org/packages/hl7.fhir.uv.extensions/2.0.0'
+    },
+    '2.0.2': {
+      name: 'hl7.fhir.uv.extensions',
+      date: '2023-03-26T08:46:31-00:00',
+      version: '2.0.2',
+      fhirVersion: '??',
+      kind: '??',
+      count: '18',
+      canonical: 'http://hl7.org/fhir/extensions',
+      description: 'None',
+      url: 'https://packages2.fhir.org/packages/hl7.fhir.uv.extensions/2.0.2'
+    },
+    '2.0.1': {
+      name: 'hl7.fhir.uv.extensions',
+      date: '2023-03-26T08:46:31-00:00',
+      version: '2.0.1',
+      fhirVersion: '??',
+      kind: '??',
+      count: '18',
+      canonical: 'http://hl7.org/fhir/extensions',
+      description: 'None',
+      url: 'https://packages2.fhir.org/packages/hl7.fhir.uv.extensions/2.0.1'
     }
   }
 };
@@ -970,6 +1037,17 @@ describe('#mergeDependency()', () => {
     );
   });
 
+  it('should load the latest patch version when the given version uses a patch wildcard', async () => {
+    jest.spyOn(loadModule, 'lookUpLatestPatchVersion').mockResolvedValueOnce('0.2.0');
+    await expect(mergeDependency('sushi-test', '0.2.x', defs, 'foo', log)).rejects.toThrow(
+      'The package sushi-test#0.2.0 could not be loaded locally or from the FHIR package registry'
+    ); // the package is never actually added to the cache, since tar is mocked
+    expectDownloadSequence(
+      'https://packages.fhir.org/sushi-test/0.2.0',
+      path.join('foo', 'sushi-test#0.2.0')
+    );
+  });
+
   it('should throw CurrentPackageLoadError when a current package is not listed', async () => {
     await expect(mergeDependency('hl7.fhir.us.core', 'current', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.us.core#current is not available on https://build.fhir.org/ig/qas.json, so no current version can be loaded'
@@ -1088,6 +1166,118 @@ describe('#lookUpLatestVersion', () => {
 
   it('should throw LatestVersionUnavailableError when the package exists, but has no latest tag', async () => {
     await expect(lookUpLatestVersion('hl7.no.latest')).rejects.toThrow(
+      LatestVersionUnavailableError
+    );
+  });
+});
+
+describe('#lookUpLatestPatchVersion', () => {
+  let axiosSpy: jest.SpyInstance;
+
+  beforeAll(() => {
+    axiosSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string): any => {
+      if (
+        uri === 'https://custom-registry.example.org/hl7.terminology.r4' ||
+        uri === 'https://packages.fhir.org/hl7.terminology.r4'
+      ) {
+        return { data: TERM_PKG_RESPONSE };
+      } else if (uri === 'https://packages2.fhir.org/packages/hl7.fhir.uv.extensions') {
+        return { data: EXT_PKG_RESPONSE };
+      } else if (uri === 'https://packages.fhir.org/hl7.no.versions') {
+        return {
+          data: {
+            name: 'hl7.no.versions',
+            'dist-tags': {
+              v1: '1.5.1',
+              v2: '2.1.1'
+            }
+          }
+        };
+      } else if (uri === 'https://packages.fhir.org/hl7.no.good.patches') {
+        return {
+          data: {
+            name: 'hl7.no.good.patches',
+            versions: {
+              '2.0.0': {
+                name: 'hl7.no.good.patches',
+                version: '2.0.0'
+              },
+              '2.0.1': {
+                name: 'hl7.no.good.patches',
+                version: '2.0.1'
+              }
+            }
+          }
+        };
+      } else if (uri === 'https://packages.fhir.org/hl7.patches.with.snapshots') {
+        return {
+          data: {
+            name: 'hl7.patches.with.snapshots',
+            versions: {
+              '2.0.0': {
+                name: 'hl7.patches.with.snapshots',
+                version: '2.0.0'
+              },
+              '2.0.1': {
+                name: 'hl7.patches.with.snapshots',
+                version: '2.0.1'
+              },
+              '2.0.2-snapshot1': {
+                name: 'hl7.patches.with.snapshots',
+                version: '2.0.2-snapshot1'
+              }
+            }
+          }
+        };
+      } else {
+        throw new Error('Not found');
+      }
+    });
+  });
+
+  afterEach(() => {
+    delete process.env.FPL_REGISTRY;
+  });
+
+  afterAll(() => {
+    axiosSpy.mockRestore();
+  });
+
+  it('should get the latest patch version for a package on the packages server', async () => {
+    const latestPatch = await lookUpLatestPatchVersion('hl7.terminology.r4', '2.0.x');
+    expect(latestPatch).toBe('2.0.2');
+  });
+
+  it('should get the latest patch version for a package on the packages2 server', async () => {
+    const latestPatch = await lookUpLatestPatchVersion('hl7.fhir.uv.extensions', '2.0.x');
+    expect(latestPatch).toBe('2.0.2');
+  });
+
+  it('should get the latest patch version for a package on a custom server', async () => {
+    process.env.FPL_REGISTRY = 'https://custom-registry.example.org/';
+    const latestPatch = await lookUpLatestPatchVersion('hl7.terminology.r4', '2.0.x');
+    expect(latestPatch).toBe('2.0.2');
+  });
+
+  it('should get the latest patch version ignoring any versions with qualifiers after the version (-snapshot1)', async () => {
+    const latestPatch = await lookUpLatestPatchVersion('hl7.patches.with.snapshots', '2.0.x');
+    expect(latestPatch).toBe('2.0.1');
+  });
+
+  it('should throw LatestVersionUnavailableError when the request to get package information fails', async () => {
+    await expect(lookUpLatestPatchVersion('hl7.bogus.package', '1.0.x')).rejects.toThrow(
+      LatestVersionUnavailableError
+    );
+  });
+
+  it('should throw LatestVersionUnavailableError when the package exists, but has no versions listed', async () => {
+    await expect(lookUpLatestPatchVersion('hl7.no.versions', '1.0.x')).rejects.toThrow(
+      LatestVersionUnavailableError
+    );
+  });
+
+  it('should throw LatestVersionUnavailableError when the package exists, but has no matching versions for the patch version supplied', async () => {
+    await expect(lookUpLatestPatchVersion('hl7.no.good.patches', '1.0.x')).rejects.toThrow(
       LatestVersionUnavailableError
     );
   });

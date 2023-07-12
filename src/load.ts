@@ -113,6 +113,9 @@ export async function mergeDependency(
   if (version === 'latest') {
     // using the exported function here to allow for easier mocking in tests
     version = await exports.lookUpLatestVersion(packageName, log);
+  } else if (/\d+\.\d+\.x/.test(version)) {
+    // using the exported function here to allow for easier mocking in tests
+    version = await exports.lookUpLatestPatchVersion(packageName, version, log);
   }
   let fullPackageName = `${packageName}#${version}`;
   const loadPath = path.join(cachePath, fullPackageName, 'package');
@@ -389,6 +392,53 @@ export async function lookUpLatestVersion(
     return res.data['dist-tags'].latest;
   } else {
     throw new LatestVersionUnavailableError(packageName, customRegistry);
+  }
+}
+
+export async function lookUpLatestPatchVersion(
+  packageName: string,
+  version: string,
+  log: LogFunction = () => {}
+): Promise<string> {
+  const customRegistry = getCustomRegistry(log);
+  let res: AxiosResponse;
+  try {
+    if (customRegistry) {
+      res = await axiosGet(`${customRegistry.replace(/\/$/, '')}/${packageName}`, {
+        responseType: 'json'
+      });
+    } else {
+      try {
+        res = await axiosGet(`https://packages.fhir.org/${packageName}`, {
+          responseType: 'json'
+        });
+      } catch (e) {
+        // Fallback to trying packages2.fhir.org
+        res = await axiosGet(`https://packages2.fhir.org/packages/${packageName}`, {
+          responseType: 'json'
+        });
+      }
+    }
+  } catch {
+    throw new LatestVersionUnavailableError(packageName, customRegistry, true);
+  }
+
+  if (res?.data?.versions) {
+    const versions = Object.keys(res.data.versions);
+    const regex = new RegExp(`^${version.split('.').slice(0, -1).join('\\.')}\\.\\d+$`); // regex for matching major.minor version, excluding any qualifiers (like -draft)
+    const matchingVersions = versions.filter(v => v.match(regex));
+    if (matchingVersions.length === 0) {
+      throw new LatestVersionUnavailableError(packageName, customRegistry, true);
+    }
+    const patchVersionNumbers = matchingVersions.map(v =>
+      parseInt(v.slice(v.lastIndexOf('.') + 1))
+    );
+    const latestPatchIndex = patchVersionNumbers.findIndex(
+      p => p === Math.max(...patchVersionNumbers)
+    );
+    return matchingVersions[latestPatchIndex];
+  } else {
+    throw new LatestVersionUnavailableError(packageName, customRegistry, true);
   }
 }
 
