@@ -42,6 +42,7 @@
     "@types/lodash": "^4.14.177",
     "@types/node": "^14.17.27",
     "@types/opener": "^1.4.0",
+    "@types/semver": "^7.5.0",
     "@types/tar": "^4.0.3",
     "@types/temp": "^0.8.34",
     "@typescript-eslint/eslint-plugin": "^5.1.0",
@@ -63,6 +64,7 @@
     "fs-extra": "^10.0.0",
     "https-proxy-agent": "^5.0.0",
     "lodash": "^4.17.21",
+    "semver": "^7.5.4",
     "tar": "^5.0.11",
     "temp": "^0.9.1",
     "winston": "^3.3.3"

@@ -1,12 +1,13 @@
+import fs from 'fs-extra';
+import path from 'path';
+import os from 'os';
+import { maxSatisfying } from 'semver';
+import tar from 'tar';
+import temp from 'temp';
 import { PackageLoadError, CurrentPackageLoadError } from './errors';
 import { FHIRDefinitions } from './FHIRDefinitions';
 import { LogFunction } from './utils';
 import { axiosGet } from './utils/axiosUtils';
-import fs from 'fs-extra';
-import path from 'path';
-import os from 'os';
-import tar from 'tar';
-import temp from 'temp';
 import { getCustomRegistry } from './utils/customRegistry';
 import { AxiosResponse } from 'axios';
 import { LatestVersionUnavailableError } from './errors/LatestVersionUnavailableError';
@@ -425,18 +426,11 @@ export async function lookUpLatestPatchVersion(
 
   if (res?.data?.versions) {
     const versions = Object.keys(res.data.versions);
-    const regex = new RegExp(`^${version.split('.').slice(0, -1).join('\\.')}\\.\\d+$`); // regex for matching major.minor version, excluding any qualifiers (like -draft)
-    const matchingVersions = versions.filter(v => v.match(regex));
-    if (matchingVersions.length === 0) {
+    const latest = maxSatisfying(versions, version);
+    if (latest == null) {
       throw new LatestVersionUnavailableError(packageName, customRegistry, true);
     }
-    const patchVersionNumbers = matchingVersions.map(v =>
-      parseInt(v.slice(v.lastIndexOf('.') + 1))
-    );
-    const latestPatchIndex = patchVersionNumbers.findIndex(
-      p => p === Math.max(...patchVersionNumbers)
-    );
-    return matchingVersions[latestPatchIndex];
+    return latest;
   } else {
     throw new LatestVersionUnavailableError(packageName, customRegistry, true);
   }
