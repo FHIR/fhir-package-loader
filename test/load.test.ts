@@ -37,38 +37,38 @@ const TERM_PKG_RESPONSE = {
       fhirVersion: 'R4',
       url: 'https://packages.simplifier.net/hl7.terminology.r4/1.2.3-test'
     },
-    '2.0.0': {
+    '1.1.0': {
       name: 'hl7.terminology.r4',
-      version: '2.0.0',
+      version: '1.1.0',
       description: 'None.',
       dist: {
         shasum: '1a1467bce19aace45771e0a51ef2ad9c3fe749820',
-        tarball: 'https://packages.simplifier.net/hl7.terminology.r4/2.0.0'
+        tarball: 'https://packages.simplifier.net/hl7.terminology.r4/1.1.0'
       },
       fhirVersion: 'R4',
-      url: 'https://packages.simplifier.net/hl7.terminology.r4/2.0.0'
+      url: 'https://packages.simplifier.net/hl7.terminology.r4/1.1.0'
     },
-    '2.0.2': {
+    '1.1.2': {
       name: 'hl7.terminology.r4',
-      version: '2.0.2',
+      version: '1.1.2',
       description: 'None.',
       dist: {
         shasum: '1a1467bce19aace45771e0a51ef2ad9c3fe749822',
-        tarball: 'https://packages.simplifier.net/hl7.terminology.r4/2.0.2'
+        tarball: 'https://packages.simplifier.net/hl7.terminology.r4/1.1.2'
       },
       fhirVersion: 'R4',
-      url: 'https://packages.simplifier.net/hl7.terminology.r4/2.0.2'
+      url: 'https://packages.simplifier.net/hl7.terminology.r4/1.1.2'
     },
-    '2.0.1': {
+    '1.1.1': {
       name: 'hl7.terminology.r4',
-      version: '2.0.1',
+      version: '1.1.1',
       description: 'None.',
       dist: {
         shasum: '1a1467bce19aace45771e0a51ef2ad9c3fe749821',
-        tarball: 'https://packages.simplifier.net/hl7.terminology.r4/2.0.1'
+        tarball: 'https://packages.simplifier.net/hl7.terminology.r4/1.1.1'
       },
       fhirVersion: 'R4',
-      url: 'https://packages.simplifier.net/hl7.terminology.r4/2.0.1'
+      url: 'https://packages.simplifier.net/hl7.terminology.r4/1.1.1'
     }
   }
 };
@@ -90,38 +90,38 @@ const EXT_PKG_RESPONSE = {
       description: 'None',
       url: 'https://packages2.fhir.org/packages/hl7.fhir.uv.extensions/4.5.6-test'
     },
-    '2.0.0': {
+    '1.1.0': {
       name: 'hl7.fhir.uv.extensions',
       date: '2023-03-26T08:46:31-00:00',
-      version: '2.0.0',
+      version: '1.1.0',
       fhirVersion: '??',
       kind: '??',
       count: '18',
       canonical: 'http://hl7.org/fhir/extensions',
       description: 'None',
-      url: 'https://packages2.fhir.org/packages/hl7.fhir.uv.extensions/2.0.0'
+      url: 'https://packages2.fhir.org/packages/hl7.fhir.uv.extensions/1.1.0'
     },
-    '2.0.2': {
+    '1.1.2': {
       name: 'hl7.fhir.uv.extensions',
       date: '2023-03-26T08:46:31-00:00',
-      version: '2.0.2',
+      version: '1.1.2',
       fhirVersion: '??',
       kind: '??',
       count: '18',
       canonical: 'http://hl7.org/fhir/extensions',
       description: 'None',
-      url: 'https://packages2.fhir.org/packages/hl7.fhir.uv.extensions/2.0.2'
+      url: 'https://packages2.fhir.org/packages/hl7.fhir.uv.extensions/1.1.2'
     },
-    '2.0.1': {
+    '1.1.1': {
       name: 'hl7.fhir.uv.extensions',
       date: '2023-03-26T08:46:31-00:00',
-      version: '2.0.1',
+      version: '1.1.1',
       fhirVersion: '??',
       kind: '??',
       count: '18',
       canonical: 'http://hl7.org/fhir/extensions',
       description: 'None',
-      url: 'https://packages2.fhir.org/packages/hl7.fhir.uv.extensions/2.0.1'
+      url: 'https://packages2.fhir.org/packages/hl7.fhir.uv.extensions/1.1.1'
     }
   }
 };
@@ -1244,19 +1244,19 @@ describe('#lookUpLatestPatchVersion', () => {
   });
 
   it('should get the latest patch version for a package on the packages server', async () => {
-    const latestPatch = await lookUpLatestPatchVersion('hl7.terminology.r4', '2.0.x');
-    expect(latestPatch).toBe('2.0.2');
+    const latestPatch = await lookUpLatestPatchVersion('hl7.terminology.r4', '1.1.x');
+    expect(latestPatch).toBe('1.1.2');
   });
 
   it('should get the latest patch version for a package on the packages2 server', async () => {
-    const latestPatch = await lookUpLatestPatchVersion('hl7.fhir.uv.extensions', '2.0.x');
-    expect(latestPatch).toBe('2.0.2');
+    const latestPatch = await lookUpLatestPatchVersion('hl7.fhir.uv.extensions', '1.1.x');
+    expect(latestPatch).toBe('1.1.2');
   });
 
   it('should get the latest patch version for a package on a custom server', async () => {
     process.env.FPL_REGISTRY = 'https://custom-registry.example.org/';
-    const latestPatch = await lookUpLatestPatchVersion('hl7.terminology.r4', '2.0.x');
-    expect(latestPatch).toBe('2.0.2');
+    const latestPatch = await lookUpLatestPatchVersion('hl7.terminology.r4', '1.1.x');
+    expect(latestPatch).toBe('1.1.2');
   });
 
   it('should get the latest patch version ignoring any versions with qualifiers after the version (-snapshot1)', async () => {
