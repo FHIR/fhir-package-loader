@@ -16,9 +16,12 @@ import {
   lookUpLatestPatchVersion
 } from '../src/load';
 import { FHIRDefinitions, Type } from '../src/FHIRDefinitions';
-import { PackageLoadError } from '../src/errors';
+import {
+  IncorrectWildcardVersionFormatError,
+  LatestVersionUnavailableError,
+  PackageLoadError
+} from '../src/errors';
 import { loggerSpy } from './testhelpers';
-import { LatestVersionUnavailableError } from '../src/errors/LatestVersionUnavailableError';
 
 // Represents a typical response from packages.fhir.org
 const TERM_PKG_RESPONSE = {
@@ -1048,6 +1051,13 @@ describe('#mergeDependency()', () => {
     );
   });
 
+  it('should throw IncorrectWildcardVersionFormatError when the given version uses a non-patch wildcard', async () => {
+    await expect(mergeDependency('sushi-test', '0.x', defs, 'foo', log)).rejects.toThrow(
+      'Incorrect version format for package sushi-test: 0.x. Wildcard should only be used to specify patch versions.'
+    );
+    expect(axiosSpy.mock.calls.length).toBe(0);
+  });
+
   it('should throw CurrentPackageLoadError when a current package is not listed', async () => {
     await expect(mergeDependency('hl7.fhir.us.core', 'current', defs, 'foo', log)).rejects.toThrow(
       'The package hl7.fhir.us.core#current is not available on https://build.fhir.org/ig/qas.json, so no current version can be loaded'
@@ -1279,6 +1289,12 @@ describe('#lookUpLatestPatchVersion', () => {
   it('should throw LatestVersionUnavailableError when the package exists, but has no matching versions for the patch version supplied', async () => {
     await expect(lookUpLatestPatchVersion('hl7.no.good.patches', '1.0.x')).rejects.toThrow(
       LatestVersionUnavailableError
+    );
+  });
+
+  it('should throw IncorrectWildcardVersionFormatError when a wildcard is used for minor version', async () => {
+    await expect(lookUpLatestPatchVersion('hl7.terminology.r4', '1.x')).rejects.toThrow(
+      IncorrectWildcardVersionFormatError
     );
   });
 });

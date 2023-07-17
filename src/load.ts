@@ -4,7 +4,11 @@ import os from 'os';
 import { maxSatisfying } from 'semver';
 import tar from 'tar';
 import temp from 'temp';
-import { PackageLoadError, CurrentPackageLoadError } from './errors';
+import {
+  PackageLoadError,
+  CurrentPackageLoadError,
+  IncorrectWildcardVersionFormatError
+} from './errors';
 import { FHIRDefinitions } from './FHIRDefinitions';
 import { LogFunction } from './utils';
 import { axiosGet } from './utils/axiosUtils';
@@ -114,9 +118,11 @@ export async function mergeDependency(
   if (version === 'latest') {
     // using the exported function here to allow for easier mocking in tests
     version = await exports.lookUpLatestVersion(packageName, log);
-  } else if (/\d+\.\d+\.x/.test(version)) {
+  } else if (/^\d+\.\d+\.x$/.test(version)) {
     // using the exported function here to allow for easier mocking in tests
     version = await exports.lookUpLatestPatchVersion(packageName, version, log);
+  } else if (/^\d+\.x$/.test(version)) {
+    throw new IncorrectWildcardVersionFormatError(packageName, version);
   }
   let fullPackageName = `${packageName}#${version}`;
   const loadPath = path.join(cachePath, fullPackageName, 'package');
@@ -401,6 +407,9 @@ export async function lookUpLatestPatchVersion(
   version: string,
   log: LogFunction = () => {}
 ): Promise<string> {
+  if (!/^\d+\.\d+\.x$/.test(version)) {
+    throw new IncorrectWildcardVersionFormatError(packageName, version);
+  }
   const customRegistry = getCustomRegistry(log);
   let res: AxiosResponse;
   try {
