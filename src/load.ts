@@ -11,6 +11,13 @@ import { getCustomRegistry } from './utils/customRegistry';
 import { AxiosResponse } from 'axios';
 import { LatestVersionUnavailableError } from './errors/LatestVersionUnavailableError';
 
+async function getDistUrl(registry: string, packageName: string, version: string): Promise<string> {
+  // 1 get the manifest information about the package from the registry
+  const res = await axiosGet(`${registry}/${packageName}`);
+  // 2 return the tarball location
+  return res.data?.versions?.[version]?.dist?.tarball;
+}
+
 /**
  * Loads multiple dependencies from a directory (the user FHIR cache or a specified directory) or from online
  * @param {string[]} fhirPackages - An array of FHIR packages to download and load definitions from (format: packageId#version)
@@ -220,9 +227,9 @@ export async function mergeDependency(
   } else if (!loadedPackage) {
     const customRegistry = getCustomRegistry(log);
     if (customRegistry) {
-      packageUrl = `${customRegistry.replace(/\/$/, '')}/${packageName}/${version}`;
+      packageUrl = await getDistUrl(customRegistry.replace(/\/$/, ''), packageName, version); //`${customRegistry.replace(/\/$/, '')}/${packageName}/${version}`;
     } else {
-      packageUrl = `https://packages.fhir.org/${packageName}/${version}`;
+      packageUrl = await getDistUrl('https://packages.fhir.org', packageName, version)// `https://packages.fhir.org/${packageName}/${version}`;
     }
   }
 
