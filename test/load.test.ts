@@ -544,7 +544,7 @@ describe('#mergeDependency()', () => {
   // This function encapsulates that testing logic. It's coupled more tightly to
   // the actual implementation than I'd prefer, but... at least it's in one place.
   const expectDownloadSequence = (
-    sources: string | string[],
+    sources: string | string[] | { source: string; omitResponseType?: boolean }[],
     destination: string | null,
     isCurrent = false,
     isCurrentFound = true
@@ -555,14 +555,33 @@ describe('#mergeDependency()', () => {
     if (isCurrent) {
       const mockCalls: any[] = [['https://build.fhir.org/ig/qas.json']];
       if (isCurrentFound) {
-        mockCalls.push(
-          [sources[0].replace(/package\.tgz$/, 'package.manifest.json')],
-          [sources[0], { responseType: 'arraybuffer' }]
-        );
+        if (typeof sources[0] === 'string') {
+          mockCalls.push(
+            [sources[0].replace(/package\.tgz$/, 'package.manifest.json')],
+            [sources[0], { responseType: 'arraybuffer' }]
+          );
+        } else {
+          mockCalls.push([sources[0].source.replace(/package\.tgz$/, 'package.manifest.json')]);
+          if (sources[0].omitResponseType !== true) {
+            mockCalls.push([sources[0].source, { responseType: 'arraybuffer' }]);
+          }
+        }
       }
       expect(axiosSpy.mock.calls).toEqual(mockCalls);
     } else {
-      expect(axiosSpy.mock.calls).toEqual(sources.map(s => [s, { responseType: 'arraybuffer' }]));
+      expect(axiosSpy.mock.calls).toEqual(
+        sources.map(s => {
+          if (typeof s === 'string') {
+            return [s, { responseType: 'arraybuffer' }];
+          } else {
+            if (s.omitResponseType === true) {
+              return [s.source];
+            } else {
+              return [s.source, { responseType: 'arraybuffer' }];
+            }
+          }
+        })
+      );
     }
     if (destination != null) {
       const tempTarFile = writeSpy.mock.calls[0][0];
@@ -659,6 +678,28 @@ describe('#mergeDependency()', () => {
         return {
           data: {
             date: '20200413230227'
+          }
+        };
+      } else if (uri === 'https://packages.fhir.org/hl7.fhir.r4.core') {
+        return {
+          data: {
+            _id: 'hl7.fhir.r4.core',
+            name: 'hl7.fhir.r4.core',
+            'dist-tags': { latest: '4.0.1' },
+            versions: {
+              '4.0.1': {
+                name: 'hl7.fhir.r4.core',
+                version: '4.0.1',
+                description:
+                  'Definitions (API, structures and terminologies) for the R4 version of the FHIR standard',
+                dist: {
+                  shasum: '0e4b8d99f7918587557682c8b47df605424547a5',
+                  tarball: 'https://packages.fhir.org/hl7.fhir.r4.core/4.0.1'
+                },
+                fhirVersion: 'R4',
+                url: 'https://packages.fhir.org/hl7.fhir.r4.core/4.0.1'
+              }
+            }
           }
         };
       } else if (
@@ -806,13 +847,31 @@ describe('#mergeDependency()', () => {
     );
   });
 
-  it('should try to load a package from a custom registry', async () => {
+  it('should try to load a package from a custom registry that is like NPM', async () => {
+    // packages.fhir.org supports NPM clients
+    process.env.FPL_REGISTRY = 'https://packages.fhir.org';
+    await expect(mergeDependency('hl7.fhir.r4.core', '4.0.1', defs, 'foo', log)).rejects.toThrow(
+      'The package hl7.fhir.r4.core#4.0.1 could not be loaded locally or from the custom FHIR package registry https://packages.fhir.org.'
+    ); // the package is never actually added to the cache, since tar is mocked
+    expectDownloadSequence(
+      [
+        { source: 'https://packages.fhir.org/hl7.fhir.r4.core', omitResponseType: true },
+        { source: 'https://packages.fhir.org/hl7.fhir.r4.core/4.0.1' }
+      ],
+      path.join('foo', 'hl7.fhir.r4.core#4.0.1')
+    );
+  });
+
+  it('should try to load a package from a custom registry that is not like NPM', async () => {
     process.env.FPL_REGISTRY = 'https://custom-registry.example.org';
     await expect(mergeDependency('good-thing', '0.3.6', defs, 'foo', log)).rejects.toThrow(
       'The package good-thing#0.3.6 could not be loaded locally or from the custom FHIR package registry https://custom-registry.example.org'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
-      'https://custom-registry.example.org/good-thing/0.3.6',
+      [
+        { source: 'https://custom-registry.example.org/good-thing', omitResponseType: true },
+        { source: 'https://custom-registry.example.org/good-thing/0.3.6' }
+      ],
       path.join('foo', 'good-thing#0.3.6')
     );
   });
@@ -823,7 +882,10 @@ describe('#mergeDependency()', () => {
       'The package good-thing#0.3.6 could not be loaded locally or from the custom FHIR package registry https://custom-registry.example.org/'
     ); // the package is never actually added to the cache, since tar is mocked
     expectDownloadSequence(
-      'https://custom-registry.example.org/good-thing/0.3.6',
+      [
+        { source: 'https://custom-registry.example.org/good-thing', omitResponseType: true },
+        { source: 'https://custom-registry.example.org/good-thing/0.3.6' }
+      ],
       path.join('foo', 'good-thing#0.3.6')
     );
   });
