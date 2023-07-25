@@ -611,9 +611,27 @@ describe('#mergeDependency()', () => {
           }
         };
       } else if (uri === 'https://packages.fhir.org/hl7.fhir.r4.core') {
-        return { data: TERM_PKG_RESPONSE };
-      } else if (uri === 'https://packages2.fhir.org/hl7.fhir.r4.core') {
-        return { data: EXT_PKG_RESPONSE };
+        return {
+          data: {
+            _id: 'hl7.fhir.r4.core',
+            name: 'hl7.fhir.r4.core',
+            'dist-tags': { latest: '4.0.1' },
+            versions: {
+              '4.0.1': {
+                name: 'hl7.fhir.r4.core',
+                version: '4.0.1',
+                description:
+                  'Definitions (API, structures and terminologies) for the R4 version of the FHIR standard',
+                dist: {
+                  shasum: '0e4b8d99f7918587557682c8b47df605424547a5',
+                  tarball: 'https://packages.fhir.org/hl7.fhir.r4.core/4.0.1'
+                },
+                fhirVersion: 'R4',
+                url: 'https://packages.fhir.org/hl7.fhir.r4.core/4.0.1'
+              }
+            }
+          }
+        };
       } else if (
         uri === 'https://packages.fhir.org/sushi-test/0.2.0' ||
         uri === 'https://build.fhir.org/ig/sushi/sushi-test/branches/testbranch/package.tgz' ||
