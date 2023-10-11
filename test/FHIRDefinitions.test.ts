@@ -141,8 +141,9 @@ describe('FHIRDefinitions', () => {
       ).toEqual(allergyStatusCodeSystemByID);
     });
 
-    it('should find definitions by the type order supplied', () => {
+    it('should find definitions by the enforced type order', () => {
       // NOTE: There are two things with id allergyintolerance-clinical (the ValueSet and CodeSystem)
+      // When doing a non-type-specific search, we favor the ValueSet
       const allergyStatusValueSetByID = defs.fishForFHIR(
         'allergyintolerance-clinical',
         Type.ValueSet,
@@ -155,7 +156,7 @@ describe('FHIRDefinitions', () => {
         Type.CodeSystem,
         Type.ValueSet
       );
-      expect(allergyStatusCodeSystemByID.resourceType).toBe('CodeSystem');
+      expect(allergyStatusCodeSystemByID.resourceType).toBe('ValueSet');
     });
 
     it('should not find the definition when the type is not requested', () => {
