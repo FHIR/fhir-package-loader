@@ -418,15 +418,9 @@ export class FHIRDefinitions {
   fishForFHIR(item: string, ...types: Type[]): any | undefined {
     // No types passed in means to search ALL supported types
     if (types.length === 0) {
-      types = [
-        Type.Resource,
-        Type.Logical,
-        Type.Type,
-        Type.Profile,
-        Type.Extension,
-        Type.ValueSet,
-        Type.CodeSystem
-      ];
+      types = FISHING_ORDER;
+    } else {
+      types.sort((a, b) => FISHING_ORDER.indexOf(a) - FISHING_ORDER.indexOf(b));
     }
 
     for (const type of types) {
@@ -493,6 +487,16 @@ export enum Type {
   Type = 'Type', // NOTE: only defined in FHIR defs, not FSHTanks
   Logical = 'Logical'
 }
+
+export const FISHING_ORDER = [
+  Type.Resource,
+  Type.Logical,
+  Type.Type,
+  Type.Profile,
+  Type.Extension,
+  Type.ValueSet,
+  Type.CodeSystem
+];
 
 // Type to represent the names of the FHIRDefinition maps of definitions
 type maps =
