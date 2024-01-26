@@ -6,7 +6,7 @@ FHIR Package Loader is a utility that downloads published FHIR packages from the
 
 This tool can be used directly through a command line interface (CLI) or it can be used as a dependency in another JavaScript/TypeScript project to download FHIR packages and load the contents into memory.
 
-FHIR Package Loader requires [Node.js](https://nodejs.org/) to be installed on the user's system. Users should install Node.js 16 (LTS), although other current LTS versions are also expected to work.
+FHIR Package Loader requires [Node.js](https://nodejs.org/) to be installed on the user's system. Users should install Node.js 18, although other current LTS versions are also expected to work.
 
 Once Node.js is installed, use either of the following methods to use the FHIR Package Loader.
 
@@ -174,7 +174,7 @@ jest.mock('fhir-package-loader', () => {
 
 ## Installation
 
-FHIR Package Loader is a [TypeScript](https://www.typescriptlang.org/) project. At a minimum, it requires [Node.js](https://nodejs.org/) to build, test, and run the CLI. Developers should install Node.js 16 (LTS), although other current LTS versions are also expected to work.
+FHIR Package Loader is a [TypeScript](https://www.typescriptlang.org/) project. At a minimum, it requires [Node.js](https://nodejs.org/) to build, test, and run the CLI. Developers should install Node.js 18, although other current LTS versions are also expected to work.
 
 Once Node.js is installed, run the following command from this project's root folder:
 
