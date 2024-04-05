@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<CodeSystem xmlns="http://hl7.org/fhir">
+  <id value="x-to-z"/>
+  <text>
+    <status value="generated"/><div xmlns="http://www.w3.org/1999/xhtml"><p>This  code system <code>http://example.org/fhir/locals/CodeSystem/x-to-z</code> defines the following codes:</p><table class="codes"><tr><td style="white-space:nowrap"><b>Code</b></td><td><b>Definition</b></td></tr><tr><td style="white-space:nowrap">X<a name="x-to-z-X"> </a></td><td>X</td></tr><tr><td style="white-space:nowrap">Y<a name="x-to-z-Y"> </a></td><td>Y</td></tr><tr><td style="white-space:nowrap">Z<a name="x-to-z-Z"> </a></td><td>Z</td></tr></table></div>
+  </text>
+  <url value="http://example.org/fhir/locals/CodeSystem/x-to-z"/>
+  <version value="1.0.0"/>
+  <name value="XtoZCodeSystem"/>
+  <title value="X to Z Code System"/>
+  <status value="draft"/>
+  <date value="2024-05-24T16:27:17-04:00"/>
+  <publisher value="Example Publisher"/>
+  <contact>
+    <name value="Example Publisher"/>
+    <telecom>
+      <system value="url"/>
+      <value value="http://example.org/example-publisher"/>
+    </telecom>
+  </contact>
+  <description value="The letters X - Z"/>
+  <content value="complete"/>
+  <count value="3"/>
+  <concept>
+    <code value="X"/>
+    <display value="X"/>
+    <definition value="X"/>
+  </concept>
+  <concept>
+    <code value="Y"/>
+    <display value="Y"/>
+    <definition value="Y"/>
+  </concept>
+  <concept>
+    <code value="Z"/>
+    <display value="Z"/>
+    <definition value="Z"/>
+  </concept>
+</CodeSystem>
