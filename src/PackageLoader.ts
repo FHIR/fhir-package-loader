@@ -6,6 +6,10 @@ import { LogFunction } from './utils';
 import { RegistryClient } from './RegistryClient';
 import { PackageStats } from './PackageStats';
 import { CurrentBuildClient } from './CurrentBuildClient';
+import { InvalidPackageError } from './errors/InvalidPackageError';
+import { InvalidResourceError } from './errors/InvalidResourceError';
+import { PackageInfo } from './PackageInfo';
+import { ResourceInfo } from './ResourceInfo';
 
 export type PackageLoaderOptions = {
   log?: LogFunction;
@@ -37,9 +41,9 @@ export class PackageLoader {
   }
 
   getPackageLoadStatus(name: string, version: string): PackageLoadStatus {
-    const pkg = this.packageDB.findPackage(name, version);
+    const pkg = this.packageDB.findPackageInfo(name, version);
     if (pkg) {
-      return pkg.error == null ? PackageLoadStatus.LOADED : PackageLoadStatus.FAILED;
+      return PackageLoadStatus.LOADED;
     }
     return PackageLoadStatus.NOT_LOADED;
   }
@@ -90,7 +94,7 @@ export class PackageLoader {
     // Finally attempt to load it from the cache
     let stats: PackageStats;
     try {
-      stats = await this.packageDB.registerPackageAtPath(
+      stats = await this.loadPackageAtPath(
         path.join(this.fhirPackageCache, `${name}#${version}`),
         name,
         version
@@ -101,6 +105,127 @@ export class PackageLoader {
     }
     this.log('info', `Loaded ${packageLabel} with ${stats.resourceCount} resources`);
     return PackageLoadStatus.LOADED;
+  }
+
+  async loadPackageAtPath(packagePath: string, overrideName?: string, overrideVersion?: string) {
+    // Check that we have a valid package
+    const packageContentDir = path.join(packagePath, 'package');
+    try {
+      if (!(await fs.stat(packageContentDir)).isDirectory()) {
+        throw new Error(); // will be caught directly below
+      }
+    } catch (e) {
+      throw new InvalidPackageError(
+        packagePath,
+        `${packageContentDir} does not exist or is not a directory`
+      );
+    }
+
+    // Load the package.json file
+    const packageJSONPath = path.join(packageContentDir, 'package.json');
+    let packageJSON = null;
+    try {
+      packageJSON = await fs.readJSON(packageJSONPath);
+    } catch {
+      throw new InvalidPackageError(
+        packagePath,
+        `${packageJSONPath} does not exist or is not a valid JSON file`
+      );
+    }
+
+    // Get the name and version from the package.json file (or use overrides if applicable)
+    const name = overrideName ?? packageJSON.name;
+    if (name == null) {
+      throw new InvalidPackageError(packagePath, `${packageJSONPath} is missing the name property`);
+    }
+    const version = overrideVersion ?? packageJSON.version;
+    if (version == null) {
+      throw new InvalidPackageError(
+        packagePath,
+        `${packageJSONPath} is missing the version property`
+      );
+    }
+
+    // Register the package information
+    const info: PackageInfo = {
+      name,
+      version,
+      packagePath: path.resolve(packagePath),
+      packageJSONPath: path.resolve(packageJSONPath)
+    };
+    this.packageDB.savePackageInfo(info);
+
+    // Load the resources within the package
+    await this.loadResourcesAtPath(packageContentDir, name, version);
+
+    return this.packageDB.getPackageStats(name, version);
+  }
+
+  async loadResourcesAtPath(folderPath: string, packageName?: string, packageVersion?: string) {
+    const files = await fs.readdir(folderPath);
+    return Promise.all(
+      files.map(async f => {
+        const filePath = path.join(folderPath, f);
+        if (/\.json$/i.test(filePath)) {
+          try {
+            await this.loadResourceAtPath(filePath, packageName, packageVersion);
+          } catch (e) {
+            // swallow this error because some JSON files will not be resources
+          }
+        }
+      })
+    );
+  }
+
+  async loadResourceAtPath(filePath: string, packageName?: string, packageVersion?: string) {
+    let json: any;
+    try {
+      json = await fs.readJSON(filePath);
+    } catch (e) {
+      throw new InvalidResourceError(filePath, 'invalid FHIR resource file');
+    }
+
+    // We require at least a resourceType in order to know it is FHIR
+    if (typeof json.resourceType !== 'string' || json.resourceType === '') {
+      throw new InvalidResourceError(filePath, 'resource does not specify its resourceType');
+    }
+
+    const info: ResourceInfo = { resourceType: json.resourceType };
+    if (typeof json.id === 'string') {
+      info.id = json.id;
+    }
+    if (typeof json.url === 'string') {
+      info.url = json.url;
+    }
+    if (typeof json.name === 'string') {
+      info.name = json.name;
+    }
+    if (typeof json.version === 'string') {
+      info.version = json.version;
+    }
+    if (json.resourceType === 'StructureDefinition') {
+      if (typeof json.kind === 'string') {
+        info.sdKind = json.kind;
+      }
+      if (typeof json.derivation === 'string') {
+        info.sdDerivation = json.derivation;
+      }
+      if (typeof json.type === 'string') {
+        info.sdType = json.type;
+      }
+      if (typeof json.baseDefinition === 'string') {
+        info.sdBaseDefinition = json.baseDefinition;
+      }
+    }
+    if (packageName) {
+      info.packageName = packageName;
+    }
+    if (packageVersion) {
+      info.packageVersion = packageVersion;
+    }
+    info.resourcePath = path.resolve(filePath);
+
+    this.packageDB.saveResourceInfo(info);
   }
 
   private async isCurrentVersionMissingOrStale(name: string, branch?: string) {
@@ -144,6 +269,18 @@ export class PackageLoader {
       }
     }
     return isStale;
+  }
+
+  findPackageInfo(name: string, version: string): PackageInfo {
+    return this.packageDB.findPackageInfo(name, version);
+  }
+
+  findResourceInfos(key: string): ResourceInfo[] {
+    return this.packageDB.findResourceInfos(key);
+  }
+
+  findResourceInfo(key: string): ResourceInfo {
+    return this.packageDB.findResourceInfo(key);
   }
 }
 
