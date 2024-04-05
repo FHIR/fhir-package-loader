@@ -1,0 +1,22 @@
+{
+  "index-version" : 2,
+  "files" : [
+    {
+      "filename" : "ImplementationGuide-fhir.small.json",
+      "resourceType" : "ImplementationGuide",
+      "id" : "fhir.small",
+      "url" : "http://example.org/fhir/small/ImplementationGuide/fhir.small",
+      "version" : "0.1.0"
+    },
+    {
+      "filename" : "StructureDefinition-MyPatient.json",
+      "resourceType" : "StructureDefinition",
+      "id" : "MyPatient",
+      "url" : "http://example.org/fhir/small/StructureDefinition/MyPatient",
+      "version" : "0.1.0",
+      "kind" : "resource",
+      "type" : "Patient",
+      "derivation" : "constraint"
+    }
+  ]
+}

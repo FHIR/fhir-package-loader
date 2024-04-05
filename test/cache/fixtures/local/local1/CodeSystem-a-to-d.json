@@ -1,0 +1,45 @@
+{
+  "resourceType" : "CodeSystem",
+  "id" : "a-to-d",
+  "text" : {
+    "status" : "generated",
+    "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>This  code system <code>http://example.org/fhir/locals/CodeSystem/a-to-d</code> defines the following codes:</p><table class=\"codes\"><tr><td style=\"white-space:nowrap\"><b>Code</b></td><td><b>Definition</b></td></tr><tr><td style=\"white-space:nowrap\">A<a name=\"a-to-d-A\"> </a></td><td>A</td></tr><tr><td style=\"white-space:nowrap\">B<a name=\"a-to-d-B\"> </a></td><td>B</td></tr><tr><td style=\"white-space:nowrap\">C<a name=\"a-to-d-C\"> </a></td><td>C</td></tr><tr><td style=\"white-space:nowrap\">D<a name=\"a-to-d-D\"> </a></td><td>D</td></tr></table></div>"
+  },
+  "url" : "http://example.org/fhir/locals/CodeSystem/a-to-d",
+  "version" : "1.0.0",
+  "name" : "AtoDCodeSystem",
+  "title" : "A to D Code System",
+  "status" : "draft",
+  "date" : "2024-05-24T16:27:17-04:00",
+  "publisher" : "Example Publisher",
+  "contact" : [{
+    "name" : "Example Publisher",
+    "telecom" : [{
+      "system" : "url",
+      "value" : "http://example.org/example-publisher"
+    }]
+  }],
+  "description" : "The letters A - D",
+  "content" : "complete",
+  "count" : 4,
+  "concept" : [{
+    "code" : "A",
+    "display" : "A",
+    "definition" : "A"
+  },
+  {
+    "code" : "B",
+    "display" : "B",
+    "definition" : "B"
+  },
+  {
+    "code" : "C",
+    "display" : "C",
+    "definition" : "C"
+  },
+  {
+    "code" : "D",
+    "display" : "D",
+    "definition" : "D"
+  }]
+}

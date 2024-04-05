@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Observation xmlns="http://hl7.org/fhir">
+  <id value="A1Example"/>
+  <meta>
+    <profile value="http://example.org/fhir/locals/StructureDefinition/valued-observation"/>
+  </meta>
+  <text>
+    <status value="generated"/><div xmlns="http://www.w3.org/1999/xhtml"><p><b>Generated Narrative: Observation </b><a name="A1Example"> </a><a name="hcA1Example"> </a></p><div style="display: inline-block; background-color: #d9e0e7; padding: 6px; margin: 4px; border: 1px solid #8da1b4; border-radius: 5px; line-height: 60%"><p style="margin-bottom: 0px">ResourceObservation &quot;A1Example&quot; </p><p style="margin-bottom: 0px">Profile: <a href="StructureDefinition-valued-observation.html">Valued Observation Profile</a></p></div><p><b>status</b>: final</p><p><b>code</b>: A <span style="background: LightGoldenRodYellow; margin: 4px; border: 1px solid khaki"> (<a href="CodeSystem-a-to-d.html">A to D Code System</a>#A)</span></p><p><b>subject</b>: <a href="JamesPond">JamesPond</a></p><p><b>value</b>: 1</p></div>
+  </text>
+  <status value="final"/>
+  <code>
+    <coding>
+      <system value="http://example.org/fhir/locals/CodeSystem/a-to-d"/>
+      <code value="A"/>
+      <display value="A"/>
+    </coding>
+  </code>
+  <subject>
+    <reference value="JamesPond"/>
+  </subject>
+  <valueInteger value="1"/>
+</Observation>

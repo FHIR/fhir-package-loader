@@ -1,0 +1,31 @@
+{
+  "resourceType" : "ValueSet",
+  "id" : "beginning-and-end",
+  "text" : {
+    "status" : "generated",
+    "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p>This value set includes codes based on the following rules:</p><ul><li>Include all codes defined in <a href=\"CodeSystem-a-to-d.html\"><code>http://example.org/fhir/locals/CodeSystem/a-to-d</code></a></li><li>Include all codes defined in <a href=\"CodeSystem-x-to-z.html\"><code>http://example.org/fhir/locals/CodeSystem/x-to-z</code></a></li></ul></div>"
+  },
+  "url" : "http://example.org/fhir/locals/ValueSet/beginning-and-end",
+  "version" : "1.0.0",
+  "name" : "BeginningAndEnd",
+  "title" : "Beginning and End Value Set",
+  "status" : "draft",
+  "date" : "2024-05-24T16:27:17-04:00",
+  "publisher" : "Example Publisher",
+  "contact" : [{
+    "name" : "Example Publisher",
+    "telecom" : [{
+      "system" : "url",
+      "value" : "http://example.org/example-publisher"
+    }]
+  }],
+  "description" : "The first four and last three letters of the alphabet",
+  "compose" : {
+    "include" : [{
+      "system" : "http://example.org/fhir/locals/CodeSystem/a-to-d"
+    },
+    {
+      "system" : "http://example.org/fhir/locals/CodeSystem/x-to-z"
+    }]
+  }
+}

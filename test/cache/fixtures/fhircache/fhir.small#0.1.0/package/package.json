@@ -1,0 +1,28 @@
+{
+  "name" : "fhir.small",
+  "version" : "0.1.0",
+  "tools-version" : 3,
+  "type" : "IG",
+  "date" : "20240524151647",
+  "license" : "CC0-1.0",
+  "canonical" : "http://example.org/fhir/small",
+  "notForPublication" : true,
+  "url" : "file:///Users/cmoesel/data/fsh/small/output",
+  "fhirVersions" : ["4.0.1"],
+  "dependencies" : {
+    "hl7.fhir.r4.core" : "4.0.1",
+    "hl7.terminology.r4" : "5.5.0",
+    "hl7.fhir.uv.extensions.r4" : "5.1.0"
+  },
+  "author" : "Example Publisher",
+  "maintainers" : [
+    {
+      "name" : "Example Publisher",
+      "url" : "http://example.org/example-publisher"
+    }
+  ],
+  "directories" : {
+    "lib" : "package",
+    "example" : "example"
+  }
+}
