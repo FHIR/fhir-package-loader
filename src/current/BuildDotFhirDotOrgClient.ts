@@ -1,17 +1,8 @@
-import { downloadPackageTarballToCache } from './download';
-import { LogFunction } from './utils';
-import { axiosGet } from './utils/axiosUtils';
+import { downloadPackageTarballToCache } from '../download';
+import { LogFunction, axiosGet } from '../utils';
+import { CurrentBuildClient, CurrentBuildClientOptions } from './CurrentBuildClient';
 
-export type CurrentBuildClientOptions = {
-  log?: LogFunction;
-};
-
-export interface CurrentBuildClient {
-  downloadCurrentBuild(name: string, branch: string | null, cachePath: string): Promise<string>;
-  getCurrentBuildDate(name: string, branch?: string): Promise<string>;
-}
-
-export class BuildDotFHIRClient implements CurrentBuildClient {
+export class BuildDotFhirDotOrgClient implements CurrentBuildClient {
   private log: LogFunction;
   constructor(options: CurrentBuildClientOptions = {}) {
     this.log = options.log ?? (() => {});

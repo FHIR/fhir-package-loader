@@ -1,15 +1,12 @@
+import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
-import fs from 'fs-extra';
-import { PackageDB } from './PackageDB';
-import { LogFunction } from './utils';
-import { RegistryClient } from './RegistryClient';
-import { PackageStats } from './PackageStats';
-import { CurrentBuildClient } from './CurrentBuildClient';
-import { InvalidPackageError } from './errors/InvalidPackageError';
-import { InvalidResourceError } from './errors/InvalidResourceError';
-import { PackageInfo } from './PackageInfo';
-import { ResourceInfo } from './ResourceInfo';
+import { CurrentBuildClient } from '../current';
+import { PackageDB } from '../db';
+import { InvalidPackageError, InvalidResourceError } from '../errors';
+import { PackageInfo, PackageStats, ResourceInfo } from '../package';
+import { RegistryClient } from '../registry';
+import { LogFunction } from '../utils';
 
 export type PackageLoaderOptions = {
   log?: LogFunction;

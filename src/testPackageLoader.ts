@@ -1,18 +1,18 @@
+import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
-import fs from 'fs-extra';
-import { PackageDB } from './PackageDB';
 import initSqlJs from 'sql.js';
-import { DefaultRegistryClient } from './RegistryClient';
-import { BuildDotFHIRClient } from './CurrentBuildClient';
-import { PackageLoader } from './PackageLoader';
+import { BuildDotFhirDotOrgClient } from './current';
+import { SQLJSPackageDB } from './db';
+import { PackageLoader } from './loader';
+import { DefaultRegistryClient } from './registry';
 
 async function main() {
   const log = (level: string, message: string) => console.log(`${level}: ${message}`);
   const SQL = await initSqlJs();
-  const packageDB = new PackageDB(new SQL.Database());
+  const packageDB = new SQLJSPackageDB(new SQL.Database());
   const registryClient = new DefaultRegistryClient({ log });
-  const buildClient = new BuildDotFHIRClient({ log });
+  const buildClient = new BuildDotFhirDotOrgClient({ log });
   const loader = new PackageLoader(packageDB, registryClient, buildClient, { log });
 
   console.log(

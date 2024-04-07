@@ -1,8 +1,7 @@
-import util from 'util';
 import { Database, Statement } from 'sql.js';
-import { PackageStats } from './PackageStats';
-import { PackageInfo } from './PackageInfo';
-import { ResourceInfo } from './ResourceInfo';
+import util from 'util';
+import { PackageInfo, PackageStats, ResourceInfo } from '../package';
+import { PackageDB } from './PackageDB';
 
 const CREATE_PACKAGE_TABLE =
   'CREATE TABLE package (rowId INTEGER PRIMARY KEY, name char, version char, packagePath char, packageJSONPath char);';
@@ -30,7 +29,7 @@ const INSERT_RESOURCE = `INSERT INTO resource (${RESOURCE_PROPERTIES.join(
 )}) VALUES (${RESOURCE_PROPERTIES.map(p => `:${p}`).join(', ')})`;
 const FIND_PACKAGE = 'SELECT * FROM package WHERE name = :name and version = :version LIMIT 1';
 
-export class PackageDB {
+export class SQLJSPackageDB implements PackageDB {
   private insertPackageStmt: Statement;
   private insertResourceStmt: Statement;
   private findPackageStmt: Statement;
@@ -49,7 +48,7 @@ export class PackageDB {
     this.db.exec('VACUUM');
   }
 
-  savePackageInfo(info: PackageInfo) {
+  savePackageInfo(info: PackageInfo): void {
     const binding: any = {
       ':name': info.name,
       ':version': info.version
@@ -63,7 +62,7 @@ export class PackageDB {
     this.insertPackageStmt.run(binding);
   }
 
-  saveResourceInfo(info: ResourceInfo) {
+  saveResourceInfo(info: ResourceInfo): void {
     const binding: any = {
       ':resourceType': info.resourceType
     };
@@ -103,7 +102,7 @@ export class PackageDB {
     this.insertResourceStmt.run(binding);
   }
 
-  findPackageInfo(name: string, version: string): PackageInfo {
+  findPackageInfo(name: string, version: string): PackageInfo | undefined {
     try {
       this.findPackageStmt.bind({ ':name': name, ':version': version });
       if (this.findPackageStmt.step()) {
@@ -128,7 +127,7 @@ export class PackageDB {
     return results;
   }
 
-  findResourceInfo(key: string): ResourceInfo {
+  findResourceInfo(key: string): ResourceInfo | undefined {
     // TODO: Make this more sophisticate if/when it makes sense
     const results = this.findResourceInfos(key);
     if (results.length > 0) {
@@ -136,7 +135,7 @@ export class PackageDB {
     }
   }
 
-  getPackageStats(name: string, version: string): PackageStats {
+  getPackageStats(name: string, version: string): PackageStats | undefined {
     const pkg = this.findPackageInfo(name, version);
     if (pkg == null) {
       return;
