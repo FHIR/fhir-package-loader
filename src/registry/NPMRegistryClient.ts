@@ -1,4 +1,4 @@
-import { downloadPackageTarballToCache } from '../download';
+import { Readable } from 'stream';
 import { LogFunction, axiosGet } from '../utils';
 import { RegistryClient, RegistryClientOptions } from './RegistryClient';
 
@@ -12,16 +12,21 @@ export class NPMRegistryClient implements RegistryClient {
     this.log = options.log ?? (() => {});
   }
 
-  async download(name: string, version: string, cachePath: string): Promise<string> {
+  async download(name: string, version: string): Promise<Readable> {
     // Get the manifest information about the package from the registry
-    const res = await axiosGet(`${this.endpoint}/${name}`);
+    const manifestRes = await axiosGet(`${this.endpoint}/${name}`);
     // Find the NPM tarball location in the manifest
-    let url = res.data?.versions?.[version]?.dist?.tarball;
+    let url = manifestRes.data?.versions?.[version]?.dist?.tarball;
     // If tarball URL is not found, fallback to standard NPM approach per
     // https://docs.fire.ly/projects/Simplifier/features/api.html#package-server-api
     if (!url) {
       url = `${this.endpoint}/${name}/-/${name}-${version}.tgz`;
     }
-    return downloadPackageTarballToCache(name, version, url, cachePath, this.log);
+    this.log('info', `Attempting to download ${name}#${version} from ${url}`);
+    const tarballRes = await axiosGet(url, { responseType: 'stream' });
+    if (tarballRes?.status === 200 && tarballRes?.data) {
+      return tarballRes.data;
+    }
+    throw new Error(`Failed to download ${name}#${version} from ${url}`);
   }
 }

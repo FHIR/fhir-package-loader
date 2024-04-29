@@ -1,4 +1,4 @@
-import { downloadPackageTarballToCache } from '../download';
+import { Readable } from 'stream';
 import { LogFunction, axiosGet } from '../utils';
 import { CurrentBuildClient, CurrentBuildClientOptions } from './CurrentBuildClient';
 
@@ -8,14 +8,18 @@ export class BuildDotFhirDotOrgClient implements CurrentBuildClient {
     this.log = options.log ?? (() => {});
   }
 
-  async downloadCurrentBuild(name: string, branch: string | null, cachePath: string) {
+  async downloadCurrentBuild(name: string, branch: string | null): Promise<Readable> {
     const version = branch ? `current$${branch}` : 'current';
     const baseURL = await this.getCurrentBuildBaseURL(name, branch);
     if (!baseURL) {
       throw new Error(`Failed to download ${name}#${version}`);
     }
     const url = `${baseURL}/package.tgz`;
-    return downloadPackageTarballToCache(name, version, url, cachePath, this.log);
+    this.log('info', `Attempting to download ${name}#${version} from ${url}`);
+    const tarballRes = await axiosGet(url, { responseType: 'stream' });
+    if (tarballRes?.status === 200 && tarballRes?.data) {
+      return tarballRes.data;
+    }
   }
 
   async getCurrentBuildDate(name: string, branch?: string) {

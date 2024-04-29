@@ -1,3 +1,4 @@
+import { Readable } from 'stream';
 import { LogFunction } from '../utils';
 import { RegistryClient, RegistryClientOptions } from './RegistryClient';
 
@@ -7,12 +8,12 @@ export class RedundantRegistryClient implements RegistryClient {
     this.log = options.log ?? (() => {});
   }
 
-  async download(name: string, version: string, cachePath: string) {
+  async download(name: string, version: string): Promise<Readable> {
     const packageLabel = `${name}#${version}`;
 
     for (const client of this.clients) {
       try {
-        return await client.download(name, version, cachePath);
+        return await client.download(name, version);
       } catch (e) {
         // Do nothing. Fallback to the next one.
       }

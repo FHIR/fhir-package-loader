@@ -1,5 +1,5 @@
-import { downloadPackageTarballToCache } from '../download';
-import { LogFunction } from '../utils';
+import { Readable } from 'stream';
+import { LogFunction, axiosGet } from '../utils';
 import { RegistryClient, RegistryClientOptions } from './RegistryClient';
 
 export class FHIRRegistryClient implements RegistryClient {
@@ -12,10 +12,15 @@ export class FHIRRegistryClient implements RegistryClient {
     this.log = options.log ?? (() => {});
   }
 
-  async download(name: string, version: string, cachePath: string): Promise<string> {
+  async download(name: string, version: string): Promise<Readable> {
     // Construct URL from endpoint, name, and version
     // See: https://confluence.hl7.org/pages/viewpage.action?pageId=97454344#FHIRPackageRegistryUserDocumentation-Download
     const url = `${this.endpoint}/${name}/${version}`;
-    return downloadPackageTarballToCache(name, version, url, cachePath, this.log);
+    this.log('info', `Attempting to download ${name}#${version} from ${url}`);
+    const res = await axiosGet(url, { responseType: 'stream' });
+    if (res?.status === 200 && res?.data) {
+      return res.data;
+    }
+    throw new Error(`Failed to download ${name}#${version} from ${url}`);
   }
 }

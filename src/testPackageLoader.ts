@@ -4,16 +4,21 @@ import path from 'path';
 import initSqlJs from 'sql.js';
 import { BuildDotFhirDotOrgClient } from './current';
 import { SQLJSPackageDB } from './db';
-import { PackageLoader } from './loader';
 import { DefaultRegistryClient } from './registry';
+import { DiskBasedPackageCache } from './cache/DiskBasedPackageCache';
+import { BasePackageLoader } from './loader/BasePackageLoader';
 
 async function main() {
   const log = (level: string, message: string) => console.log(`${level}: ${message}`);
   const SQL = await initSqlJs();
   const packageDB = new SQLJSPackageDB(new SQL.Database());
+  const fhirCache = path.join(os.homedir(), '.fhir', 'packages');
+  const packageCache = new DiskBasedPackageCache(fhirCache, { log });
   const registryClient = new DefaultRegistryClient({ log });
   const buildClient = new BuildDotFhirDotOrgClient({ log });
-  const loader = new PackageLoader(packageDB, registryClient, buildClient, { log });
+  const loader = new BasePackageLoader(packageDB, packageCache, registryClient, buildClient, {
+    log
+  });
 
   console.log(
     '######################## STANDARD PACKAGE LOADING TESTS #################################'
@@ -31,6 +36,18 @@ async function main() {
   console.log('US Core 6.1.0 loaded? ', loader.getPackageLoadStatus('hl7.fhir.us.core', '6.1.0'));
   await loader.loadPackage('hl7.fhir.us.core', '6.1.0');
   console.log('US Core 6.1.0 loaded? ', loader.getPackageLoadStatus('hl7.fhir.us.core', '6.1.0'));
+  console.log();
+
+  console.log(
+    '######################## NEEDS FIXING PACKAGE LOADING TESTS #################################'
+  );
+  console.log();
+  console.log('========== TEST MISSING PACKAGE THAT NEEDS FIXING ==========');
+  console.log('Deleting hl7.fhir.us.core#3.1.0 from FHIR cache to force download...');
+  fs.removeSync(path.join(os.homedir(), '.fhir', 'packages', 'hl7.fhir.us.core#3.1.0'));
+  console.log('US Core 3.1.0 loaded? ', loader.getPackageLoadStatus('hl7.fhir.us.core', '3.1.0'));
+  await loader.loadPackage('hl7.fhir.us.core', '3.1.0');
+  console.log('US Core 3.1.0 loaded? ', loader.getPackageLoadStatus('hl7.fhir.us.core', '3.1.0'));
   console.log();
 
   console.log(

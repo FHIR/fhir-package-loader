@@ -1,3 +1,4 @@
+import { Readable } from 'stream';
 import { LogFunction } from '../utils';
 
 export type CurrentBuildClientOptions = {
@@ -5,6 +6,6 @@ export type CurrentBuildClientOptions = {
 };
 
 export interface CurrentBuildClient {
-  downloadCurrentBuild(name: string, branch: string | null, cachePath: string): Promise<string>;
+  downloadCurrentBuild(name: string, branch: string | null): Promise<Readable>;
   getCurrentBuildDate(name: string, branch?: string): Promise<string>;
 }

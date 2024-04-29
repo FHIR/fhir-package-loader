@@ -1,3 +1,4 @@
+import { Readable } from 'stream';
 import { LogFunction } from '../utils';
 
 export type RegistryClientOptions = {
@@ -5,5 +6,5 @@ export type RegistryClientOptions = {
 };
 
 export interface RegistryClient {
-  download(name: string, version: string, cachePath: string): Promise<string>;
+  download(name: string, version: string): Promise<Readable>;
 }
