@@ -1,24 +1,11 @@
 import fs from 'fs-extra';
 import os from 'os';
 import path from 'path';
-import initSqlJs from 'sql.js';
-import { BuildDotFhirDotOrgClient } from './current';
-import { SQLJSPackageDB } from './db';
-import { DefaultRegistryClient } from './registry';
-import { DiskBasedPackageCache } from './cache/DiskBasedPackageCache';
-import { BasePackageLoader } from './loader/BasePackageLoader';
+import { defaultPackageLoader } from './loader/DefaultPackageLoader';
 
 async function main() {
   const log = (level: string, message: string) => console.log(`${level}: ${message}`);
-  const SQL = await initSqlJs();
-  const packageDB = new SQLJSPackageDB(new SQL.Database());
-  const fhirCache = path.join(os.homedir(), '.fhir', 'packages');
-  const packageCache = new DiskBasedPackageCache(fhirCache, { log });
-  const registryClient = new DefaultRegistryClient({ log });
-  const buildClient = new BuildDotFhirDotOrgClient({ log });
-  const loader = new BasePackageLoader(packageDB, packageCache, registryClient, buildClient, {
-    log
-  });
+  const loader = await defaultPackageLoader({ log });
 
   console.log(
     '######################## STANDARD PACKAGE LOADING TESTS #################################'
@@ -228,6 +215,9 @@ async function main() {
   console.log('Loading hl7.fhir.us.core#6.1.0');
   await loader.loadPackage('hl7.fhir.us.core', '6.1.0');
   console.log();
+  console.log('========== TEST FIND PACKAGES ==========');
+  console.log("findPackageInfos('hl7.fhir.us.core'):", loader.findPackageInfos('hl7.fhir.us.core'));
+  console.log();
   console.log('========== TEST FIND PACKAGE ==========');
   console.log(
     "findPackageInfo('hl7.fhir.us.core', '6.1.0'):",
@@ -237,6 +227,12 @@ async function main() {
 
   console.log(
     '######################## INVALID PACKAGE FINDING TESTS ##################################'
+  );
+  console.log();
+  console.log('========== TEST FIND PACKAGES WITH WRONG NAME ==========');
+  console.log(
+    "findPackageInfo('hl7.fhir.america.core'):",
+    loader.findPackageInfos('hl7.fhir.america.core')
   );
   console.log();
   console.log('========== TEST FIND PACKAGE WITH WRONG NAME ==========');
@@ -252,33 +248,97 @@ async function main() {
   console.log();
 
   console.log(
-    '######################## RESOURCE FINDING TESTS #########################################'
+    '######################## RESOURCE INFO FINDING TESTS #########################################'
   );
   console.log();
-  console.log('========== TEST FIND IG RESOURCE (SINGLE) ==========');
+  console.log('========== TEST FIND IG RESOURCE INFO (SINGLE) ==========');
   console.log("findResourceInfo('hl7.fhir.us.core'):", loader.findResourceInfo('hl7.fhir.us.core'));
-  console.log('========== TEST FIND PATIENT PROFILE BY NAME (MULTIPLE) ==========');
+  console.log('========== TEST FIND PATIENT PROFILE INFO BY NAME (MULTIPLE) ==========');
   console.log(
-    "findResources('USCorePatientProfile'):",
+    "findResourceInfos('USCorePatientProfile'):",
     loader.findResourceInfos('USCorePatientProfile')
   );
-  console.log('========== TEST FIND PATIENT PROFILE BY ID (MULTIPLE) ==========');
+  console.log('========== TEST FIND PATIENT PROFILE INFO BY ID (MULTIPLE) ==========');
   console.log("findResourceInfos('us-core-patient'):", loader.findResourceInfos('us-core-patient'));
-  console.log('========== TEST FIND PATIENT PROFILE BY URL (MULTIPLE) ==========');
+  console.log('========== TEST FIND PATIENT PROFILE INFO BY URL (MULTIPLE) ==========');
   console.log(
     "findResourceInfos('http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient'):",
     loader.findResourceInfos('http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient')
   );
+  console.log(
+    '========== TEST FIND PATIENT PROFILE INFO BY NAME SCOPED BY PACKAGE NAME) =========='
+  );
+  console.log(
+    "findResourceInfos('USCorePatientProfile', { scope: 'hl7.fhir.us.core' }):",
+    loader.findResourceInfo('USCorePatientProfile', { scope: 'hl7.fhir.us.core' })
+  );
+  console.log(
+    '========== TEST FIND PATIENT PROFILE INFO BY NAME SCOPED BY PACKAGE NAME AND VERSION) =========='
+  );
+  console.log(
+    "findResourceInfos('USCorePatientProfile', { scope: 'hl7.fhir.us.core|6.1.0' }):",
+    loader.findResourceInfo('USCorePatientProfile', { scope: 'hl7.fhir.us.core|6.1.0' })
+  );
+  console.log(
+    '========== TEST FIND ALL CODESYSTEMS BY NAME SCOPED BY PACKAGE NAME AND VERSION) =========='
+  );
+  console.log(
+    "findResourceInfos('*', { type: ['CodeSystem'], scope: 'hl7.fhir.us.core|6.1.0' }):",
+    loader.findResourceInfos('*', { type: ['CodeSystem'], scope: 'hl7.fhir.us.core|6.1.0' })
+  );
   console.log();
 
   console.log(
-    '######################## INVALID RESOURCE FINDING TESTS #################################'
+    '######################## INVALID RESOURCE INFO FINDING TESTS #################################'
   );
   console.log();
-  console.log('========== TEST FIND WRONG RESOURCE (SINGLE) ==========');
-  console.log("findResourceInfo('spongebob'):", packageDB.findResourceInfo('spongebob'));
-  console.log('========== TEST FIND WRONG RESOURCE (MULTIPLE) ==========');
-  console.log("findResourceInfos('spongebob'):", packageDB.findResourceInfos('spongebob'));
+  console.log('========== TEST FIND WRONG RESOURCE INFO (SINGLE) ==========');
+  console.log("findResourceInfo('spongebob'):", loader.findResourceInfo('spongebob'));
+  console.log('========== TEST FIND WRONG RESOURCE INFO (MULTIPLE) ==========');
+  console.log("findResourceInfos('spongebob'):", loader.findResourceInfos('spongebob'));
+  console.log(
+    '========== TEST FIND PATIENT PROFILE INFO BY SCOPED BY WRONG PACKAGE NAME) =========='
+  );
+  console.log(
+    "findResourceInfos('USCorePatientProfile', { scope: 'hl7.fhir.america.core' }):",
+    loader.findResourceInfo('USCorePatientProfile', { scope: 'hl7.fhir.america.core' })
+  );
+  console.log(
+    '========== TEST FIND PATIENT PROFILE INFO BY NAME SCOPED BY PACKAGE NAME AND WRONG VERSION) =========='
+  );
+  console.log(
+    "findResourceInfos('USCorePatientProfile', { scope: 'hl7.fhir.us.core|9.9.9' }):",
+    loader.findResourceInfo('USCorePatientProfile', { scope: 'hl7.fhir.us.core|9.9.9' })
+  );
+  console.log();
+
+  console.log(
+    '######################## RESOURCE JSON FINDING TESTS #########################################'
+  );
+  console.log();
+  console.log('========== TEST FIND IG RESOURCE JSON (SINGLE) ==========');
+  console.log(
+    "findResourceJSON('hl7.fhir.us.core'):",
+    loader.findResourceJSON('hl7.fhir.us.core')?.id
+  );
+  console.log('========== TEST FIND PATIENT PROFILE JSON BY NAME (MULTIPLE) ==========');
+  console.log(
+    "findResources('USCorePatientProfile'):",
+    loader.findResourceJSONs('USCorePatientProfile').map(j => j.id)
+  );
+  console.log('========== TEST FIND PATIENT PROFILE JSON BY ID (MULTIPLE) ==========');
+  console.log(
+    "findResourceJSONs('us-core-patient'):",
+    loader.findResourceJSONs('us-core-patient').map(j => j.id)
+  );
+  console.log('========== TEST FIND PATIENT PROFILE JSON BY URL (MULTIPLE) ==========');
+  console.log(
+    "findResourceJSONs('http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient'):",
+    loader
+      .findResourceJSONs('http://hl7.org/fhir/us/core/StructureDefinition/us-core-patient')
+      .map(j => j.id)
+  );
+  console.log();
 }
 
 main();

@@ -2,11 +2,11 @@ import path from 'path';
 import { CurrentBuildClient } from '../current';
 import { PackageDB } from '../db';
 import { InvalidResourceError } from '../errors';
-import { PackageInfo, PackageStats, ResourceInfo } from '../package';
+import { FindResourceInfoOptions, PackageInfo, PackageStats, ResourceInfo } from '../package';
 import { RegistryClient } from '../registry';
 import { LogFunction } from '../utils';
 import { PackageCache } from '../cache/PackageCache';
-import { PackageLoadStatus, PackageLoader } from './PackageLoader';
+import { LoadStatus, PackageLoader } from './PackageLoader';
 
 export type BasePackageLoaderOptions = {
   log?: LogFunction;
@@ -24,13 +24,13 @@ export class BasePackageLoader implements PackageLoader {
     this.log = options.log ?? (() => {});
   }
 
-  async loadPackage(name: string, version: string): Promise<PackageLoadStatus> {
+  async loadPackage(name: string, version: string): Promise<LoadStatus> {
     let packageLabel = `${name}#${version}`;
 
     // If it's already loaded, then there's nothing to do
-    if (this.getPackageLoadStatus(name, version) === PackageLoadStatus.LOADED) {
+    if (this.getPackageLoadStatus(name, version) === LoadStatus.LOADED) {
       this.log('info', `${packageLabel} already loaded`);
-      return PackageLoadStatus.LOADED;
+      return LoadStatus.LOADED;
     }
 
     // If it's a "dev" version, but it wasn't found in the cache, fall back to using the current version
@@ -71,10 +71,10 @@ export class BasePackageLoader implements PackageLoader {
       stats = this.loadPackageFromCache(name, version);
     } catch (e) {
       this.log('error', `Failed to load ${name}#${version}`);
-      return PackageLoadStatus.FAILED;
+      return LoadStatus.FAILED;
     }
     this.log('info', `Loaded ${packageLabel} with ${stats.resourceCount} resources`);
-    return PackageLoadStatus.LOADED;
+    return LoadStatus.LOADED;
   }
 
   // async loadLocalPackage(
@@ -95,15 +95,21 @@ export class BasePackageLoader implements PackageLoader {
 
     // Get the cached package path and package.json path
     const packagePath = this.packageCache.getPackagePath(name, version);
-    const packageJSONPath = this.packageCache.getPackageJSONPath(name, version);
 
     // Register the package information
     const info: PackageInfo = {
       name,
-      version,
-      packagePath: path.resolve(packagePath),
-      packageJSONPath: path.resolve(packageJSONPath)
+      version
     };
+
+    if (name === 'LOCAL' && version === 'LOCAL') {
+      info.packagePath = packagePath;
+    } else {
+      const packageJSONPath = this.packageCache.getPackageJSONPath(name, version);
+      info.packagePath = path.resolve(packagePath);
+      info.packageJSONPath = path.resolve(packageJSONPath);
+    }
+
     this.packageDB.savePackageInfo(info);
 
     // Load the resources within the package
@@ -113,13 +119,15 @@ export class BasePackageLoader implements PackageLoader {
   }
 
   private loadResourcesFromCache(packageName: string, packageVersion: string) {
-    this.packageCache.getResourcePaths(packageName, packageVersion).forEach(resourcePath => {
-      try {
-        this.loadResourceFromCache(resourcePath, packageName, packageVersion);
-      } catch (e) {
-        // swallow this error because some JSON files will not be resources
-      }
-    });
+    this.packageCache
+      .getPotentialResourcePaths(packageName, packageVersion)
+      .forEach(resourcePath => {
+        try {
+          this.loadResourceFromCache(resourcePath, packageName, packageVersion);
+        } catch (e) {
+          // swallow this error because some JSON files will not be resources
+        }
+      });
   }
 
   private loadResourceFromCache(resourcePath: string, packageName: string, packageVersion: string) {
@@ -155,8 +163,11 @@ export class BasePackageLoader implements PackageLoader {
       if (typeof resourceJSON.kind === 'string') {
         info.sdKind = resourceJSON.kind;
       }
+      // In R4, some things don't have derivation (e.g. Resource) so default to specialization
       if (typeof resourceJSON.derivation === 'string') {
         info.sdDerivation = resourceJSON.derivation;
+      } else {
+        info.sdDerivation = 'specialization';
       }
       if (typeof resourceJSON.type === 'string') {
         info.sdType = resourceJSON.type;
@@ -164,6 +175,35 @@ export class BasePackageLoader implements PackageLoader {
       if (typeof resourceJSON.baseDefinition === 'string') {
         info.sdBaseDefinition = resourceJSON.baseDefinition;
       }
+      info.sdAbstract = resourceJSON.abstract === true;
+      const imposeProfiles: string[] = [];
+      const characteristics: string[] = [];
+      resourceJSON.extension?.forEach((ext: any) => {
+        if (
+          ext?.url === 'http://hl7.org/fhir/StructureDefinition/structuredefinition-imposeProfile'
+        ) {
+          imposeProfiles.push(ext.valueCanonical);
+        } else if (
+          ext?.url ===
+          'http://hl7.org/fhir/StructureDefinition/structuredefinition-type-characteristics'
+        ) {
+          characteristics.push(ext.valueCode);
+        } else if (
+          // logical-target is a temporary alternate representation for can-be-target because
+          // FHIR missed can-be-target in early versions of its characteristics value set
+          ext?.url === 'http://hl7.org/fhir/tools/StructureDefinition/logical-target' &&
+          ext.valueBoolean
+        ) {
+          characteristics.push('can-be-target');
+        }
+      });
+      if (imposeProfiles.length) {
+        info.sdImposeProfiles = imposeProfiles;
+      }
+      if (characteristics.length) {
+        info.sdCharacteristics = characteristics;
+      }
+      info.sdFlavor = getSDFlavor(resourceJSON);
     }
     if (packageName) {
       info.packageName = packageName;
@@ -217,24 +257,58 @@ export class BasePackageLoader implements PackageLoader {
     return isStale;
   }
 
-  getPackageLoadStatus(name: string, version: string): PackageLoadStatus {
+  getPackageLoadStatus(name: string, version: string): LoadStatus {
     const pkg = this.packageDB.findPackageInfo(name, version);
     if (pkg) {
-      return PackageLoadStatus.LOADED;
+      return LoadStatus.LOADED;
     }
-    return PackageLoadStatus.NOT_LOADED;
+    return LoadStatus.NOT_LOADED;
+  }
+
+  findPackageInfos(name: string): PackageInfo[] {
+    return this.packageDB.findPackageInfos(name);
   }
 
   findPackageInfo(name: string, version: string): PackageInfo {
     return this.packageDB.findPackageInfo(name, version);
   }
 
-  findResourceInfos(key: string): ResourceInfo[] {
-    return this.packageDB.findResourceInfos(key);
+  findPackageJSONs(name: string): any[] {
+    return this.findPackageInfos(name)
+      .filter(info => info.packageJSONPath)
+      .map(info => {
+        return this.packageCache.getResourceAtPath(info.packageJSONPath);
+      });
   }
 
-  findResourceInfo(key: string): ResourceInfo {
-    return this.packageDB.findResourceInfo(key);
+  findPackageJSON(name: string, version: string) {
+    const info = this.findPackageInfo(name, version);
+    if (info?.packageJSONPath) {
+      return this.packageCache.getResourceAtPath(info.packageJSONPath);
+    }
+  }
+
+  findResourceInfos(key: string, options?: FindResourceInfoOptions): ResourceInfo[] {
+    return this.packageDB.findResourceInfos(key, options);
+  }
+
+  findResourceInfo(key: string, options?: FindResourceInfoOptions): ResourceInfo {
+    return this.packageDB.findResourceInfo(key, options);
+  }
+
+  findResourceJSONs(key: string, options?: FindResourceInfoOptions): any[] {
+    return this.findResourceInfos(key, options)
+      .filter(info => info.resourcePath)
+      .map(info => {
+        return this.packageCache.getResourceAtPath(info.resourcePath);
+      });
+  }
+
+  findResourceJSON(key: string, options?: FindResourceInfoOptions) {
+    const info = this.findResourceInfo(key, options);
+    if (info?.resourcePath) {
+      return this.packageCache.getResourceAtPath(info.resourcePath);
+    }
   }
 
   clear() {
@@ -255,4 +329,23 @@ function formatDate(date: string): string {
   return date
     ? date.replace(/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1-$2-$3T$4:$5:$6')
     : '';
+}
+
+function getSDFlavor(resourceJSON: any) {
+  if (resourceJSON.resourceType === 'StructureDefinition') {
+    if (
+      resourceJSON.type === 'Extension' &&
+      resourceJSON.baseDefinition !== 'http://hl7.org/fhir/StructureDefinition/Element'
+    ) {
+      return 'Extension';
+    } else if (resourceJSON.derivation === 'constraint') {
+      return 'Profile';
+    } else if (/type/.test(resourceJSON.kind)) {
+      return 'Type';
+    } else if (resourceJSON.kind === 'resource') {
+      return 'Resource';
+    } else if (resourceJSON.kind === 'logical') {
+      return 'Logical';
+    }
+  }
 }
