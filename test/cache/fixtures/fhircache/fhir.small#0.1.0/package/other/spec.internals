@@ -1,0 +1,39 @@
+{
+  "npm-name" : "fhir.small",
+  "ig-version" : "4.0.1",
+  "tool-version" : "5.0.0",
+  "tool-build" : "3",
+  "webUrl" : "http://example.org/fhir/small",
+  "date" : "2024-05-24",
+  "date-time" : "20240524031705-0400",
+  "paths" : {
+    "http://example.org/fhir/small/ImplementationGuide/fhir.small|0.1.0" : "index.html",
+    "http://example.org/fhir/small/ImplementationGuide/fhir.small" : "index.html",
+    "http://example.org/fhir/small/Patient/PatientExample" : "Patient-PatientExample.html",
+    "http://example.org/fhir/small/StructureDefinition/MyPatient|0.1.0" : "StructureDefinition-MyPatient.html",
+    "http://example.org/fhir/small/StructureDefinition/MyPatient" : "StructureDefinition-MyPatient.html"
+  },
+  "pages" : {
+  },
+  "targets" : [
+    "searchform.html",
+    "StructureDefinition-MyPatient.profile.history.html",
+    "artifacts.html",
+    "StructureDefinition-MyPatient-definitions.html",
+    "index.html",
+    "toc.html",
+    "StructureDefinition-MyPatient.profile.json.html",
+    "StructureDefinition-MyPatient-mappings.html",
+    "Patient-PatientExample.change.history.html",
+    "StructureDefinition-MyPatient-examples.html",
+    "StructureDefinition-MyPatient-testing.html",
+    "Patient-PatientExample.xml.html",
+    "StructureDefinition-MyPatient.html",
+    "Patient-PatientExample.ttl.html",
+    "StructureDefinition-MyPatient.profile.xml.html",
+    "StructureDefinition-MyPatient.profile.ttl.html",
+    "Patient-PatientExample.json.html",
+    "Patient-PatientExample.html"
+  ],
+  "images" : []
+}

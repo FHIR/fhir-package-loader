@@ -34,6 +34,7 @@ export class BasePackageLoader implements PackageLoader {
     }
 
     // If it's a "dev" version, but it wasn't found in the cache, fall back to using the current version
+    // TODO: Does this actually check for the dev version prior to giving up?
     if (version === 'dev') {
       this.log(
         'info',

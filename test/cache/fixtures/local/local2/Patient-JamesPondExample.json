@@ -1,0 +1,12 @@
+{
+  "resourceType" : "Patient",
+  "id" : "JamesPondExample",
+  "text" : {
+    "status" : "generated",
+    "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p style=\"border: 1px #661aff solid; background-color: #e6e6ff; padding: 10px;\"><b>James Pond </b> (no stated gender), DoB Unknown</p><hr/></div>"
+  },
+  "name" : [{
+    "family" : "Pond",
+    "given" : ["James"]
+  }]
+}

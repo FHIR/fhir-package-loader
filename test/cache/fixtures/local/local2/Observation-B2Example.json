@@ -1,0 +1,23 @@
+{
+  "resourceType" : "Observation",
+  "id" : "B2Example",
+  "meta" : {
+    "profile" : ["http://example.org/fhir/locals/StructureDefinition/valued-observation"]
+  },
+  "text" : {
+    "status" : "generated",
+    "div" : "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Generated Narrative: Observation </b><a name=\"B2Example\"> </a><a name=\"hcB2Example\"> </a></p><div style=\"display: inline-block; background-color: #d9e0e7; padding: 6px; margin: 4px; border: 1px solid #8da1b4; border-radius: 5px; line-height: 60%\"><p style=\"margin-bottom: 0px\">ResourceObservation &quot;B2Example&quot; </p><p style=\"margin-bottom: 0px\">Profile: <a href=\"StructureDefinition-valued-observation.html\">Valued Observation Profile</a></p></div><p><b>status</b>: final</p><p><b>code</b>: B <span style=\"background: LightGoldenRodYellow; margin: 4px; border: 1px solid khaki\"> (<a href=\"CodeSystem-a-to-d.html\">A to D Code System</a>#A)</span></p><p><b>subject</b>: <a href=\"JamesPond\">JamesPond</a></p><p><b>value</b>: 2</p></div>"
+  },
+  "status" : "final",
+  "code" : {
+    "coding" : [{
+      "system" : "http://example.org/fhir/locals/CodeSystem/a-to-d",
+      "code" : "A",
+      "display" : "B"
+    }]
+  },
+  "subject" : {
+    "reference" : "JamesPond"
+  },
+  "valueInteger" : 2
+}
