@@ -231,23 +231,21 @@ describe('DiskBasedPackageCache', () => {
   });
 
   describe('#getResourceAtPath', () => {
-    it('should return a resource with a given resource path'),
-      () => {
-        const rootPath = path.resolve(cacheFolder, 'fhir.small#0.1.0', 'package');
-        const totalPath = path.resolve(rootPath, 'StructureDefinition-MyPatient.json');
-        const resource = cache.getResourceAtPath(totalPath);
-        expect(resource).toBeDefined();
-        expect(resource.id).toBe('MyPatient');
-        expect(loggerSpy.getAllLogs('error')).toHaveLength(0);
-      };
-    it('should return a resource with an xml path where xml was converted to a resource'),
-      () => {
-        const totalPath = path.resolve(local1Folder, 'StructureDefinition-true-false.xml');
-        const resource = cache.getResourceAtPath(totalPath);
-        expect(resource).toBeDefined();
-        expect(resource.id).toBe('true-false');
-        expect(resource.xml).toBeUndefined();
-        expect(loggerSpy.getAllLogs('error')).toHaveLength(0);
-      };
+    it('should return a resource with a given resource path', () => {
+      const rootPath = path.resolve(cacheFolder, 'fhir.small#0.1.0', 'package');
+      const totalPath = path.resolve(rootPath, 'StructureDefinition-MyPatient.json');
+      const resource = cache.getResourceAtPath(totalPath);
+      expect(resource).toBeDefined();
+      expect(resource.id).toBe('MyPatient');
+      expect(loggerSpy.getAllLogs('error')).toHaveLength(0);
+    });
+    it('should return a resource with an xml path where xml was converted to a resource', () => {
+      const totalPath = path.resolve(local1Folder, 'StructureDefinition-true-false.xml');
+      const resource = cache.getResourceAtPath(totalPath);
+      expect(resource).toBeDefined();
+      expect(resource.id).toBe('true-false');
+      expect(resource.xml).toBeUndefined();
+      expect(loggerSpy.getAllLogs('error')).toHaveLength(0);
+    });
   });
 });

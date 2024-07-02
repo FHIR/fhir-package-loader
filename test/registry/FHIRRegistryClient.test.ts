@@ -66,6 +66,9 @@ describe('FHIRRegistryClient', () => {
 
   describe('#download', () => {
     describe('#downloadAnyVersion', () => {
+      beforeEach(() => {
+        loggerSpy.reset();
+      });
       beforeAll(() => {
         axiosSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string): any => {
           if (
@@ -146,6 +149,9 @@ describe('FHIRRegistryClient', () => {
     });
 
     describe('#downloadSpecificVersion', () => {
+      beforeEach(() => {
+        loggerSpy.reset();
+      });
       beforeAll(() => {
         axiosSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string): any => {
           if (
@@ -196,6 +202,9 @@ describe('FHIRRegistryClient', () => {
     });
 
     describe('#downloadLatestVersion', () => {
+      beforeEach(() => {
+        loggerSpy.reset();
+      });
       beforeAll(() => {
         axiosSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string): any => {
           if (
@@ -259,6 +268,9 @@ describe('FHIRRegistryClient', () => {
     });
 
     describe('#downloadLatestPatchVersion', () => {
+      beforeEach(() => {
+        loggerSpy.reset();
+      });
       beforeAll(() => {
         axiosSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string): any => {
           if (
