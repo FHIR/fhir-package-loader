@@ -170,7 +170,7 @@ describe('DiskBasedPackageCache', () => {
       expect(loggerSpy.getAllLogs()).toHaveLength(0);
     });
 
-    it('should return undefined for a package with different version in the cache', () => {
+    it('should return empty array for a package with different version in the cache', () => {
       const potentials = cache.getPotentialResourcePaths('fhir.small', '0.2.0');
       expect(potentials).toHaveLength(0);
       expect(loggerSpy.getAllLogs()).toHaveLength(0);
@@ -231,6 +231,23 @@ describe('DiskBasedPackageCache', () => {
   });
 
   describe('#getResourceAtPath', () => {
-    // tests go here
+    it('should return a resource with a given resource path'),
+      () => {
+        const rootPath = path.resolve(cacheFolder, 'fhir.small#0.1.0', 'package');
+        const totalPath = path.resolve(rootPath, 'StructureDefinition-MyPatient.json');
+        const resource = cache.getResourceAtPath(totalPath);
+        expect(resource).toBeDefined();
+        expect(resource.id).toBe('MyPatient');
+        expect(loggerSpy.getAllLogs('error')).toHaveLength(0);
+      };
+    it('should return a resource with an xml path where xml was converted to a resource'),
+      () => {
+        const totalPath = path.resolve(local1Folder, 'StructureDefinition-true-false.xml');
+        const resource = cache.getResourceAtPath(totalPath);
+        expect(resource).toBeDefined();
+        expect(resource.id).toBe('true-false');
+        expect(resource.xml).toBeUndefined();
+        expect(loggerSpy.getAllLogs('error')).toHaveLength(0);
+      };
   });
 });
