@@ -1,5 +1,7 @@
-import { DefaultRegistryClient } from '../../src/registry/DefaultRegistryClient';
 import { loggerSpy } from '../testhelpers';
+import { DefaultRegistryClient } from '../../src/registry/DefaultRegistryClient';
+import { NPMRegistryClient } from '../../src/registry/NPMRegistryClient';
+import { FHIRRegistryClient } from '../../src/registry/FHIRRegistryClient';
 
 describe('DefaultRegistryClient', () => {
   describe('#constructor', () => {
@@ -7,29 +9,48 @@ describe('DefaultRegistryClient', () => {
       loggerSpy.reset();
       delete process.env.FPL_REGISTRY;
     });
-    afterEach(() => {});
 
-    it('should make a custom registry client when specified', () => {
-      process.env.FPL_REGISTRY = 'https://custom-registry.example.org/';
-      new DefaultRegistryClient({ log: loggerSpy.log });
+    it('should make a client with custom registry when it has been specified', () => {
+      process.env.FPL_REGISTRY = 'https://custom-registry.example.org';
+      const defaultClient = new DefaultRegistryClient({ log: loggerSpy.log });
+      expect(defaultClient.clients).toHaveLength(1);
+      expect(defaultClient.clients[0]).toHaveProperty(
+        'endpoint',
+        'https://custom-registry.example.org'
+      );
+      expect(defaultClient.clients[0]).toBeInstanceOf(NPMRegistryClient);
       expect(loggerSpy.getLastMessage('info')).toBe(
-        'Using custom registry specified by FPL_REGISTRY environment variable: https://custom-registry.example.org/'
+        'Using custom registry specified by FPL_REGISTRY environment variable: https://custom-registry.example.org'
       );
     });
 
-    it('should use the first default set for a custom registry client when specified', () => {
-      process.env.FPL_REGISTRY = 'https://custom-registry.example.org/';
-      new DefaultRegistryClient({ log: loggerSpy.log });
-      // expect(loggerSpy.getLastMessage('info')).toBe('Using custom registry specified by FPL_REGISTRY environment variable: https://custom-registry.example.org/');
-
-      process.env.FPL_REGISTRY = 'https://custom-registry-second.example.org/';
-      new DefaultRegistryClient({ log: loggerSpy.log });
-      // expect(loggerSpy.getLastMessage('info')).toBe('Using custom registry specified by FPL_REGISTRY environment variable: https://custom-registry.example.org/');
+    it('should make a client with fhir registries if no custom registry specified', () => {
+      const defaultClient = new DefaultRegistryClient({ log: loggerSpy.log });
+      expect(defaultClient.clients).toHaveLength(2);
+      expect(defaultClient.clients[0]).toHaveProperty('endpoint', 'https://packages.fhir.org');
+      expect(defaultClient.clients[0]).toBeInstanceOf(FHIRRegistryClient);
+      expect(defaultClient.clients[1]).toHaveProperty(
+        'endpoint',
+        'https://packages2.fhir.org/packages'
+      );
+      expect(defaultClient.clients[1]).toBeInstanceOf(FHIRRegistryClient);
     });
 
-    it('should make a FHIR registry client when custom registry not specified', () => {
-      new DefaultRegistryClient({ log: loggerSpy.log });
-      expect(loggerSpy.getLastMessage('info')).toBeUndefined();
+    it('should make a client by using the first custom client specified if multiple defined', () => {
+      process.env.FPL_REGISTRY = 'https://custom-registry.example.org';
+      const defaultClient = new DefaultRegistryClient({ log: loggerSpy.log });
+      expect(defaultClient.clients).toHaveLength(1);
+      expect(defaultClient.clients[0]).toHaveProperty(
+        'endpoint',
+        'https://custom-registry.example.org'
+      );
+      expect(defaultClient.clients[0]).toBeInstanceOf(NPMRegistryClient);
+      // expect(loggerSpy.getLastMessage('info')).toBe(
+      //   'Using custom registry specified by FPL_REGISTRY environment variable: https://custom-registry.example.org'
+      // );
+      process.env.FPL_REGISTRY = 'https://custom-second-registry.example.org';
+
+      // when hasLoggedCustomRegistry = true ?
     });
   });
 });
