@@ -14,9 +14,14 @@ export class NPMRegistryClient implements RegistryClient {
 
   async download(name: string, version: string): Promise<Readable> {
     // Get the manifest information about the package from the registry
-    const manifestRes = await axiosGet(`${this.endpoint}/${name}`);
-    // Find the NPM tarball location in the manifest
-    let url = manifestRes.data?.versions?.[version]?.dist?.tarball;
+    let url;
+    try {
+      const manifestRes = await axiosGet(`${this.endpoint}/${name}`);
+      // Find the NPM tarball location in the manifest
+      url = manifestRes.data?.versions?.[version]?.dist?.tarball;
+    } catch {
+      // Do nothing. Undefined url handled below.
+    }
     // If tarball URL is not found, fallback to standard NPM approach per
     // https://docs.fire.ly/projects/Simplifier/features/api.html#package-server-api
     if (!url) {
