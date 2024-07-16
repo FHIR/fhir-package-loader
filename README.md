@@ -9,7 +9,7 @@ FHIR Package Loader is a utility that downloads published FHIR packages from the
 - License: All contributions to this project will be released under the Apache 2.0 License, and a copy of this license can be found in [LICENSE](LICENSE).
 - Contribution Policy: The FHIR Package Loader Contribution Policy can be found in [CONTRIBUTING.md](CONTRIBUTING.md).
 - Security Information: The FHIR Package Loader Security Information can be found in [SECURITY.md](SECURITY.md).
-- Compliance Information: FHIR Package Loader is designed to work with FHIR packages that are designed for use with FHIR R4, FHIR R4B, or FHIR R5.
+- Compliance Information: FHIR Package Loader is designed to work with FHIR packages that are based on FHIR R4, FHIR R4B, or FHIR R5.
 
 # Usage
 
