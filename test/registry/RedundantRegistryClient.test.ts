@@ -33,7 +33,6 @@ describe('RedundantRegistryClient', () => {
       const latest = await client.download('hl7.terminology.r4', '1.1.2');
 
       // should get first client specified that doesn't throw error
-      expect(latest).toBeDefined();
       expect(latest).toBeInstanceOf(Readable);
       expect(latest.read()).toBe(
         'MyMockDownload of hl7.terminology.r4#1.1.2 from https://packages.fhir.org/hl7.terminology.r4/1.1.2'
@@ -49,7 +48,6 @@ describe('RedundantRegistryClient', () => {
       const latest = await client.download('hl7.terminology.r4', '1.1.2');
 
       // will get second client specified since first throw error and goes to next client
-      expect(latest).toBeDefined();
       expect(latest).toBeInstanceOf(Readable);
       expect(latest.read()).toBe(
         'MyMockDownload of hl7.terminology.r4#1.1.2 from https://packages-second-client.fhir.org/hl7.terminology.r4/1.1.2'
@@ -59,8 +57,8 @@ describe('RedundantRegistryClient', () => {
     it('should throw error when no package server provided', async () => {
       const client = new RedundantRegistryClient([], { log: loggerSpy.log });
       const latest = client.download('hl7.terminology.r4', '1.1.2');
-      expect(latest).rejects.toThrow(Error);
-      expect(latest).rejects.toThrow('Failed to download hl7.terminology.r4#1.1.2');
+      await expect(latest).rejects.toThrow(Error);
+      await expect(latest).rejects.toThrow('Failed to download hl7.terminology.r4#1.1.2');
     });
 
     it('should throw error when all package servers provided fail', async () => {
@@ -70,8 +68,8 @@ describe('RedundantRegistryClient', () => {
         log: loggerSpy.log
       });
       const latest = client.download('hl7.terminology.r4', '1.1.2');
-      expect(latest).rejects.toThrow(Error);
-      expect(latest).rejects.toThrow('Failed to download hl7.terminology.r4#1.1.2');
+      await expect(latest).rejects.toThrow(Error);
+      await expect(latest).rejects.toThrow('Failed to download hl7.terminology.r4#1.1.2');
     });
   });
 });
