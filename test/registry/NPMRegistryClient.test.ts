@@ -104,7 +104,7 @@ describe('NPMRegistryClient', () => {
   let axiosSpy: jest.SpyInstance;
 
   describe('#constructor', () => {
-    it('should remove trailing slash when have endpoint that contains one at the end', async () => {
+    it('should remove trailing slash from endpoint', async () => {
       const clientWithSlash = new NPMRegistryClient('https://packages.fhir.org/', {
         log: loggerSpy.log
       });
@@ -126,25 +126,6 @@ describe('NPMRegistryClient', () => {
               status: 200,
               data: Readable.from(['1.2.3-test-data'])
             };
-          } else if (uri === 'https://packages.simplifier.net/hl7.terminology.r4/1.1.2') {
-            return {
-              status: 400,
-              data: Readable.from(['1.1.2-test-data'])
-            };
-          } else if (uri === 'https://packages.simplifier.net/hl7.terminology.r4/1.1.1') {
-            return {
-              status: 200,
-              data: Readable.from([])
-            };
-          } else if (uri === 'https://packages.simplifier.net/hl7.terminology.r4/2.2.2') {
-            return {
-              status: 200,
-              data: ''
-            };
-          } else if (uri === 'https://packages.simplifier.net/hl7.terminology.r4/3.3.3') {
-            return {
-              status: 200
-            };
           } else if (
             uri === 'https://packages.fhir.org/hl7.terminology.r4/-/hl7.terminology.r4-1.1.5.tgz'
           ) {
@@ -160,21 +141,12 @@ describe('NPMRegistryClient', () => {
               status: 200,
               data: Readable.from(['1.1.4-no-manifest-test-data'])
             };
-          } else if (uri === 'hl7.terminology.r4.empty.manifest.data/1.1.4') {
+          } else if (uri === 'https://packages.fhir.org/hl7.terminology.r4.empty.manifest.data') {
             return {
               status: 200,
-              data: {}
+              data: ''
             };
-          } else if (uri === 'hl7.terminology.no-versions') {
-            return {
-              status: 200,
-              data: {
-                _id: 'hl7.terminology.r4',
-                name: 'hl7.terminology.r4',
-                'dist-tags': { latest: '1.2.3-test' }
-              }
-            };
-          } else if (uri === 'hl7.terminology.no-dist') {
+          } else if (uri === 'https://packages.fhir.org/hl7.terminology.no-dist') {
             return {
               status: 200,
               data: {
@@ -194,13 +166,21 @@ describe('NPMRegistryClient', () => {
               status: 200,
               data: Readable.from(['1.1.4-empty-manifest-test-data'])
             };
-          } else if (
-            uri ===
-            'https://packages.fhir.org/hl7.terminology.r4.empty.manifest.data/-/hl7.terminology.r4.empty.manifest.data-1.1.4.tgz'
-          ) {
+          } else if (uri === 'https://packages.fhir.org/hl7.terminology.r4.no.tarball') {
             return {
               status: 200,
-              data: Readable.from(['1.1.4-empty-manifest-test-data'])
+              data: {
+                _id: 'hl7.terminology.r4.no.tarball',
+                name: 'hl7.terminology.r4.no.tarball',
+                'dist-tags': { latest: '1.2.3-test' }
+              },
+              versions: {
+                'no-tarball-version': {
+                  dist: {
+                    tarball: null
+                  }
+                }
+              }
             };
           } else if (
             uri ===
@@ -209,6 +189,14 @@ describe('NPMRegistryClient', () => {
             return {
               status: 200,
               data: Readable.from(['no-versions-test-data'])
+            };
+          } else if (
+            uri ===
+            'https://packages.fhir.org/hl7.terminology.r4.no.tarball/-/hl7.terminology.r4.no.tarball-no-tarball-version.tgz'
+          ) {
+            return {
+              status: 200,
+              data: Readable.from(['no-tarball-test-data'])
             };
           } else if (
             uri ===
@@ -234,7 +222,6 @@ describe('NPMRegistryClient', () => {
           'Attempting to download hl7.terminology.r4#1.2.3-test from https://packages.simplifier.net/hl7.terminology.r4/1.2.3-test'
         );
         expect(loggerSpy.getAllMessages('error')).toHaveLength(0);
-        expect(latest).toBeDefined();
         expect(latest).toBeInstanceOf(Readable);
         expect(latest.read()).toBe('1.2.3-test-data');
       });
@@ -245,7 +232,6 @@ describe('NPMRegistryClient', () => {
           'Attempting to download hl7.terminology.r4.no.manifest#1.1.4 from https://packages.fhir.org/hl7.terminology.r4.no.manifest/-/hl7.terminology.r4.no.manifest-1.1.4.tgz'
         );
         expect(loggerSpy.getAllMessages('error')).toHaveLength(0);
-        expect(latest).toBeDefined();
         expect(latest).toBeInstanceOf(Readable);
         expect(latest.read()).toBe('1.1.4-no-manifest-test-data');
       });
@@ -256,31 +242,18 @@ describe('NPMRegistryClient', () => {
           'Attempting to download hl7.terminology.r4.empty.manifest.data#1.1.4 from https://packages.fhir.org/hl7.terminology.r4.empty.manifest.data/-/hl7.terminology.r4.empty.manifest.data-1.1.4.tgz'
         );
         expect(loggerSpy.getAllMessages('error')).toHaveLength(0);
-        expect(latest).toBeDefined();
         expect(latest).toBeInstanceOf(Readable);
         expect(latest.read()).toBe('1.1.4-empty-manifest-test-data');
       });
 
-      it('should get the package using a created tgz file path when has manifest but has no versions', async () => {
+      it('should get the package using a created tgz file path when has manifest but not correct version', async () => {
         const latest = await client.download('hl7.terminology.r4', 'no-versions');
         expect(loggerSpy.getLastMessage('info')).toBe(
           'Attempting to download hl7.terminology.r4#no-versions from https://packages.fhir.org/hl7.terminology.r4/-/hl7.terminology.r4-no-versions.tgz'
         );
         expect(loggerSpy.getAllMessages('error')).toHaveLength(0);
-        expect(latest).toBeDefined();
         expect(latest).toBeInstanceOf(Readable);
         expect(latest.read()).toBe('no-versions-test-data');
-      });
-
-      it('should get the package using a created tgz file path when has manifest but not correct version', async () => {
-        const latest = await client.download('hl7.terminology.r4', '1.1.5');
-        expect(loggerSpy.getLastMessage('info')).toBe(
-          'Attempting to download hl7.terminology.r4#1.1.5 from https://packages.fhir.org/hl7.terminology.r4/-/hl7.terminology.r4-1.1.5.tgz'
-        );
-        expect(loggerSpy.getAllMessages('error')).toHaveLength(0);
-        expect(latest).toBeDefined();
-        expect(latest).toBeInstanceOf(Readable);
-        expect(latest.read()).toBe('1.1.5-test-data');
       });
 
       it('should get the package using a created tgz file path when has manifest but not dist', async () => {
@@ -289,45 +262,47 @@ describe('NPMRegistryClient', () => {
           'Attempting to download hl7.terminology.no-dist#no-dist-version from https://packages.fhir.org/hl7.terminology.no-dist/-/hl7.terminology.no-dist-no-dist-version.tgz'
         );
         expect(loggerSpy.getAllMessages('error')).toHaveLength(0);
-        expect(latest).toBeDefined();
         expect(latest).toBeInstanceOf(Readable);
         expect(latest.read()).toBe('no-dist-test-data');
       });
 
       it('should get the package using a created tgz file path when has manifest but not tarball in it', async () => {
-        const latest = await client.download('hl7.terminology.r4', 'no-versions');
+        const latest = await client.download('hl7.terminology.r4.no.tarball', 'no-tarball-version');
         expect(loggerSpy.getLastMessage('info')).toBe(
-          'Attempting to download hl7.terminology.r4#no-versions from https://packages.fhir.org/hl7.terminology.r4/-/hl7.terminology.r4-no-versions.tgz'
+          'Attempting to download hl7.terminology.r4.no.tarball#no-tarball-version from https://packages.fhir.org/hl7.terminology.r4.no.tarball/-/hl7.terminology.r4.no.tarball-no-tarball-version.tgz'
         );
         expect(loggerSpy.getAllMessages('error')).toHaveLength(0);
-        expect(latest).toBeDefined();
         expect(latest).toBeInstanceOf(Readable);
-        expect(latest.read()).toBe('no-versions-test-data');
+        expect(latest.read()).toBe('no-tarball-test-data');
       });
 
       it('should get the package using a created tgz file path when has manifest with tarball in it but tarball is incorrect type', async () => {
         const latest = client.download('hl7.terminology.r4', 'tarbal-wrong-type-test');
-        expect(latest).rejects.toThrow(Error);
-        expect(latest).rejects.toThrow('Not found');
+        // no message logged
+        await expect(latest).rejects.toThrow(Error);
+        await expect(latest).rejects.toThrow('Not found');
       });
 
       it('should throw error if no name given for download method', async () => {
         const latest = client.download('', '5.5.5');
-        expect(latest).rejects.toThrow(Error);
-        expect(latest).rejects.toThrow('Not found');
+        // no message logged
+        await expect(latest).rejects.toThrow(Error);
+        await expect(latest).rejects.toThrow('Not found');
       });
 
       it('should throw error if no name given for download method', async () => {
         const latest = client.download('hl7.terminology.r4', '');
-        expect(latest).rejects.toThrow(Error);
-        expect(latest).rejects.toThrow('Not found');
+        // no message logged
+        await expect(latest).rejects.toThrow(Error);
+        await expect(latest).rejects.toThrow('Not found');
       });
 
       it('should throw error if no endpoint given for download method', async () => {
         const emptyClient = new NPMRegistryClient('', { log: loggerSpy.log });
         const latest = emptyClient.download('hl7.terminology.r4', '1.2.3-test');
-        expect(latest).rejects.toThrow(Error);
-        expect(latest).rejects.toThrow('Not found');
+        // no message logged
+        await expect(latest).rejects.toThrow(Error);
+        await expect(latest).rejects.toThrow('Not found');
       });
     });
 
@@ -346,7 +321,7 @@ describe('NPMRegistryClient', () => {
             };
           } else if (uri === 'https://packages.simplifier.net/hl7.terminology.r4/1.1.2') {
             return {
-              status: 400,
+              status: 404,
               data: Readable.from(['1.1.2-test-data'])
             };
           } else if (uri === 'https://packages.simplifier.net/hl7.terminology.r4/1.1.1') {
@@ -364,18 +339,10 @@ describe('NPMRegistryClient', () => {
               status: 200
             };
           } else if (
-            uri === 'https://packages.fhir.org/hl7.terminology.r4/-/hl7.terminology.r4-1.1.5.tgz'
+            uri === 'https://packages.fhir.org/hl7.terminology.r4/-/hl7.terminology.r4-5.5.5.tgz'
           ) {
             return {
-              status: 200,
-              data: Readable.from(['1.1.5-test-data'])
-            };
-          } else if (
-            uri ===
-            'https://packages.fhir.org/hl7.terminology.r4.no.manifest/-/hl7.terminology.r4.no.manifest-1.1.4.tgz'
-          ) {
-            return {
-              status: 200,
+              status: 'wrong-type',
               data: Readable.from(['1.1.4-no-manifest-test-data'])
             };
           } else if (uri === 'https://packages.simplifier.net/hl7.terminology.r4/5.5.6-test') {
@@ -398,15 +365,14 @@ describe('NPMRegistryClient', () => {
           'Attempting to download hl7.terminology.r4#1.2.3-test from https://packages.simplifier.net/hl7.terminology.r4/1.2.3-test'
         );
         expect(loggerSpy.getAllMessages('error')).toHaveLength(0);
-        expect(latest).toBeDefined();
         expect(latest).toBeInstanceOf(Readable);
         expect(latest.read()).toBe('1.2.3-test-data');
       });
 
       it('should throw error when trying to get the version of a package on the packages server but status is not 200', async () => {
         const latest = client.download('hl7.terminology.r4', '1.1.2');
-        expect(latest).rejects.toThrow(Error);
-        expect(latest).rejects.toThrow(
+        await expect(latest).rejects.toThrow(Error);
+        await expect(latest).rejects.toThrow(
           'Failed to download hl7.terminology.r4#1.1.2 from https://packages.simplifier.net/hl7.terminology.r4/1.1.2'
         );
       });
@@ -422,26 +388,30 @@ describe('NPMRegistryClient', () => {
 
       it('should throw error when trying to get the version of a package on the server but returns 200 status and data of incorrect type', async () => {
         const latest = client.download('hl7.terminology.r4', '2.2.2');
-        expect(latest).rejects.toThrow(
+        await expect(latest).rejects.toThrow(
           'Failed to download hl7.terminology.r4#2.2.2 from https://packages.simplifier.net/hl7.terminology.r4/2.2.2'
         );
       });
 
       it('should throw error when trying to get the version of a package on the server but returns 200 status and no data field', async () => {
         const latest = client.download('hl7.terminology.r4', '3.3.3');
-        expect(latest).rejects.toThrow(
+        await expect(latest).rejects.toThrow(
           'Failed to download hl7.terminology.r4#3.3.3 from https://packages.simplifier.net/hl7.terminology.r4/3.3.3'
         );
       });
 
       it('should throw error when trying to get the version of a package on the server but returns status with incorrect type', async () => {
         const latest = client.download('hl7.terminology.r4', '5.5.5');
-        expect(latest).rejects.toThrow('Not found');
+        await expect(latest).rejects.toThrow(
+          'Failed to download hl7.terminology.r4#5.5.5 from https://packages.fhir.org/hl7.terminology.r4/-/hl7.terminology.r4-5.5.5.tgz'
+        );
       });
 
       it('should throw error when trying to get the version of a package on the server but returns no status', async () => {
-        const latest = client.download('hl7.terminology.r4', '5.5.6');
-        expect(latest).rejects.toThrow('Not found');
+        const latest = client.download('hl7.terminology.r4', '5.5.6-test');
+        await expect(latest).rejects.toThrow(
+          'Failed to download hl7.terminology.r4#5.5.6-test from https://packages.simplifier.net/hl7.terminology.r4/5.5.6-test'
+        );
       });
     });
   });
