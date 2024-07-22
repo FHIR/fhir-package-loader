@@ -239,6 +239,7 @@ describe('DiskBasedPackageCache', () => {
       expect(resource.id).toBe('MyPatient');
       expect(loggerSpy.getAllLogs('error')).toHaveLength(0);
     });
+
     it('should return a resource with an xml path where xml was converted to a resource', () => {
       const totalPath = path.resolve(local1Folder, 'StructureDefinition-true-false.xml');
       const resource = cache.getResourceAtPath(totalPath);
@@ -246,6 +247,34 @@ describe('DiskBasedPackageCache', () => {
       expect(resource.id).toBe('true-false');
       expect(resource.xml).toBeUndefined();
       expect(loggerSpy.getAllLogs('error')).toHaveLength(0);
+    });
+
+    it('should throw error when path points to a xml file that does not exist', () => {
+      const totalPath = path.resolve(local1Folder, 'example-file-that-doesnt-exist.xml');
+      expect(() => {
+        cache.getResourceAtPath(totalPath);
+      }).toThrow(/Failed to get XML resource at path/);
+    });
+
+    it('should throw error when path points to a json file that does not exist', () => {
+      const totalPath = path.resolve(local1Folder, 'example-file-that-doesnt-exist.json');
+      expect(() => {
+        cache.getResourceAtPath(totalPath);
+      }).toThrow(/Failed to get JSON resource at path/);
+    });
+
+    it('should throw error when path points to an invalid file type that is not json or xml', () => {
+      const totalPath = path.resolve(local1Folder, 'example-file-that-doesnt-exist.txt');
+      expect(() => {
+        cache.getResourceAtPath(totalPath);
+      }).toThrow(/Failed to find XML or JSON file/);
+    });
+
+    it('should throw error when path points to a file that does not exist', () => {
+      const totalPath = path.resolve(local1Folder, '');
+      expect(() => {
+        cache.getResourceAtPath(totalPath);
+      }).toThrow(/Failed to find XML or JSON file/);
     });
   });
 });
