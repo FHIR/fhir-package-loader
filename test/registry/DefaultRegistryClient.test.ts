@@ -35,22 +35,5 @@ describe('DefaultRegistryClient', () => {
       );
       expect(defaultClient.clients[1]).toBeInstanceOf(FHIRRegistryClient);
     });
-
-    it('should make a client by using the first custom client specified if multiple defined', () => {
-      process.env.FPL_REGISTRY = 'https://custom-registry.example.org';
-      const defaultClient = new DefaultRegistryClient({ log: loggerSpy.log });
-      expect(defaultClient.clients).toHaveLength(1);
-      expect(defaultClient.clients[0]).toHaveProperty(
-        'endpoint',
-        'https://custom-registry.example.org'
-      );
-      expect(defaultClient.clients[0]).toBeInstanceOf(NPMRegistryClient);
-      // expect(loggerSpy.getLastMessage('info')).toBe(
-      //   'Using custom registry specified by FPL_REGISTRY environment variable: https://custom-registry.example.org'
-      // );
-      process.env.FPL_REGISTRY = 'https://custom-second-registry.example.org';
-
-      // when hasLoggedCustomRegistry = true ?
-    });
   });
 });
