@@ -170,8 +170,7 @@ export class DiskBasedPackageCache implements PackageCache {
         } catch {
           throw new Error(`Failed to get JSON resource at path ${resourcePath}`);
         }
-      }
-      else {
+      } else {
         throw new Error(`Failed to find XML or JSON file at path ${resourcePath}`);
       }
       this.lruCache.set(resourcePath, resource);
