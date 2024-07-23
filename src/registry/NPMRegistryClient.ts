@@ -1,6 +1,8 @@
 import { Readable } from 'stream';
 import { LogFunction, axiosGet } from '../utils';
 import { RegistryClient, RegistryClientOptions } from './RegistryClient';
+import { IncorrectWildcardVersionFormatError } from '../errors';
+import { lookUpLatestVersion, lookUpLatestPatchVersion } from './registryClientHelper';
 
 export class NPMRegistryClient implements RegistryClient {
   public endpoint: string;
@@ -13,6 +15,15 @@ export class NPMRegistryClient implements RegistryClient {
   }
 
   async download(name: string, version: string): Promise<Readable> {
+    // Resolve version if necessary
+    if (version === 'latest') {
+      version = await lookUpLatestVersion(this.endpoint, name);
+    } else if (/^\d+\.\d+\.x$/.test(version)) {
+      version = await lookUpLatestPatchVersion(this.endpoint, name, version);
+    } else if (/^\d+\.x$/.test(version)) {
+      throw new IncorrectWildcardVersionFormatError(name, version);
+    }
+
     // Get the manifest information about the package from the registry
     let url;
     try {

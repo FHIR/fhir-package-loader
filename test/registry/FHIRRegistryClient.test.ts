@@ -24,17 +24,6 @@ const TERM_PKG_RESPONSE = {
       fhirVersion: 'R4',
       url: 'https://packages.simplifier.net/hl7.terminology.r4/1.2.3-test'
     },
-    '1.1.0': {
-      name: 'hl7.terminology.r4',
-      version: '1.1.0',
-      description: 'None.',
-      dist: {
-        shasum: '1a1467bce19aace45771e0a51ef2ad9c3fe749820',
-        tarball: 'https://packages.simplifier.net/hl7.terminology.r4/1.1.0'
-      },
-      fhirVersion: 'R4',
-      url: 'https://packages.simplifier.net/hl7.terminology.r4/1.1.0'
-    },
     '1.1.2': {
       name: 'hl7.terminology.r4',
       version: '1.1.2',
@@ -82,12 +71,12 @@ describe('FHIRRegistryClient', () => {
         axiosSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string): any => {
           if (uri === 'https://packages.fhir.org/hl7.terminology.r4') {
             return { data: TERM_PKG_RESPONSE };
-          } else if (uri === 'https://packages.fhir.org/hl7.terminology.r4/7.7.7') {
+          } else if (uri === 'https://packages.fhir.org/hl7.terminology.r4/1.1.2') {
             return {
               status: 404,
-              data: Readable.from(['3.3.3-test-data'])
+              data: Readable.from(['1.1.2-test-data'])
             };
-          } else if (uri === 'https://packages.fhir.org/hl7.terminology.r4/7.7.9') {
+          } else if (uri === 'https://packages.fhir.org/hl7.terminology.r4/1.1.1') {
             return {
               status: 200,
               data: null
@@ -103,60 +92,149 @@ describe('FHIRRegistryClient', () => {
       });
 
       it('should throw error when trying to get the version of a package on the packages server but status is not 200', async () => {
-        const latest = client.download('hl7.terminology.r4', '7.7.7');
+        const latest = client.download('hl7.terminology.r4', '1.1.2');
         expect(loggerSpy.getLastMessage('info')).toBe(
-          'Attempting to download hl7.terminology.r4#7.7.7 from https://packages.fhir.org/hl7.terminology.r4/7.7.7'
+          'Attempting to download hl7.terminology.r4#1.1.2 from https://packages.fhir.org/hl7.terminology.r4/1.1.2'
         );
         await expect(latest).rejects.toThrow(Error);
         await expect(latest).rejects.toThrow(
-          'Failed to download hl7.terminology.r4#7.7.7 from https://packages.fhir.org/hl7.terminology.r4/7.7.7'
+          'Failed to download hl7.terminology.r4#1.1.2 from https://packages.fhir.org/hl7.terminology.r4/1.1.2'
         );
       });
 
       it('should throw error when trying to get the version of a package on the packages server but returns no data', async () => {
         // Note: don't know of a scenario where this would occur but testing for completeness.
-        const latest = client.download('hl7.terminology.r4', '7.7.9');
+        const latest = client.download('hl7.terminology.r4', '1.1.1');
         expect(loggerSpy.getLastMessage('info')).toBe(
-          'Attempting to download hl7.terminology.r4#7.7.9 from https://packages.fhir.org/hl7.terminology.r4/7.7.9'
+          'Attempting to download hl7.terminology.r4#1.1.1 from https://packages.fhir.org/hl7.terminology.r4/1.1.1'
         );
         await expect(latest).rejects.toThrow(Error);
         await expect(latest).rejects.toThrow(
-          'Failed to download hl7.terminology.r4#7.7.9 from https://packages.fhir.org/hl7.terminology.r4/7.7.9'
+          'Failed to download hl7.terminology.r4#1.1.1 from https://packages.fhir.org/hl7.terminology.r4/1.1.1'
         );
       });
     });
 
     describe('#downloadSpecificVersion', () => {
-      beforeEach(() => {
-        loggerSpy.reset();
-      });
-      beforeAll(() => {
-        axiosSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string): any => {
-          if (uri === 'https://packages.fhir.org/hl7.terminology.r4') {
-            return { data: TERM_PKG_RESPONSE };
-          } else if (uri === 'https://packages.fhir.org/hl7.terminology.r4/3.3.3') {
-            return {
-              status: 200,
-              data: Readable.from(['3.3.3-test-data'])
-            };
-          } else {
-            throw new Error('Not found');
-          }
+      describe('#CreateURL', () => {
+        beforeEach(() => {
+          loggerSpy.reset();
+        });
+        beforeAll(() => {
+          axiosSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string): any => {
+            if (uri === 'https://packages.fhir.org/hl7.terminology.r4') {
+              return { data: TERM_PKG_RESPONSE };
+            } else {
+              throw new Error('Not found');
+            }
+          });
+        });
+
+        afterAll(() => {
+          axiosSpy.mockRestore();
+        });
+
+        it('should throw error if no name given for download method', async () => {
+          const latest = client.download('', '5.5.5');
+          // no message logged
+          await expect(latest).rejects.toThrow(Error);
+          await expect(latest).rejects.toThrow('Not found');
+        });
+
+        it('should throw error if no version given for download method', async () => {
+          const latest = client.download('hl7.terminology.r4', '');
+          // no message logged
+          await expect(latest).rejects.toThrow(Error);
+          await expect(latest).rejects.toThrow('Not found');
+        });
+
+        it('should throw error if no endpoint given for download method', async () => {
+          const emptyClient = new FHIRRegistryClient('', { log: loggerSpy.log });
+          const latest = emptyClient.download('hl7.terminology.r4', '1.2.3-test');
+          // no message logged
+          await expect(latest).rejects.toThrow(Error);
+          await expect(latest).rejects.toThrow('Not found');
         });
       });
 
-      afterAll(() => {
-        axiosSpy.mockRestore();
-      });
+      describe('#DownloadFromURL', () => {
+        beforeEach(() => {
+          loggerSpy.reset();
+        });
+        beforeAll(() => {
+          axiosSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string): any => {
+            if (uri === 'https://packages.fhir.org/hl7.terminology.r4') {
+              return { data: TERM_PKG_RESPONSE };
+            } else if (uri === 'https://packages.fhir.org/hl7.terminology.r4/1.2.3-test') {
+              return {
+                status: 200,
+                data: Readable.from(['1.2.3-test-data'])
+              };
+            } else if (uri === 'https://packages.fhir.org/hl7.terminology.r4/2.2.2') {
+              return {
+                status: 200,
+                data: ''
+              };
+            } else if (uri === 'https://packages.fhir.org/hl7.terminology.r4/3.3.3') {
+              return {
+                status: 200
+              };
+            } else if (uri === 'https://packages.fhir.org/hl7.terminology.r4/5.5.5') {
+              return {
+                status: 'wrong-type',
+                data: Readable.from(['1.2.4-no-manifest-test-data'])
+              };
+            } else if (uri === 'https://packages.fhir.org/hl7.terminology.r4/5.5.6-test') {
+              return {
+                data: Readable.from(['5.5.6-test-data'])
+              };
+            } else {
+              throw new Error('Not found');
+            }
+          });
+        });
 
-      it('should get the specific version of a package on the packages server', async () => {
-        const latest = await client.download('hl7.terminology.r4', '3.3.3');
-        expect(loggerSpy.getLastMessage('info')).toBe(
-          'Attempting to download hl7.terminology.r4#3.3.3 from https://packages.fhir.org/hl7.terminology.r4/3.3.3'
-        );
-        expect(loggerSpy.getAllMessages('error')).toHaveLength(0);
-        expect(latest).toBeInstanceOf(Readable);
-        expect(latest.read()).toBe('3.3.3-test-data');
+        afterAll(() => {
+          axiosSpy.mockRestore();
+        });
+
+        it('should get the data of the package when 200 response', async () => {
+          const latest = await client.download('hl7.terminology.r4', '1.2.3-test');
+          expect(loggerSpy.getLastMessage('info')).toBe(
+            'Attempting to download hl7.terminology.r4#1.2.3-test from https://packages.fhir.org/hl7.terminology.r4/1.2.3-test'
+          );
+          expect(loggerSpy.getAllMessages('error')).toHaveLength(0);
+          expect(latest).toBeInstanceOf(Readable);
+          expect(latest.read()).toBe('1.2.3-test-data');
+        });
+
+        it('should throw error when trying to get the version of a package on the server but returns 200 status and data of incorrect type', async () => {
+          const latest = client.download('hl7.terminology.r4', '2.2.2');
+          await expect(latest).rejects.toThrow(
+            'Failed to download hl7.terminology.r4#2.2.2 from https://packages.fhir.org/hl7.terminology.r4/2.2.2'
+          );
+        });
+
+        it('should throw error when trying to get the version of a package on the server but returns 200 status and no data field', async () => {
+          const latest = client.download('hl7.terminology.r4', '3.3.3');
+          await expect(latest).rejects.toThrow(
+            'Failed to download hl7.terminology.r4#3.3.3 from https://packages.fhir.org/hl7.terminology.r4/3.3.3'
+          );
+        });
+
+        it('should throw error when trying to get the version of a package on the server but returns status with incorrect type', async () => {
+          const latest = client.download('hl7.terminology.r4', '5.5.5');
+          await expect(latest).rejects.toThrow(
+            'Failed to download hl7.terminology.r4#5.5.5 from https://packages.fhir.org/hl7.terminology.r4/5.5.5'
+          );
+        });
+
+        it('should throw error when trying to get the version of a package on the server but returns no status', async () => {
+          const latest = client.download('hl7.terminology.r4', '5.5.6-test');
+          await expect(latest).rejects.toThrow(
+            'Failed to download hl7.terminology.r4#5.5.6-test from https://packages.fhir.org/hl7.terminology.r4/5.5.6-test'
+          );
+        });
       });
     });
 
