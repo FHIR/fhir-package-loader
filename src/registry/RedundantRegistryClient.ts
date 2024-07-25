@@ -4,7 +4,10 @@ import { RegistryClient, RegistryClientOptions } from './RegistryClient';
 
 export class RedundantRegistryClient implements RegistryClient {
   protected log: LogFunction;
-  constructor(private clients: RegistryClient[], options: RegistryClientOptions = {}) {
+  constructor(
+    private clients: RegistryClient[],
+    options: RegistryClientOptions = {}
+  ) {
     this.log = options.log ?? (() => {});
   }
 
