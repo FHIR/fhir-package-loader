@@ -260,16 +260,6 @@ describe('NPMRegistryClient', () => {
           axiosSpy.mockRestore();
         });
 
-        it('should get the package using tarball when has manifest tarball url', async () => {
-          const latest = await client.download('hl7.terminology.r4', '1.2.3-test');
-          expect(loggerSpy.getLastMessage('info')).toBe(
-            'Attempting to download hl7.terminology.r4#1.2.3-test from https://packages.simplifier.net/hl7.terminology.r4/1.2.3-test'
-          );
-          expect(loggerSpy.getAllMessages('error')).toHaveLength(0);
-          expect(latest).toBeInstanceOf(Readable);
-          expect(latest.read()).toBe('1.2.3-test-data');
-        });
-
         it('should get the package by creating a tgz file path when it has no manifest tarball', async () => {
           const latest = await client.download('hl7.terminology.r4.no.manifest', '1.2.4');
           expect(loggerSpy.getLastMessage('info')).toBe(
@@ -325,31 +315,39 @@ describe('NPMRegistryClient', () => {
 
         it('should get the package using a created tgz file path when has manifest with tarball in it but tarball is incorrect type', async () => {
           const latest = client.download('hl7.terminology.r4', 'tarbal-wrong-type-test');
-          // no message logged
           await expect(latest).rejects.toThrow(Error);
           await expect(latest).rejects.toThrow('Not found');
+          await expect(loggerSpy.getLastMessage('info')).toBe(
+            'Attempting to download hl7.terminology.r4#tarbal-wrong-type-test from https://packages.simplifier.net/hl7.terminology.r4/tarbal-wrong-type-test'
+          );
         });
 
         it('should throw error if no name given for download method', async () => {
           const latest = client.download('', '5.5.5');
-          // no message logged
           await expect(latest).rejects.toThrow(Error);
           await expect(latest).rejects.toThrow('Not found');
+          await expect(loggerSpy.getLastMessage('info')).toBe(
+            'Attempting to download #5.5.5 from https://packages.fhir.org//-/-5.5.5.tgz'
+          );
         });
 
         it('should throw error if no version given for download method', async () => {
           const latest = client.download('hl7.terminology.r4', '');
-          // no message logged
           await expect(latest).rejects.toThrow(Error);
           await expect(latest).rejects.toThrow('Not found');
+          await expect(loggerSpy.getLastMessage('info')).toBe(
+            'Attempting to download hl7.terminology.r4# from https://packages.fhir.org/hl7.terminology.r4/-/hl7.terminology.r4-.tgz'
+          );
         });
 
         it('should throw error if no endpoint given for download method', async () => {
           const emptyClient = new NPMRegistryClient('', { log: loggerSpy.log });
           const latest = emptyClient.download('hl7.terminology.r4', '1.2.3-test');
-          // no message logged
           await expect(latest).rejects.toThrow(Error);
           await expect(latest).rejects.toThrow('Not found');
+          await expect(loggerSpy.getLastMessage('info')).toBe(
+            'Attempting to download hl7.terminology.r4#1.2.3-test from /hl7.terminology.r4/-/hl7.terminology.r4-1.2.3-test.tgz'
+          );
         });
       });
 

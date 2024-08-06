@@ -2,7 +2,7 @@ import { Readable } from 'stream';
 import { LogFunction, axiosGet } from '../utils';
 import { RegistryClient, RegistryClientOptions } from './RegistryClient';
 import { IncorrectWildcardVersionFormatError } from '../errors';
-import { lookUpLatestVersion, lookUpLatestPatchVersion } from './registryClientHelper';
+import { lookUpLatestVersion, lookUpLatestPatchVersion } from './utils';
 
 export class NPMRegistryClient implements RegistryClient {
   public endpoint: string;

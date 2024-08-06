@@ -35,5 +35,15 @@ describe('DefaultRegistryClient', () => {
       );
       expect(defaultClient.clients[1]).toBeInstanceOf(FHIRRegistryClient);
     });
+
+    it('should only log custom registry message once when multiple clients are created', () => {
+      process.env.FPL_REGISTRY = 'https://custom-registry.example.org';
+      new DefaultRegistryClient({ log: loggerSpy.log });
+      new DefaultRegistryClient({ log: loggerSpy.log });
+      expect(loggerSpy.getLastMessage('info')).toBe(
+        'Using custom registry specified by FPL_REGISTRY environment variable: https://custom-registry.example.org'
+      );
+      expect(loggerSpy.getAllMessages('info')).toHaveLength(1);
+    });
   });
 });
