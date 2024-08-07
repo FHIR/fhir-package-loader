@@ -111,7 +111,7 @@ describe('FHIRRegistryClient', () => {
 
       it('should throw error if no name given for download method', async () => {
         const latest = client.download('', '5.5.5');
-        await expect(loggerSpy.getLastMessage('info')).toBe(
+        expect(loggerSpy.getLastMessage('info')).toBe(
           'Attempting to download #5.5.5 from https://packages.fhir.org//5.5.5'
         );
         await expect(latest).rejects.toThrow(Error);
@@ -122,7 +122,7 @@ describe('FHIRRegistryClient', () => {
         const latest = client.download('hl7.terminology.r4', '');
         await expect(latest).rejects.toThrow(Error);
         await expect(latest).rejects.toThrow('Not found');
-        await expect(loggerSpy.getLastMessage('info')).toBe(
+        expect(loggerSpy.getLastMessage('info')).toBe(
           'Attempting to download hl7.terminology.r4# from https://packages.fhir.org/hl7.terminology.r4/'
         );
       });
@@ -132,7 +132,7 @@ describe('FHIRRegistryClient', () => {
         const latest = emptyClient.download('hl7.terminology.r4', '1.2.3-test');
         await expect(latest).rejects.toThrow(Error);
         await expect(latest).rejects.toThrow('Not found');
-        await expect(loggerSpy.getLastMessage('info')).toBe(
+        expect(loggerSpy.getLastMessage('info')).toBe(
           'Attempting to download hl7.terminology.r4#1.2.3-test from /hl7.terminology.r4/1.2.3-test'
         );
       });
