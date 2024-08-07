@@ -20,6 +20,7 @@ export class BuildDotFhirDotOrgClient implements CurrentBuildClient {
     if (tarballRes?.status === 200 && tarballRes?.data) {
       return tarballRes.data;
     }
+    throw new Error(`Failed to download ${name}#${version} from ${url}`);
   }
 
   async getCurrentBuildDate(name: string, branch?: string) {
