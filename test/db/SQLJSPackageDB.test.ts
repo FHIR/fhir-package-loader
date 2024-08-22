@@ -514,17 +514,8 @@ describe('SQLJSPackageDB', () => {
       const resource = packageDb.findResourceInfo('my-value-set');
       expect(resource).toBeDefined();
       // both valueSetThree and valueSetFour have a matching id,
-      // so either packageVersion is acceptable.
-      expect(resource).toEqual(
-        expect.objectContaining({
-          resourceType: 'ValueSet',
-          id: 'my-value-set',
-          url: 'http://example.org/ValueSets/my-value-set',
-          name: 'MyValueSet',
-          packageName: 'RegularPackage',
-          packageVersion: expect.stringMatching(/^(3\.2\.2|4\.5\.6)$/)
-        })
-      );
+      // but the last resource added wins.
+      expect(resource).toEqual(expect.objectContaining(valueSetFour));
     });
 
     it('should return undefined when there are no matches', () => {
