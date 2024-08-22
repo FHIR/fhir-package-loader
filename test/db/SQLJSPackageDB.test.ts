@@ -259,7 +259,6 @@ describe('SQLJSPackageDB', () => {
           packageVersion: '3.2.2'
         })
       );
-      // ?? do we want to turn it back into a boolean, or is leaving it as a 0 good enough
     });
   });
 
@@ -514,6 +513,18 @@ describe('SQLJSPackageDB', () => {
     it('should return one resource when there is at least one match', () => {
       const resource = packageDb.findResourceInfo('my-value-set');
       expect(resource).toBeDefined();
+      // both valueSetThree and valueSetFour have a matching id,
+      // so either packageVersion is acceptable.
+      expect(resource).toEqual(
+        expect.objectContaining({
+          resourceType: 'ValueSet',
+          id: 'my-value-set',
+          url: 'http://example.org/ValueSets/my-value-set',
+          name: 'MyValueSet',
+          packageName: 'RegularPackage',
+          packageVersion: expect.stringMatching(/^(3\.2\.2|4\.5\.6)$/)
+        })
+      );
     });
 
     it('should return undefined when there are no matches', () => {
