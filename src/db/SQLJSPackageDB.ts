@@ -277,6 +277,9 @@ export class SQLJSPackageDB implements PackageDB {
       if (result.sdCharacteristics) {
         result.sdCharacteristics = JSON.parse(result.sdCharacteristics);
       }
+      if (result.sdAbstract != null) {
+        result.sdAbstract = result.sdAbstract ? true : false;
+      }
       results.push(result as ResourceInfo);
     }
     stmt.free();
