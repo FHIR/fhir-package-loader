@@ -7,6 +7,8 @@ import { DefaultRegistryClient } from '../registry';
 import { DiskBasedPackageCache } from '../cache/DiskBasedPackageCache';
 import { BasePackageLoader, BasePackageLoaderOptions } from './BasePackageLoader';
 
+// TODO: New options w/ option for overriding FHIR cache
+
 export async function defaultPackageLoader(options: BasePackageLoaderOptions) {
   return defaultPackageLoaderWithLocalResources([], options);
 }

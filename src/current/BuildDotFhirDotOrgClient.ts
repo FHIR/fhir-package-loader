@@ -1,5 +1,6 @@
 import { Readable } from 'stream';
 import { LogFunction, axiosGet } from '../utils';
+import { CurrentPackageLoadError } from '../errors';
 import { CurrentBuildClient, CurrentBuildClientOptions } from './CurrentBuildClient';
 
 export class BuildDotFhirDotOrgClient implements CurrentBuildClient {
@@ -12,7 +13,7 @@ export class BuildDotFhirDotOrgClient implements CurrentBuildClient {
     const version = branch ? `current$${branch}` : 'current';
     const baseURL = await this.getCurrentBuildBaseURL(name, branch);
     if (!baseURL) {
-      throw new Error(`Failed to download ${name}#${version}`);
+      throw new CurrentPackageLoadError(`${name}#${version}`);
     }
     const url = `${baseURL}/package.tgz`;
     this.log('info', `Attempting to download ${name}#${version} from ${url}`);
