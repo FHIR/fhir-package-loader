@@ -7,15 +7,15 @@ import { Readable } from 'stream';
 describe('BuildDotFhirDotOrgClient', () => {
   const client = new BuildDotFhirDotOrgClient({ log: loggerSpy.log });
   let axiosSpy: jest.SpyInstance;
-  
+
   describe('#downloadCurrentBuild', () => {
-    
+
     describe('currentBuildNoBranch', () => {
-      
+
       beforeEach(() => {
         loggerSpy.reset();
       });
-      
+
       beforeAll(() => {
         axiosSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string): any => {
           if (uri === 'https://build.fhir.org/ig/qas.json') {
@@ -77,14 +77,14 @@ describe('BuildDotFhirDotOrgClient', () => {
                 },
               ]
             };
-          } else if ( 
+          } else if (
             uri === 'https://build.fhir.org/ig/HL7/simple-US-Core-R4/branches/main/package.tgz'
           ) {
             return {
               status: 200,
-              data: Readable.from(['simple zipfile']) 
+              data: Readable.from(['simple zipfile'])
             };
-          } else if ( 
+          } else if (
             uri === 'https://build.fhir.org/ig/sushi/sushi-test/branches/master/package.tgz'
           ) {
             return {
@@ -92,7 +92,7 @@ describe('BuildDotFhirDotOrgClient', () => {
               data: Readable.from(['sushi-test master zip file'])
             };
           } else if (
-            uri === 'https://build.fhir.org/ig/HL7/US-Core-R4/branches/main/package.tgz' 
+            uri === 'https://build.fhir.org/ig/HL7/US-Core-R4/branches/main/package.tgz'
           ) {
             return {
               status: 200,
@@ -101,59 +101,59 @@ describe('BuildDotFhirDotOrgClient', () => {
           }
         });
       });
-      
+
       afterAll(() => {
         axiosSpy.mockRestore();
       });
-      
+
       it ('should download the most current package from the main branch when no branch given', async () => {
         const latest = await client.downloadCurrentBuild('simple.hl7.fhir.us.core.r4', null);
         expect(loggerSpy.getLastMessage('info')).toBe('Attempting to download simple.hl7.fhir.us.core.r4#current from https://build.fhir.org/ig/HL7/simple-US-Core-R4/branches/main/package.tgz');
         expect(latest).toBeInstanceOf(Readable);
         expect(latest.read()).toBe('simple zipfile');
       });
-      
+
       it ('should try to download the current package from master branch if not specified', async () => {
         const latest = await client.downloadCurrentBuild('sushi-test', null);
         expect(loggerSpy.getLastMessage('info')).toBe('Attempting to download sushi-test#current from https://build.fhir.org/ig/sushi/sushi-test/branches/master/package.tgz');
         expect(latest).toBeInstanceOf(Readable);
         expect(latest.read()).toBe('sushi-test master zip file');
       });
-      
+
       it ('should download the most current package when a current package version has multiple versions', async () => {
         const latest = await client.downloadCurrentBuild('hl7.fhir.us.core.r4', null);
         expect(loggerSpy.getLastMessage('info')).toBe('Attempting to download hl7.fhir.us.core.r4#current from https://build.fhir.org/ig/HL7/US-Core-R4/branches/main/package.tgz');
         expect(latest).toBeInstanceOf(Readable);
         expect(latest.read()).toBe('current multiple version zip file');
       });
-      
+
       it ('should throw error when invalid package name (unknown name) given', async () => {
         const latest = client.downloadCurrentBuild('invalid.pkg.name', null);
-        await expect(latest).rejects.toThrow(/Failed to download invalid.pkg.name#current/);
+        await expect(latest).rejects.toThrow(/The package invalid.pkg.name#current is not available/);
       });
-      
+
       it ('should throw error when invalid package name (empty string) given', async () => {
         const latest = client.downloadCurrentBuild('', null);
-        await expect(latest).rejects.toThrow(/Failed to download #current/);
+        await expect(latest).rejects.toThrow(/The package #current is not available/);
       });
-      
+
       it ('should not try to download the latest package from a branch that is not main/master if one is not available', async () => {
         const latest = client.downloadCurrentBuild('sushi-no-main', null);
-        await expect(latest).rejects.toThrow('Failed to download sushi-no-main#current');
+        await expect(latest).rejects.toThrow(/The package sushi-no-main#current is not available/);
       });
-      
+
       it ('should throw error if able to find current build base url, but downloading does not find matching package', async () => {
         const latest = client.downloadCurrentBuild('sushi-test-no-download', null);
         await expect(latest).rejects.toThrow('Failed to download sushi-test-no-download#current from https://build.fhir.org/ig/sushi/sushi-test-no-download/branches/master/package.tgz');
       });
     });
-    
+
     describe('currentBuildGivenBranch', () => {
-      
+
       beforeEach(() => {
         loggerSpy.reset();
       });
-      
+
       beforeAll(() => {
         axiosSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string): any => {
           if (uri === 'https://build.fhir.org/ig/qas.json') {
@@ -183,7 +183,7 @@ describe('BuildDotFhirDotOrgClient', () => {
               status: 200,
               data: Readable.from(['zipfile'])
             };
-            
+
           } else if (
             uri === 'https://build.fhir.org/ig/sushi/simple-test/branches/testbranchoneversion/package.tgz'
           ) {
@@ -194,42 +194,42 @@ describe('BuildDotFhirDotOrgClient', () => {
           }
         });
       });
-      
+
       afterAll(() => {
         axiosSpy.mockRestore();
       });
-      
+
       it ('should download the package when branch name given', async () => {
         const latest = await client.downloadCurrentBuild('sushi-test', 'testbranch');
         expect(loggerSpy.getLastMessage('info')).toBe('Attempting to download sushi-test#current$testbranch from https://build.fhir.org/ig/sushi/sushi-test/branches/testbranch/package.tgz');
         expect(latest).toBeInstanceOf(Readable);
         expect(latest.read()).toBe('zipfile');
       });
-      
+
       it ('should try to download the most recent branch-specific package when branch name given and multiple versions', async () => {
         const latest = await client.downloadCurrentBuild('simple-test', 'testbranchoneversion');
         expect(loggerSpy.getLastMessage('info')).toBe('Attempting to download simple-test#current$testbranchoneversion from https://build.fhir.org/ig/sushi/simple-test/branches/testbranchoneversion/package.tgz');
         expect(latest).toBeInstanceOf(Readable);
         expect(latest.read()).toBe('simple test one version branch');
       });
-      
+
       it ('should throw error when invalid branch name (branch not available) given', async () => {
         const latest = client.downloadCurrentBuild('sushi-test', 'invalidbranchname');
-        await expect(latest).rejects.toThrow('Failed to download sushi-test#current$invalidbranchname');
+        await expect(latest).rejects.toThrow(/The package sushi-test#current\$invalidbranchname is not available/);
       });
-      
+
       it ('should throw error when invalid branch name (branch empty string) given', async () => {
         const latest = client.downloadCurrentBuild('sushi-test', '');
-        await expect(latest).rejects.toThrow('Failed to download sushi-test#current');
+        await expect(latest).rejects.toThrow(/The package sushi-test#current is not available/);
       });
     });
-    
+
     describe('invalidBuild', () => {
-      
+
       beforeEach(() => {
         loggerSpy.reset();
       });
-      
+
       beforeAll(() => {
         axiosSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string): any => {
           if (uri === 'https://build.fhir.org/ig/qas.json') {
@@ -268,33 +268,33 @@ describe('BuildDotFhirDotOrgClient', () => {
           }
         });
       });
-      
+
       afterAll(() => {
         axiosSpy.mockRestore();
       });
-      
+
       it ('should throw error if download has 404 status', async () => {
         const latest = client.downloadCurrentBuild('sushi-test-bad-status', null);
         await expect(latest).rejects.toThrow('Failed to download sushi-test-bad-status#current from https://build.fhir.org/ig/sushi/sushi-test-bad-status/branches/master/package.tgz');
       });
-      
+
       it ('should throw error if download has no data', async () => {
         const latest = client.downloadCurrentBuild('sushi-test-no-data', null);
         await expect(latest).rejects.toThrow('Failed to download sushi-test-no-data#current from https://build.fhir.org/ig/sushi/sushi-test-no-data/branches/master/package.tgz');
       });
-      
+
       it ('should throw error if download is unsuccessful', async () => {
         const latest = client.downloadCurrentBuild('test-nodownload', null);
-        await expect(latest).rejects.toThrow('Failed to download test-nodownload#current');
+        await expect(latest).rejects.toThrow(/The package test-nodownload#current is not available/);
       });
     });
-    
+
     describe('#getCurrentBuildDate', () => {
-      
+
       beforeEach(() => {
         loggerSpy.reset();
       });
-      
+
       beforeAll(() => {
         axiosSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string): any => {
           if (uri === 'https://build.fhir.org/ig/qas.json') {
@@ -355,32 +355,32 @@ describe('BuildDotFhirDotOrgClient', () => {
           }
         });
       });
-      
+
       afterAll(() => {
         axiosSpy.mockRestore();
       });
 
-      
+
       it ('should get date from package main/master when no branch given', async () => {
         const latest = await client.getCurrentBuildDate('hl7.fhir.us.core.r4');
         expect(latest).toBe('20200413230227');
       });
-      
+
       it ('should get date from package from branch when branch is given', async () => {
         const latest = await client.getCurrentBuildDate('sushi-test', 'testbranch');
         expect(latest).toBe('20240413230227');
       });
-      
+
       it ('should return undefined when can not find current build base url ', async () => {
         const latest = await client.getCurrentBuildDate('wont.find.this.package.name');
         expect(latest).toBeUndefined();
       });
-      
+
       it ('should return undefined when can find build base url, but no manifest found', async () => {
         const latest = await client.getCurrentBuildDate('sushi-test-package-exists');
         expect(latest).toBeUndefined();
       });
-      
+
       it ('should return undefined when can find build base url, but manifest.data is null', async () => {
         const latest = await client.getCurrentBuildDate('sushi-test-manifest-empty');
         expect(latest).toBeUndefined();

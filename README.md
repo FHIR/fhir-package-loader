@@ -1,6 +1,6 @@
 # FHIR Package Loader
 
-FHIR Package Loader is a utility that downloads published FHIR packages from the FHIR package registry.
+FHIR Package Loader provides TypeScript/JavaScript classes for loading FHIR packages and querying them for FHIR resources. It can load FHIR packages from a local cache, the FHIR registry, an NPM registry, and/or the FHIR build server.
 
 ## FHIR Foundation Project Statement
 
@@ -13,37 +13,35 @@ FHIR Package Loader is a utility that downloads published FHIR packages from the
 
 # Usage
 
-This tool can be used directly through a command line interface (CLI) or it can be used as a dependency in another JavaScript/TypeScript project to download FHIR packages and load the contents into memory.
+FHIR Package Loader can be used directly via a command line interface (CLI) or it can be used as a dependency library in another JavaScript/TypeScript project.
 
-FHIR Package Loader requires [Node.js](https://nodejs.org/) to be installed on the user's system. Users should install Node.js 18, although other current LTS versions are also expected to work.
+The current implementation of FHIR Package Loader requires [Node.js](https://nodejs.org/) to be installed on the user's system. Users should install Node.js 18, although other current LTS versions are also expected to work. Future versions of FHIR Package Loader may provide web-friendly JavaScript implementations that do not require Node.js.
 
-Once Node.js is installed, use either of the following methods to use the FHIR Package Loader.
+## Using the FHIR Package Loader Command Line Interface (CLI)
 
-## Command Line
-
-To download and unzip FHIR packages through the command line, you can run the following command directly:
+To download and install FHIR packages through the command line, you can run the following command directly:
 
 ```sh
-npx fhir-package-loader install <package@version...> # downloads specified FHIR packages
+npx fhir-package-loader install <package#version...> # downloads specified FHIR packages
 ```
 
-_Note: `npx` comes with npm 5.2+ and higher._
+_Note: `package@version` is also supported to maintain backwards-compatibility with fhir-package-loader 1.x._
 
 `npx` will ensure you are using the latest version and will allow you to run the CLI without needing to install and manage any dependency.
 
-Alternatively, if you'd like to install the package, it can be installed globally and used as follows:
+Alternately, if you'd like to install the fhir-package-loader package, it can be installed globally:
 
 ```sh
-npm install -g fhir-package-loader # installs the package from npm
+npm install -g fhir-package-loader # installs FHIR Package Loader utility from npm
 ```
 
-After installation, the `fhir-package-loader` command line will be available on your path:
+After installation, the `fhir-package-loader` command line will be available on your path. Use the `fpl` command to invoke it:
 
 ```sh
 fpl --help # outputs information about using the command line
 fpl install --help
 
-fpl install <package@version...> # downloads specified FHIR packages
+fpl install <package#version...> # downloads specified FHIR packages
 ```
 
 With both approaches, the same commands are available. The install command allows you to specify the FHIR packages to download, along with a few additional options:
@@ -54,7 +52,7 @@ Usage: fpl install <fhirPackages...> [options]
 download and unzip specified FHIR packages
 
 Arguments:
-  fhirPackages      list of FHIR packages to load using the format packageId@packageVersion...
+  fhirPackages      list of FHIR packages to load using the format packageId#packageVersion or packageId@packageVersion
 
 Options:
   -c, --cachePath <dir>  where to save packages to and load definitions from (default is the local [FHIR cache](https://confluence.hl7.org/pages/viewpage.action?pageId=66928417#FHIRPackageCache-Location))
@@ -78,106 +76,106 @@ Commands:
   help [command]                       display help for command
 
 Examples:
-  fpl install hl7.fhir.us.core@current
-  fpl install hl7.fhir.us.core@4.0.0 hl7.fhir.us.mcode@2.0.0 --cachePath ./myProject
+  fpl install hl7.fhir.us.core#current
+  fpl install hl7.fhir.us.core#4.0.0 hl7.fhir.us.mcode@2.0.0 --cachePath ./myProject
 ```
 
-## API
+## Using FHIR Package Loader as a Library
 
-Additionally, FHIR Package Loader exposes functions that can be used to query and download packages.
+FHIR Package Loader can be used as a library to download FHIR packages, query their contents, and retrieve FHIR resources. The primary interface of interest is the `PackageLoader`:
 
-### fpl(fhirPackages[, options])
-
-The `fpl` function can be used to download FHIR packages and load their definitions.
-
-#### Parameters
-
-`fhirPackages` - An array of strings (or a comma separated string) that specifies the FHIR packages and versions to load. These can be in the format of `package#version` or `package@version`.
-
-- For example: `'hl7.fhir.us.core@4.0.0, hl7.fhir.us.mcode@2.0.0'` or `['hl7.fhir.us.core@4.0.0', 'hl7.fhir.us.mcode@2.0.0']`
-
-`options` - An object which can have the following attributes:
-
-- `cachePath` - A string that specifies where to look for already downloaded packages and download them to if they are not found. The default is the the local [FHIR cache](https://confluence.hl7.org/pages/viewpage.action?pageId=66928417#FHIRPackageCache-Location).
-
-- `log` - A function that is responsible for logging information. It takes in two strings, a level and a message, and does not return anything.
-  - For example: `log: console.log` will pass in `console.log` as the logging function and the level and message will be logged as `console.log(level, message)`
-
-#### Return Value
-
-A `Promise` that resolves to an object with the following attributes:
-
-- `defs` - A [`FHIRDefinitions`](./src/FHIRDefinitions.ts) class instances that contains any definitions loaded from the specified package(s).
-- `errors` An array of strings containing any errors detected during package loading.
-- `warnings` An array of strings containing any warnings detected during package loading.
-- `failedPackages` An array of strings containing the `package#version` of any packages that encountered an error during download or load and were not properly loaded to `defs`.
-
-### getLatestVersion(packageName[, log])
-
-The `getLatestVersion` function can be used to query the latest version of a FHIR package.
-
-#### Parameters
-
-`packageName` - A string that specifies the FHIR package to query.
-
-`log` - A function that is responsible for logging information. It takes in two strings, a level and a message, and does not return anything.
-
-#### Return Value
-
-A `Promise` that resolves to a string containing the latest version of the FHIR package.
-
-### Usage
-
-To use the API, FHIR Package Loader must be installed as a dependency of your project. To add it as a dependency, navigate to your project directory and use `npm` to install the package:
-
-```sh
-cd myProject
-npm install fhir-package-loader
-```
-
-Once installed as a dependency, you can `import` and use the API for loading FHIR packages. This function provides the same functionality you get through the CLI, but you also have access to the in memory definitions from the packages. The following example shows two ways to use the function in a project:
-
-```javascript
-import { fpl } from 'fhir-package-loader';
-
-async function myApp() {
-  // Downloads and unzips packages to FHIR cache or other specified location (if not already present)
-  await fpl(['package@version, package2@version'])
-    .then(results => {
-      // handle results
-    })
-    .catch(err => {
-      // handle thrown errors
-    });
-
-  // Similar to above, but uses options
-  await fpl(['package@version'], {
-    cachePath: '../myPackages',
-    log: console.log
-  })
-    .then(results => {
-      // handle results
-    })
-    .catch(err => {
-      // handle thrown errors
-    });
+```ts
+export interface PackageLoader {
+  loadPackage(name: string, version: string): Promise<LoadStatus>;
+  getPackageLoadStatus(name: string, version: string): LoadStatus;
+  findPackageInfos(name: string): PackageInfo[];
+  findPackageInfo(name: string, version: string): PackageInfo | undefined;
+  findPackageJSONs(name: string): any[];
+  findPackageJSON(name: string, version: string): any | undefined;
+  findResourceInfos(key: string, options?: FindResourceInfoOptions): ResourceInfo[];
+  findResourceInfo(key: string, options?: FindResourceInfoOptions): ResourceInfo | undefined;
+  findResourceJSONs(key: string, options?: FindResourceInfoOptions): any[];
+  findResourceJSON(key: string, options?: FindResourceInfoOptions): any | undefined;
+  clear(): void;
 }
 ```
 
-## Mock Out in Unit Tests
+> _NOTE: The FHIR Package Loader 1.x API is no longer supported. FHIR Package Loader 2.0 is a complete rewrite with an entirely different API._
 
-If you use `fhir-package-loader` as a dependency in your project, you can choose to mock any function from the package. This may be helpful for writing unit tests that do not need to download packages from the FHIR registry. One way to do this is using the following snippet:
+### PackageLoader Implementations
 
-```javascript
-jest.mock('fhir-package-loader', () => {
-  const original = jest.requireActual('fhir-package-loader');
-  return {
-    ...original,
-    loadDependencies: jest.fn(), // can optionally include a mock implementation
-    // any other functions to be mocked out
-  }
+The [default PackageLoader](src/loader/DefaultPackageLoader.ts) implementation provides the most common package loader approach:
+* package and resource metadata is stored and queried in an in-memory [sql.js](https://github.com/sql-js/sql.js) database
+* the standard FHIR cache is used for local storage of unzipped packages (`$USER_HOME/.fhir/packages`)
+* the standard FHIR registry is used (`packages.fhir.org`) for downloading published packages, falling back to `packages2.fhir.org` when necessary
+  * unless an `FPL_REGISTRY` environment variable is defined, in which case its value is used as the URL for an NPM registry to use _instead_ of the standard FHIR registry
+* the `build.fhir.org` build server is used for downloading _current_ builds of packages
+
+To instantiate the default `PackageLoader`, import the asynchronous `defaultPackageLoader` function and invoke it, optionally passing in an `options` object with a log method to use for logging:
+
+```ts
+import { defaultPackageLoader, LoadStatus } from 'fhir-package-loader';
+
+// somewhere in your code...
+const log = (level: string, message: string) => console.log(`${level}: ${message}`);
+const loader = await defaultPackageLoader({ log });
+const status = await loader.loadPackage('hl7.fhir.us.core', '6.1.0');
+if (status !== LoadStatus.LOADED) {
+  // ...
 }
 ```
+
+To instantiate the default `PackageLoader` with a set of standalone JSON or XML resources that should be pre-loaded, use the `defaultPackageLoaderWithLocalResources` function instead, passing in an array of file paths to folders containing the resources to load.
+
+For more control over the `PackageLoader`, use the [BasePackageLoader](src/loader/BasePackageLoader.ts). This allows you to specify the [PackageDB](src/db), [PackageCache](src/cache), [RegistryClient](src/registry), and [CurrentBuildClient](src/current) you wish to use. FHIRPackageLoader comes with implementations of each of these, but you may also provide your own implementations that adhere to the relevant interfaces.
+
+### PackageLoader Functions
+
+The `PackageLoader` interface provides the following functions:
+
+#### `loadPackage(name: string, version: string): Promise<LoadStatus>`
+
+Loads the specified package version. The version may be a specific version (e.g., `1.2.3`), a wildcard patch version (e.g., `1.2.x`), `dev` (to indicate the local development build in your FHIR cache), `current` (to indicate the current master/main build), `current$branchname` (to indicate the current build on a specific branch), or `latest` (to indicate the most recent published version). Returns the [LoadStatus](src/loader/PackageLoader.ts).
+
+#### `getPackageLoadStatus(name: string, version: string): LoadStatus`
+
+Gets the [LoadStatus](src/loader/PackageLoader.ts) for the specified package version. The returned value will be `LoadStatus.LOADED` if it is already loaded, `LoadStatus.NOT_LOADED` if it has not yet been loaded, or `LoadStatus.FAILED` if it was attempted but failed to load. This function supports specific versions (e.g. `1.2.3`), `dev`, `current`, and `current$branchname`. It does _not_ support wildcard patch versions (e.g., `1.2.x`) nor does it support the `latest` version.
+
+#### `findPackageInfos(name: string): PackageInfo[]`
+
+Finds loaded packages by name and returns the corresponding array of [PackageInfo](src/package/PackageInfo.ts) objects or an empty array if there are no matches.
+
+#### `findPackageInfo(name: string, version: string): PackageInfo | undefined`
+
+Finds a loaded package by its name and version, and returns the corresponding [PackageInfo](src/package/PackageInfo.ts) or `undefined` is there is not a match. In the case of multiple matches, the info for last package loaded will be returned. This function supports specific versions (e.g. `1.2.3`), `dev`, `current`, and `current$branchname`.
+
+#### `findPackageJSONs(name: string): any[]`
+
+Finds loaded packages by name and returns the corresponding array of `package.json` JSON objects from the packages, or an empty array if there are no matches. 
+
+#### `findPackageJSON(name: string, version: string): any | undefined`
+
+Finds a loaded package by name and version, and returns the corresponding `package.json` JSON object from the packages, or `undefined` if there is not a match. In the case of multiple matches, the `package.json` from the last package loaded will be returned. This function supports specific versions (e.g. `1.2.3`), `dev`, `current`, and `current$branchname`.
+
+#### `findResourceInfos(key: string, options?: FindResourceInfoOptions): ResourceInfo[]`
+
+Finds loaded resources by a key and returns the corresponding array of [ResourceInfo](src/package/ResourceInfo.ts) objects or an empty array if there are no matches. The key will be matched against resources by their `id`, `name`, or `url`. An [options](src/package/ResourceInfo.ts) object may also be passed in to scope the search to a specific set of resource types and/or a specific package, and/or to limit the number of results returned.
+
+#### `findResourceInfo(key: string, options?: FindResourceInfoOptions): ResourceInfo | undefined`
+
+Finds a loaded resource by a key and returns the corresponding [ResourceInfo](src/package/ResourceInfo.ts) or `undefined` if there is not a match. The key will be matched against resources by their `id`, `name`, or `url`. An [options](src/package/ResourceInfo.ts) object may also be passed in to scope the search to a specific set of resource types and/or a specific package. If a set of resource types is specified in the options, then the order of the resource types determines which resource is returned in the case of multiple matches (i.e., the resource types are assumed to be in priority order). If there are still multiple matches, the info for the last resource loaded will be returned. 
+
+#### `findResourceJSONs(key: string, options?: FindResourceInfoOptions): any[]`
+
+Finds loaded resources by a key and returns the corresponding array of JSON FHIR definitions or an empty array if there are no matches. The key will be matched against resources by their `id`, `name`, or `url`. An [options](src/package/ResourceInfo.ts) object may also be passed in to scope the search to a specific set of resource types and/or a specific package, and/or to limit the number of results returned.
+
+#### `findResourceJSON(key: string, options?: FindResourceInfoOptions): any | undefined`
+
+Finds a loaded resource by a key and returns the corresponding FHIR JSON definition or `undefined` if there is not a match. The key will be matched against resources by their `id`, `name`, or `url`. An [options](src/package/ResourceInfo.ts) object may also be passed in to scope the search to a specific set of resource types and/or a specific package. If a set of resource types is specified in the options, then the order of the resource types determines which resource is returned in the case of multiple matches (i.e., the resource types are assumed to be in priority order). If there are still multiple matches, the the last resource loaded will be returned. 
+
+#### `clear(): void`
+
+Clears all packages and resources from the loader.
 
 # For Developers
 
@@ -195,19 +193,6 @@ Once Node.js is installed, run the following command from this project's root fo
 ```sh
 npm install
 ```
-
-## Exposed functions
-
-While the CLI and API should be sufficient for the majority of use cases, FHIR Package Loader exposes a few additional functions and classes that can be used within JavaScript/TypeScript projects. Below are the key exports:
-
-| Export             | Description                                                                                                                                                                                                                                |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `fpl`              | API function to download and load definitions for a provided list of packages.                                                                                                                                                             |
-| `getLatestVersion` | API function to find the latest version of a package.                                                                                                                                                                                      |
-| `loadDependencies` | Takes a list of FHIR packages, a path to a directory (optional, defaults to FHIR cache), a log function (optional) and returns FHIRDefinitions from the provided packages.                                                                 |
-| `mergeDependency`  | Takes a package name, a package version, an instance of FHIRDefinitions, a path to a directory (optional, defaults to FHIR cache), a log function (optional) and returns FHIRDefinitions with definitions added directly from the package. |
-| `loadFromPath`     | Takes a path, a package and version (format: package#version), and an instance of FHIRDefinitions and loads the definitions from the provided package at the provided path into FHIRDefinitions.                                           |
-| `FHIRDefinitions`  | A class for FHIRDefinitions for one or more packages. This could be extended if there are additional properties that are specific to your implementation.                                                                                  |
 
 # License
 
