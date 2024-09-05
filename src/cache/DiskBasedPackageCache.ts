@@ -8,7 +8,7 @@ import {
   LOCAL_PACKAGE_VERSION
 } from './PackageCache';
 import temp from 'temp';
-import tar from 'tar';
+import * as tar from 'tar';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { LRUCache } from 'mnemonist';
