@@ -17,7 +17,7 @@ export class RedundantRegistryClient implements RegistryClient {
     for (const client of this.clients) {
       try {
         return await client.download(name, version);
-      } catch (e) {
+      } catch {
         // Do nothing. Fallback to the next one.
       }
     }

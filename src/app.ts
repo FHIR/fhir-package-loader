@@ -5,7 +5,7 @@ import fs from 'fs-extra';
 import os from 'os';
 import initSqlJs from 'sql.js';
 import { logger } from './utils';
-import { program, OptionValues } from 'commander';
+import { Command, OptionValues } from 'commander';
 import { BasePackageLoader } from './loader';
 import { SQLJSPackageDB } from './db';
 import { DiskBasedPackageCache } from './cache';
@@ -51,7 +51,7 @@ async function install(fhirPackages: string[], options: OptionValues) {
 }
 
 async function app() {
-  program
+  const program = new Command()
     .name('fpl')
     .description('CLI for downloading FHIR packages')
     .addHelpText('after', getHelpText())
