@@ -34,8 +34,7 @@ export class BasePackageLoader implements PackageLoader {
     }
 
     // If it's a "dev" version, but it wasn't found in the cache, fall back to using the current version
-    // TODO: Does this actually check for the dev version prior to giving up?
-    if (version === 'dev') {
+    if (version === 'dev' && !this.packageCache.isPackageInCache(name, version)) {
       this.log(
         'info',
         `Falling back to ${name}#current since ${packageLabel} is not locally cached. To avoid this, add ${packageLabel} to your local FHIR cache by building it locally with the HL7 FHIR IG Publisher.`
@@ -127,6 +126,7 @@ export class BasePackageLoader implements PackageLoader {
           this.loadResourceFromCache(resourcePath, packageName, packageVersion);
         } catch {
           // swallow this error because some JSON files will not be resources
+          this.log('info', `JSON file at path ${resourcePath} was not FHIR resource`);
         }
       });
   }
