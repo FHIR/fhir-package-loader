@@ -73,7 +73,7 @@ export class BasePackageLoader implements PackageLoader {
       this.log('error', `Failed to load ${name}#${version}`);
       return LoadStatus.FAILED;
     }
-    this.log('info', `Loaded ${packageLabel} with ${stats.resourceCount} resources`);
+    this.log('info', `Loaded ${stats.name}#${stats.version} with ${stats.resourceCount} resources`);
     return LoadStatus.LOADED;
   }
 
@@ -126,7 +126,7 @@ export class BasePackageLoader implements PackageLoader {
           this.loadResourceFromCache(resourcePath, packageName, packageVersion);
         } catch {
           // swallow this error because some JSON files will not be resources
-          this.log('info', `JSON file at path ${resourcePath} was not FHIR resource`);
+          this.log('debug', `JSON file at path ${resourcePath} was not FHIR resource`);
         }
       });
   }
