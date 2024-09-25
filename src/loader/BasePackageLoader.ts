@@ -73,7 +73,7 @@ export class BasePackageLoader implements PackageLoader {
       this.log('error', `Failed to load ${name}#${version}`);
       return LoadStatus.FAILED;
     }
-    this.log('info', `Loaded ${packageLabel} with ${stats.resourceCount} resources`);
+    this.log('info', `Loaded ${stats.name}#${stats.version} with ${stats.resourceCount} resources`);
     return LoadStatus.LOADED;
   }
 
