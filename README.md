@@ -2,6 +2,15 @@
 
 FHIR Package Loader is a utility that downloads published FHIR packages from the FHIR package registry.
 
+## FHIR Foundation Project Statement
+
+- Maintainers: This project is maintained by the HL7 community.
+- Issues / Discussion: For FHIR Package Loader issues, such as bug reports, comments, suggestions, questions, and feature requests, visit [FHIR Package Loader GitHub Issues](https://github.com/standardhealth/fhir-package-loader/issues). For discussion of FHIR Shorthand and its associated projects, visit the FHIR Community Chat @ https://chat.fhir.org. The [#shorthand stream](https://chat.fhir.org/#narrow/stream/215610-shorthand) is used for all FHIR Shorthand questions and discussion.
+- License: All contributions to this project will be released under the Apache 2.0 License, and a copy of this license can be found in [LICENSE](LICENSE).
+- Contribution Policy: The FHIR Package Loader Contribution Policy can be found in [CONTRIBUTING.md](CONTRIBUTING.md).
+- Security Information: The FHIR Package Loader Security Information can be found in [SECURITY.md](SECURITY.md).
+- Compliance Information: FHIR Package Loader is designed to work with FHIR packages that are based on FHIR R4, FHIR R4B, or FHIR R5.
+
 # Usage
 
 This tool can be used directly through a command line interface (CLI) or it can be used as a dependency in another JavaScript/TypeScript project to download FHIR packages and load the contents into memory.
@@ -197,7 +206,7 @@ While the CLI and API should be sufficient for the majority of use cases, FHIR P
 
 # License
 
-Copyright 2022 The MITRE Corporation
+Copyright 2022-2024 Health Level Seven International
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
