@@ -573,7 +573,6 @@ describe('BasePackageLoader', () => {
       expect(result).toBe(LoadStatus.LOADED);
     });
 
-    // TODO: is this expected behavior for local
     it('should use LOCAL package paths to find package', async () => {
       const humanBeingResourcePath = path.resolve(
         __dirname,
