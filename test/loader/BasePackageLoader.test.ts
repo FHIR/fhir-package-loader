@@ -46,27 +46,26 @@ describe('BasePackageLoader', () => {
     version?: string,
     loadStatus?: string,
     tarball?: Readable,
-    packageJsonPath?: string,
-    resourceAtPath?: string,
-    currentBuildDate?: string,
-    resourceInfo?: object
+    packageBasePath?: string,
+    resourcePath?: string,
+    currentBuildDate?: string
   ): any {
-    const pkgVars = {
+    const pkgVars: any = {
       name: name,
       version: version,
       tarball: tarball ? tarball : Readable.from([`${name}$${version}-data`]),
-      packageJsonPath: packageJsonPath ? packageJsonPath : `Package/json/path/${name}/${version}`,
-      resourceAtPath: resourceAtPath
-        ? resourceAtPath
-        : {
-            resource: `${packageJsonPath}`,
-            date: '20240824230227',
-            resourceType: 'resourceTypeName'
-          },
+      packageBasePath: packageBasePath ?? `Package/json/path/${name}/${version}`,
       currentBuildDate: currentBuildDate
         ? new Promise<string>(resolve => resolve(currentBuildDate))
-        : new Promise<string>(resolve => resolve('20240824230227')),
-      resourceInfo: resourceInfo ? resourceInfo : undefined
+        : new Promise<string>(resolve => resolve('20240824230227'))
+    };
+    pkgVars.packageJsonPath = path.join(pkgVars.packageBasePath, 'package', 'package.json');
+    pkgVars.resourcePath =
+      resourcePath ?? path.join(pkgVars.packageBasePath, 'package', 'Resource-Name.json');
+    pkgVars.resourceInfo = {
+      resource: `${pkgVars.resourcePath}`,
+      date: '20240824230227',
+      resourceType: 'resourceTypeName'
     };
     // the initial load status for if a package is loaded
     if (loadStatus == 'loaded') {
@@ -98,7 +97,7 @@ describe('BasePackageLoader', () => {
         .mockReturnValueOnce(pkg.packageJsonPath);
       packageCacheMock.getResourceAtPath
         .calledWith(pkg.packageJsonPath)
-        .mockReturnValueOnce(pkg.resourceAtPath);
+        .mockReturnValueOnce(pkg.resourcePath);
       currentBuildClientMock.getCurrentBuildDate
         .calledWith(pkg.name, undefined)
         .mockReturnValueOnce(pkg.currentBuildDate);
@@ -128,7 +127,7 @@ describe('BasePackageLoader', () => {
         .mockReturnValueOnce(pkg.packageJsonPath);
       packageCacheMock.getResourceAtPath
         .calledWith(pkg.packageJsonPath)
-        .mockReturnValueOnce(pkg.resourceAtPath);
+        .mockReturnValueOnce(pkg.resourceInfo);
       currentBuildClientMock.getCurrentBuildDate
         .calledWith(pkg.name, undefined)
         .mockReturnValueOnce(pkg.currentBuildDate);
@@ -151,7 +150,7 @@ describe('BasePackageLoader', () => {
       expect(result).toBe(LoadStatus.LOADED);
     });
 
-    it('should not successfully download current version to cache that is missing or stale', async () => {
+    it('should not successfully download current version to cache that is missing or stale if the package can not be downloaded', async () => {
       const pkg = setupLoadPackage(
         'some.ig',
         'current',
@@ -166,7 +165,7 @@ describe('BasePackageLoader', () => {
         .mockReturnValueOnce(pkg.packageJsonPath);
       packageCacheMock.getResourceAtPath
         .calledWith(pkg.packageJsonPath)
-        .mockReturnValueOnce(pkg.resourceAtPath);
+        .mockReturnValueOnce(pkg.resourceInfo);
       currentBuildClientMock.getCurrentBuildDate
         .calledWith(pkg.name, undefined)
         .mockReturnValueOnce(pkg.currentBuildDate);
@@ -197,7 +196,7 @@ describe('BasePackageLoader', () => {
         .mockReturnValueOnce(pkg.packageJsonPath);
       packageCacheMock.getResourceAtPath
         .calledWith(pkg.packageJsonPath)
-        .mockReturnValueOnce(pkg.resourceAtPath);
+        .mockReturnValueOnce(pkg.resourceInfo);
       currentBuildClientMock.getCurrentBuildDate
         .calledWith(pkg.name, undefined)
         .mockReturnValueOnce(pkg.currentBuildDate);
@@ -216,6 +215,37 @@ describe('BasePackageLoader', () => {
       expect(packageCacheMock.cachePackageTarball).not.toHaveBeenCalled();
       expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', 'current');
       expect(loggerSpy.getLastMessage('info')).toBe('Loaded some.ig#current with 5 resources');
+      expect(result).toBe(LoadStatus.LOADED);
+    });
+
+    it('should successfully load a current branch of a package when the cached version is not missing or stale', async () => {
+      const bonusPkg = setupLoadPackage('some.ig', 'current$bonus-items', 'not-loaded');
+      packageCacheMock.getPackageJSONPath
+        .calledWith(bonusPkg.name, 'current$bonus-items')
+        .mockReturnValueOnce(bonusPkg.packageJsonPath);
+      packageCacheMock.getResourceAtPath
+        .calledWith(bonusPkg.packageJsonPath)
+        .mockReturnValueOnce(bonusPkg.resourceInfo);
+      currentBuildClientMock.getCurrentBuildDate
+        .calledWith(bonusPkg.name, 'bonus-items')
+        .mockReturnValueOnce(bonusPkg.currentBuildDate);
+      loadPackageFromCacheSpy.mockReturnValueOnce({
+        name: bonusPkg.name,
+        version: bonusPkg.version,
+        resourceCount: 7
+      });
+
+      const result = await loader.loadPackage('some.ig', 'current$bonus-items');
+      expect(loader.getPackageLoadStatus).toHaveBeenCalledWith('some.ig', 'current$bonus-items');
+      expect(loggerSpy.getMessageAtIndex(-1, 'debug')).toBe(
+        'Cached package date for some.ig#current$bonus-items (2024-08-24T23:02:27) matches last build date (2024-08-24T23:02:27), so the cached package will be used'
+      );
+      expect(currentBuildClientMock.downloadCurrentBuild).not.toHaveBeenCalled();
+      expect(packageCacheMock.cachePackageTarball).not.toHaveBeenCalled();
+      expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', 'current$bonus-items');
+      expect(loggerSpy.getLastMessage('info')).toBe(
+        'Loaded some.ig#current$bonus-items with 7 resources'
+      );
       expect(result).toBe(LoadStatus.LOADED);
     });
 
@@ -348,7 +378,7 @@ describe('BasePackageLoader', () => {
         .mockReturnValueOnce(pkg.packageJsonPath);
       packageCacheMock.getResourceAtPath
         .calledWith(pkg.packageJsonPath)
-        .mockReturnValueOnce(pkg.resourceAtPath);
+        .mockReturnValueOnce(pkg.resourceInfo);
       currentBuildClientMock.getCurrentBuildDate
         .calledWith(pkg.name, undefined)
         .mockReturnValueOnce(pkg.currentBuildDate);
@@ -383,7 +413,7 @@ describe('BasePackageLoader', () => {
         .mockReturnValueOnce(pkg.packageJsonPath);
       packageCacheMock.getResourceAtPath
         .calledWith(pkg.packageJsonPath)
-        .mockReturnValueOnce(pkg.resourceAtPath);
+        .mockReturnValueOnce(pkg.resourceInfo);
       currentBuildClientMock.getCurrentBuildDate
         .calledWith(pkg.name, undefined)
         .mockReturnValueOnce(pkg.currentBuildDate);
@@ -415,7 +445,7 @@ describe('BasePackageLoader', () => {
         .mockReturnValueOnce(pkg.packageJsonPath);
       packageCacheMock.getResourceAtPath
         .calledWith(pkg.packageJsonPath)
-        .mockReturnValueOnce(pkg.resourceAtPath);
+        .mockReturnValueOnce(pkg.resourceInfo);
       currentBuildClientMock.getCurrentBuildDate
         .calledWith(pkg.name, undefined)
         .mockReturnValueOnce(pkg.currentBuildDate);
@@ -430,14 +460,6 @@ describe('BasePackageLoader', () => {
 
       await loader.loadPackage('some.ig', 'current');
       expect(loggerSpy.getMessageAtIndex(-1, 'debug')).toContain('2024-08-24T23:02:27');
-      expect(
-        '2024-08-24T23:02:27'
-          .replace('-', '')
-          .replace('-', '')
-          .replace(':', '')
-          .replace('T', '')
-          .replace(':', '')
-      ).toBe('20240824230227');
     });
 
     it('should catch error and assume stale version if packageJSONPath was not found', async () => {
@@ -500,8 +522,8 @@ describe('BasePackageLoader', () => {
         '1.0.0',
         'not-loaded',
         undefined,
+        path.resolve(__dirname, 'fixtures'),
         humanBeingResourcePath,
-        undefined,
         '20240824230227'
       );
       packageCacheMock.isPackageInCache
@@ -528,10 +550,9 @@ describe('BasePackageLoader', () => {
         '1.0.0',
         'not-loaded',
         undefined,
+        path.resolve(__dirname, 'fixtures'),
         humanBeingResourcePath,
-        undefined,
-        '2024-05-24T16:27:17-04:00',
-        { resourceType: 'StructureDefinition', id: 'human-being-logical-model' }
+        '2024-05-24T16:27:17-04:00'
       );
       packageCacheMock.isPackageInCache.calledWith(pkg.name, pkg.version).mockReturnValue(true);
       packageCacheMock.getPackagePath
@@ -542,10 +563,10 @@ describe('BasePackageLoader', () => {
         .mockReturnValue(pkg.packageJsonPath);
       packageCacheMock.getPotentialResourcePaths
         .calledWith(pkg.name, pkg.version)
-        .mockReturnValue([pkg.packageJsonPath]);
-      const humanBeingJSON = fs.readJsonSync(pkg.packageJsonPath);
+        .mockReturnValue([pkg.resourcePath]);
+      const humanBeingJSON = fs.readJsonSync(humanBeingResourcePath);
       packageCacheMock.getResourceAtPath
-        .calledWith(pkg.packageJsonPath)
+        .calledWith(pkg.resourcePath)
         .mockReturnValue(humanBeingJSON);
       packageDBMock.getPackageStats
         .calledWith(pkg.name, pkg.version)
@@ -584,10 +605,9 @@ describe('BasePackageLoader', () => {
         'LOCAL',
         'not-loaded',
         undefined,
+        path.resolve(__dirname, 'fixtures'),
         humanBeingResourcePath,
-        undefined,
-        '2024-05-24T16:27:17-04:00',
-        { resourceType: 'StructureDefinition', id: 'human-being-logical-model' }
+        '2024-05-24T16:27:17-04:00'
       );
       packageCacheMock.isPackageInCache.calledWith(pkg.name, pkg.version).mockReturnValue(true);
       packageCacheMock.getPackagePath
@@ -595,10 +615,10 @@ describe('BasePackageLoader', () => {
         .mockReturnValue(pkg.packageJsonPath);
       packageCacheMock.getPotentialResourcePaths
         .calledWith(pkg.name, pkg.version)
-        .mockReturnValue([pkg.packageJsonPath]);
-      const humanBeingJSON = fs.readJsonSync(pkg.packageJsonPath);
+        .mockReturnValue([pkg.resourcePath]);
+      const humanBeingJSON = fs.readJsonSync(humanBeingResourcePath);
       packageCacheMock.getResourceAtPath
-        .calledWith(pkg.packageJsonPath)
+        .calledWith(pkg.resourcePath)
         .mockReturnValue(humanBeingJSON);
       packageDBMock.getPackageStats
         .calledWith(pkg.name, pkg.version)
@@ -626,6 +646,57 @@ describe('BasePackageLoader', () => {
       expect(result).toBe(LoadStatus.LOADED);
     });
 
+    it('should find a logical that uses the logical-target extension to set its characteristics', async () => {
+      const futurePlanetResourcePath = path.resolve(
+        __dirname,
+        'fixtures',
+        'StructureDefinition-FuturePlanet.json'
+      );
+      const pkg = setupLoadPackage(
+        'LOCAL',
+        'LOCAL',
+        'not-loaded',
+        undefined,
+        path.resolve(__dirname, 'fixtures'),
+        futurePlanetResourcePath,
+        '2024-05-24T16:27:17-04:00'
+      );
+      packageCacheMock.isPackageInCache.calledWith(pkg.name, pkg.version).mockReturnValue(true);
+      packageCacheMock.getPackagePath
+        .calledWith(pkg.name, pkg.version)
+        .mockReturnValue(pkg.packageJsonPath);
+      packageCacheMock.getPotentialResourcePaths
+        .calledWith(pkg.name, pkg.version)
+        .mockReturnValue([pkg.resourcePath]);
+      const futurePlanetJSON = fs.readJsonSync(futurePlanetResourcePath);
+      packageCacheMock.getResourceAtPath
+        .calledWith(pkg.resourcePath)
+        .mockReturnValue(futurePlanetJSON);
+      packageDBMock.getPackageStats
+        .calledWith(pkg.name, pkg.version)
+        .mockReturnValue({ name: pkg.name, version: pkg.version, resourceCount: 1 });
+
+      const result = await loader.loadPackage('LOCAL', 'LOCAL');
+      expect(packageDBMock.savePackageInfo).toHaveBeenCalled();
+      expect(packageDBMock.saveResourceInfo).toHaveBeenCalledWith({
+        resourceType: 'StructureDefinition',
+        id: 'FuturePlanet',
+        url: 'http://hl7.org/planet/logicals/StructureDefinition/FuturePlanet',
+        name: 'FuturePlanet',
+        sdKind: 'logical',
+        sdDerivation: 'specialization',
+        sdType: 'http://hl7.org/planet/logicals/StructureDefinition/FuturePlanet',
+        sdBaseDefinition: 'http://hl7.org/fhir/StructureDefinition/Basic',
+        sdAbstract: false,
+        sdCharacteristics: ['can-be-target'],
+        sdFlavor: 'Logical',
+        packageName: 'LOCAL',
+        packageVersion: 'LOCAL',
+        resourcePath: futurePlanetResourcePath
+      });
+      expect(result).toBe(LoadStatus.LOADED);
+    });
+
     it('should use non local package paths to find package with profile flavor', async () => {
       const resourceProfileFlavor = path.resolve(
         __dirname,
@@ -637,10 +708,9 @@ describe('BasePackageLoader', () => {
         '1.0.0',
         'not-loaded',
         undefined,
+        path.resolve(__dirname, 'fixtures'),
         resourceProfileFlavor,
-        undefined,
-        '2024-05-24T16:27:17-04:00',
-        { resourceType: 'StructureDefinition', id: 'valued-observation' }
+        '2024-05-24T16:27:17-04:00'
       );
       packageCacheMock.isPackageInCache.calledWith(pkg.name, pkg.version).mockReturnValue(true);
       packageCacheMock.getPackagePath
@@ -651,10 +721,10 @@ describe('BasePackageLoader', () => {
         .mockReturnValue(pkg.packageJsonPath);
       packageCacheMock.getPotentialResourcePaths
         .calledWith(pkg.name, pkg.version)
-        .mockReturnValue([pkg.packageJsonPath]);
-      const humanBeingJSON = fs.readJsonSync(pkg.packageJsonPath);
+        .mockReturnValue([pkg.resourcePath]);
+      const humanBeingJSON = fs.readJsonSync(resourceProfileFlavor);
       packageCacheMock.getResourceAtPath
-        .calledWith(pkg.packageJsonPath)
+        .calledWith(pkg.resourcePath)
         .mockReturnValue(humanBeingJSON);
       packageDBMock.getPackageStats
         .calledWith(pkg.name, pkg.version)
@@ -693,10 +763,9 @@ describe('BasePackageLoader', () => {
         '4.0.1',
         'not-loaded',
         undefined,
+        path.resolve(__dirname, 'fixtures'),
         resourceResourceFlavor,
-        undefined,
-        '2024-05-24T16:27:17-04:00',
-        { resourceType: 'StructureDefinition', id: 'Condition' }
+        '2024-05-24T16:27:17-04:00'
       );
       packageCacheMock.isPackageInCache.calledWith(pkg.name, pkg.version).mockReturnValue(true);
       packageCacheMock.getPackagePath
@@ -707,10 +776,10 @@ describe('BasePackageLoader', () => {
         .mockReturnValue(pkg.packageJsonPath);
       packageCacheMock.getPotentialResourcePaths
         .calledWith(pkg.name, pkg.version)
-        .mockReturnValue([pkg.packageJsonPath]);
-      const humanBeingJSON = fs.readJsonSync(pkg.packageJsonPath);
+        .mockReturnValue([pkg.resourcePath]);
+      const humanBeingJSON = fs.readJsonSync(resourceResourceFlavor);
       packageCacheMock.getResourceAtPath
-        .calledWith(pkg.packageJsonPath)
+        .calledWith(pkg.resourcePath)
         .mockReturnValue(humanBeingJSON);
       packageDBMock.getPackageStats
         .calledWith(pkg.name, pkg.version)
@@ -738,6 +807,60 @@ describe('BasePackageLoader', () => {
       expect(result).toBe(LoadStatus.LOADED);
     });
 
+    it('should use non local package paths to find package with resource flavor where the resource has no derivation', async () => {
+      const resourceResourceFlavor = path.resolve(
+        __dirname,
+        'fixtures',
+        'StructureDefinition-Resource.json'
+      );
+      const pkg = setupLoadPackage(
+        'Resource',
+        '4.0.1',
+        'not-loaded',
+        undefined,
+        resourceResourceFlavor,
+        undefined,
+        '2024-05-24T16:27:17-04:00'
+      );
+      packageCacheMock.isPackageInCache.calledWith(pkg.name, pkg.version).mockReturnValue(true);
+      packageCacheMock.getPackagePath
+        .calledWith(pkg.name, pkg.version)
+        .mockReturnValue(pkg.packageJsonPath);
+      packageCacheMock.getPackageJSONPath
+        .calledWith(pkg.name, pkg.version)
+        .mockReturnValue(pkg.packageJsonPath);
+      packageCacheMock.getPotentialResourcePaths
+        .calledWith(pkg.name, pkg.version)
+        .mockReturnValue([resourceResourceFlavor]);
+      const resourceJSON = fs.readJsonSync(resourceResourceFlavor);
+      packageCacheMock.getResourceAtPath
+        .calledWith(resourceResourceFlavor)
+        .mockReturnValue(resourceJSON);
+      packageDBMock.getPackageStats
+        .calledWith(pkg.name, pkg.version)
+        .mockReturnValue({ name: pkg.name, version: pkg.version, resourceCount: 1 });
+
+      const result = await loader.loadPackage('Resource', '4.0.1');
+      expect(packageDBMock.savePackageInfo).toHaveBeenCalled();
+      expect(packageDBMock.saveResourceInfo).toHaveBeenCalled();
+      expect(packageDBMock.saveResourceInfo).toHaveBeenCalledWith({
+        resourceType: 'StructureDefinition',
+        id: 'Resource',
+        url: 'http://hl7.org/fhir/StructureDefinition/Resource',
+        name: 'Resource',
+        version: '4.0.1',
+        sdKind: 'resource',
+        sdDerivation: 'specialization',
+        sdType: 'Resource',
+        sdAbstract: true,
+        sdFlavor: 'Resource',
+        packageName: 'Resource',
+        packageVersion: '4.0.1',
+        resourcePath: resourceResourceFlavor
+      });
+      expect(result).toBe(LoadStatus.LOADED);
+    });
+
     it('should use non local package paths to find package with type flavor', async () => {
       const resourceResourceFlavor = path.resolve(
         __dirname,
@@ -749,10 +872,9 @@ describe('BasePackageLoader', () => {
         '4.0.1',
         'not-loaded',
         undefined,
+        path.resolve(__dirname, 'fixtures'),
         resourceResourceFlavor,
-        undefined,
-        '2024-05-24T16:27:17-04:00',
-        { resourceType: 'StructureDefinition', id: 'Address' }
+        '2024-05-24T16:27:17-04:00'
       );
       packageCacheMock.isPackageInCache.calledWith(pkg.name, pkg.version).mockReturnValue(true);
       packageCacheMock.getPackagePath
@@ -764,10 +886,10 @@ describe('BasePackageLoader', () => {
       packageDBMock.savePackageInfo.mockImplementation(() => {});
       packageCacheMock.getPotentialResourcePaths
         .calledWith(pkg.name, pkg.version)
-        .mockReturnValue([pkg.packageJsonPath]);
-      const humanBeingJSON = fs.readJsonSync(pkg.packageJsonPath);
+        .mockReturnValue([pkg.resourcePath]);
+      const humanBeingJSON = fs.readJsonSync(resourceResourceFlavor);
       packageCacheMock.getResourceAtPath
-        .calledWith(pkg.packageJsonPath)
+        .calledWith(pkg.resourcePath)
         .mockReturnValue(humanBeingJSON);
       packageDBMock.getPackageStats
         .calledWith(pkg.name, pkg.version)
@@ -811,10 +933,9 @@ describe('BasePackageLoader', () => {
         '0.1.0',
         'not-loaded',
         undefined,
+        path.resolve(__dirname, 'fixtures'),
         resourceResourceFlavor,
-        undefined,
-        '2024-05-24T16:27:17-04:00',
-        { resourceType: 'StructureDefinition', id: 'valued-observation' }
+        '2024-05-24T16:27:17-04:00'
       );
       packageCacheMock.isPackageInCache.calledWith(pkg.name, pkg.version).mockReturnValue(true);
       packageCacheMock.getPackagePath
@@ -825,10 +946,10 @@ describe('BasePackageLoader', () => {
         .mockReturnValue(pkg.packageJsonPath);
       packageCacheMock.getPotentialResourcePaths
         .calledWith(pkg.name, pkg.version)
-        .mockReturnValue([pkg.packageJsonPath]);
-      const humanBeingJSON = fs.readJsonSync(pkg.packageJsonPath);
+        .mockReturnValue([pkg.resourcePath]);
+      const humanBeingJSON = fs.readJsonSync(resourceResourceFlavor);
       packageCacheMock.getResourceAtPath
-        .calledWith(pkg.packageJsonPath)
+        .calledWith(pkg.resourcePath)
         .mockReturnValue(humanBeingJSON);
       packageDBMock.getPackageStats
         .calledWith(pkg.name, pkg.version)
@@ -859,9 +980,6 @@ describe('BasePackageLoader', () => {
       });
       expect(result).toBe(LoadStatus.LOADED);
     });
-
-    // it('should use non local package paths to find package with extension url of logical-target', async () => {
-    // });
 
     it('should use non local package paths to find package with package json path that leads to non-existing resource', async () => {
       const pkg = setupLoadPackage('empty-json-id', '0.1.0', 'not-loaded');
@@ -901,10 +1019,9 @@ describe('BasePackageLoader', () => {
         '4.0.1',
         'not-loaded',
         undefined,
+        path.resolve(__dirname, 'fixtures'),
         resourceResourceFlavor,
-        undefined,
-        '2024-05-24T16:27:17-04:00',
-        { resourceType: 'StructureDefinition', id: 'patient-birthPlace' }
+        '2024-05-24T16:27:17-04:00'
       );
       packageCacheMock.isPackageInCache.calledWith(pkg.name, pkg.version).mockReturnValue(true);
       packageCacheMock.getPackagePath
@@ -915,10 +1032,10 @@ describe('BasePackageLoader', () => {
         .mockReturnValue(pkg.packageJsonPath);
       packageCacheMock.getPotentialResourcePaths
         .calledWith(pkg.name, pkg.version)
-        .mockReturnValue([pkg.packageJsonPath]);
-      const humanBeingJSON = fs.readJsonSync(pkg.packageJsonPath);
+        .mockReturnValue([pkg.resourcePath]);
+      const humanBeingJSON = fs.readJsonSync(resourceResourceFlavor);
       packageCacheMock.getResourceAtPath
-        .calledWith(pkg.packageJsonPath)
+        .calledWith(pkg.resourcePath)
         .mockReturnValue(humanBeingJSON);
       packageDBMock.getPackageStats
         .calledWith(pkg.name, pkg.version)
@@ -942,6 +1059,63 @@ describe('BasePackageLoader', () => {
         packageName: 'patient-birthPlace',
         packageVersion: '4.0.1',
         resourcePath: resourceResourceFlavor
+      });
+      expect(result).toBe(LoadStatus.LOADED);
+    });
+
+    it('should show an info message when a JSON file in a loaded package is not a FHIR resource', async () => {
+      const resourceResourceFlavor = path.resolve(
+        __dirname,
+        'fixtures',
+        'StructureDefinition-patient-birthPlace.json'
+      );
+      const birthPlaceJSON = fs.readJsonSync(resourceResourceFlavor);
+      const pkg = setupLoadPackage('package-with-non-resource', '4.0.1', 'not-loaded');
+      packageCacheMock.isPackageInCache.calledWith(pkg.name, pkg.version).mockReturnValue(true);
+      packageCacheMock.getPackagePath
+        .calledWith(pkg.name, pkg.version)
+        .mockReturnValue(pkg.packageJsonPath);
+      packageCacheMock.getPackageJSONPath
+        .calledWith(pkg.name, pkg.version)
+        .mockReturnValue(pkg.packageJsonPath);
+      packageCacheMock.getPotentialResourcePaths
+        .calledWith(pkg.name, pkg.version)
+        .mockReturnValue([
+          path.join(pkg.packageJsonPath, '1.json'),
+          path.join(pkg.packageJsonPath, '2.json')
+        ]);
+      packageCacheMock.getResourceAtPath
+        .calledWith(path.join(pkg.packageJsonPath, '1.json'))
+        .mockReturnValue(birthPlaceJSON);
+      packageCacheMock.getResourceAtPath
+        .calledWith(path.join(pkg.packageJsonPath, '2.json'))
+        .mockReturnValue({ blanket: 'cozy' });
+      packageDBMock.getPackageStats
+        .calledWith(pkg.name, pkg.version)
+        .mockReturnValue({ name: pkg.name, version: pkg.version, resourceCount: 1 });
+
+      const result = await loader.loadPackage('package-with-non-resource', '4.0.1');
+      // expect info message for 2.json
+      expect(loggerSpy.getMessageAtIndex(-2, 'info')).toBe(
+        `JSON file at path ${path.join(pkg.packageJsonPath, '2.json')} was not FHIR resource`
+      );
+      expect(packageDBMock.savePackageInfo).toHaveBeenCalled();
+      expect(packageDBMock.saveResourceInfo).toHaveBeenCalledTimes(1);
+      expect(packageDBMock.saveResourceInfo).toHaveBeenCalledWith({
+        resourceType: 'StructureDefinition',
+        id: 'patient-birthPlace',
+        url: 'http://hl7.org/fhir/StructureDefinition/patient-birthPlace',
+        name: 'birthPlace',
+        version: '4.0.1',
+        sdKind: 'complex-type',
+        sdDerivation: 'constraint',
+        sdType: 'Extension',
+        sdBaseDefinition: 'http://hl7.org/fhir/StructureDefinition/Extension',
+        sdAbstract: false,
+        sdFlavor: 'Extension',
+        packageName: 'package-with-non-resource',
+        packageVersion: '4.0.1',
+        resourcePath: path.join(pkg.packageJsonPath, '1.json')
       });
       expect(result).toBe(LoadStatus.LOADED);
     });
