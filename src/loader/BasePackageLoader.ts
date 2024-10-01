@@ -50,7 +50,7 @@ export class BasePackageLoader implements PackageLoader {
         try {
           const tarballStream = await this.currentBuildClient.downloadCurrentBuild(name, branch);
           await this.packageCache.cachePackageTarball(name, version, tarballStream);
-        } catch (e) {
+        } catch {
           this.log('error', `Failed to download ${packageLabel} from current builds`);
         }
       }
@@ -60,7 +60,7 @@ export class BasePackageLoader implements PackageLoader {
       try {
         const tarballStream = await this.registryClient.download(name, version);
         await this.packageCache.cachePackageTarball(name, version, tarballStream);
-      } catch (e) {
+      } catch {
         this.log('error', `Failed to download ${packageLabel} from registry`);
       }
     }
@@ -69,7 +69,7 @@ export class BasePackageLoader implements PackageLoader {
     let stats: PackageStats;
     try {
       stats = this.loadPackageFromCache(name, version);
-    } catch (e) {
+    } catch {
       this.log('error', `Failed to load ${name}#${version}`);
       return LoadStatus.FAILED;
     }
@@ -124,7 +124,7 @@ export class BasePackageLoader implements PackageLoader {
       .forEach(resourcePath => {
         try {
           this.loadResourceFromCache(resourcePath, packageName, packageVersion);
-        } catch (e) {
+        } catch {
           // swallow this error because some JSON files will not be resources
           this.log('info', `JSON file at path ${resourcePath} was not FHIR resource`);
         }
@@ -251,7 +251,7 @@ export class BasePackageLoader implements PackageLoader {
             );
           }
         }
-      } catch (e) {
+      } catch {
         // do nothing -- will fall back to stale if we couldn't determine staleness
       }
     }

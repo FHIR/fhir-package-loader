@@ -5,7 +5,7 @@ import { RegistryClient, RegistryClientOptions } from './RegistryClient';
 export class RedundantRegistryClient implements RegistryClient {
   protected log: LogFunction;
   constructor(
-    private clients: RegistryClient[],
+    public clients: RegistryClient[],
     options: RegistryClientOptions = {}
   ) {
     this.log = options.log ?? (() => {});
@@ -17,7 +17,7 @@ export class RedundantRegistryClient implements RegistryClient {
     for (const client of this.clients) {
       try {
         return await client.download(name, version);
-      } catch (e) {
+      } catch {
         // Do nothing. Fallback to the next one.
       }
     }

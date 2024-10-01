@@ -29,25 +29,4 @@ export const logger = createLogger({
   transports: [new transports.Console()]
 });
 
-export class ErrorsAndWarnings {
-  public errors: string[] = [];
-  public warnings: string[] = [];
-
-  reset(): void {
-    this.errors = [];
-    this.warnings = [];
-  }
-}
-
-export const wrapLogger = (log: LogFunction = () => {}, errorsAndWarnings: ErrorsAndWarnings) => {
-  return (level: string, message: string) => {
-    if (level === 'error') {
-      errorsAndWarnings.errors.push(message);
-    } else if (level === 'warn') {
-      errorsAndWarnings.warnings.push(message);
-    }
-    log(level, message);
-  };
-};
-
 export type LogFunction = (level: string, message: string) => void;

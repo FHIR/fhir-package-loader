@@ -8,7 +8,7 @@ import {
   LOCAL_PACKAGE_VERSION
 } from './PackageCache';
 import temp from 'temp';
-import tar from 'tar';
+import * as tar from 'tar';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
 import { LRUCache } from 'mnemonist';
@@ -158,11 +158,20 @@ export class DiskBasedPackageCache implements PackageCache {
     let resource = this.lruCache.get(resourcePath);
     if (!resource) {
       if (/.xml$/i.test(resourcePath)) {
-        // TODO: Consider error handling
-        const xml = fs.readFileSync(resourcePath).toString();
-        resource = this.fhirConverter.xmlToObj(xml);
+        try {
+          const xml = fs.readFileSync(resourcePath).toString();
+          resource = this.fhirConverter.xmlToObj(xml);
+        } catch {
+          throw new Error(`Failed to get XML resource at path ${resourcePath}`);
+        }
+      } else if (/.json$/i.test(resourcePath)) {
+        try {
+          resource = fs.readJSONSync(resourcePath);
+        } catch {
+          throw new Error(`Failed to get JSON resource at path ${resourcePath}`);
+        }
       } else {
-        resource = fs.readJSONSync(resourcePath);
+        throw new Error(`Failed to find XML or JSON file at path ${resourcePath}`);
       }
       this.lruCache.set(resourcePath, resource);
     }

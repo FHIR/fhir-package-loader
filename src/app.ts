@@ -1,10 +1,16 @@
 #!/usr/bin/env node
 
-import { program, OptionValues } from 'commander';
 import path from 'path';
 import fs from 'fs-extra';
-import { loadDependencies } from './load';
+import os from 'os';
+import initSqlJs from 'sql.js';
 import { logger } from './utils';
+import { Command, OptionValues } from 'commander';
+import { BasePackageLoader } from './loader';
+import { SQLJSPackageDB } from './db';
+import { DiskBasedPackageCache } from './cache';
+import { DefaultRegistryClient } from './registry';
+import { BuildDotFhirDotOrgClient } from './current';
 
 function getVersion(): string {
   const packageJSONPath = path.join(__dirname, '..', 'package.json');
@@ -18,25 +24,34 @@ function getVersion(): string {
 function getHelpText(): string {
   return `
 Examples:
-  fpl install hl7.fhir.us.core@current
-  fpl install hl7.fhir.us.core@4.0.0 hl7.fhir.us.mcode@2.0.0 --cachePath ./myProject`;
+  fpl install hl7.fhir.us.core#current
+  fpl install hl7.fhir.us.core#4.0.0 hl7.fhir.us.mcode#2.0.0 --cachePath ./myProject`;
 }
 
 async function install(fhirPackages: string[], options: OptionValues) {
   if (options.debug) logger.level = 'debug';
-
-  const packages = fhirPackages.map(dep => dep.replace('@', '#'));
-  const cachePath = options.cachePath;
-
-  const logMessage = (level: string, message: string) => {
+  const log = (level: string, message: string) => {
     logger.log(level, message);
   };
 
-  await loadDependencies(packages, cachePath, logMessage);
+  const SQL = await initSqlJs();
+  const packageDB = new SQLJSPackageDB(new SQL.Database());
+  const fhirCache = options.cachePath ?? path.join(os.homedir(), '.fhir', 'packages');
+  const packageCache = new DiskBasedPackageCache(fhirCache, [], { log });
+  const registryClient = new DefaultRegistryClient({ log });
+  const buildClient = new BuildDotFhirDotOrgClient({ log });
+  const loader = new BasePackageLoader(packageDB, packageCache, registryClient, buildClient, {
+    log
+  });
+
+  for (const pkg of fhirPackages) {
+    const [name, version] = pkg.split(/[#@]/, 2);
+    await loader.loadPackage(name, version);
+  }
 }
 
 async function app() {
-  program
+  const program = new Command()
     .name('fpl')
     .description('CLI for downloading FHIR packages')
     .addHelpText('after', getHelpText())
@@ -48,7 +63,7 @@ async function app() {
     .usage('<fhirPackages...> [options]')
     .argument(
       '<fhirPackages...>',
-      'list of FHIR packages to load using the format packageId@packageVersion...'
+      'list of FHIR packages to load using the format packageId#packageVersion or packageId@packageVersion'
     )
     .option(
       '-c, --cachePath <dir>',
