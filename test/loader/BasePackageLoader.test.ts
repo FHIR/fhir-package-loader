@@ -1142,11 +1142,15 @@ describe('BasePackageLoader', () => {
   describe('#findPackageInfos', () => {
     it('should return package info array', () => {
       const name = 'some.ig';
-      const version = '1.2.3';
-      loader.findPackageInfos = jest.fn().mockReturnValueOnce([{ name, version }]);
+      packageDBMock.findPackageInfos.calledWith(name).mockReturnValueOnce([
+        { name: 'some.ig', version: '1.2.3' },
+        { name: 'some.ig', version: '2.3.4' }
+      ]);
       const result = loader.findPackageInfos(name);
-      expect(result[0].name).toBe(name);
-      expect(result[0].version).toBe(version);
+      expect(result).toEqual([
+        { name: 'some.ig', version: '1.2.3' },
+        { name: 'some.ig', version: '2.3.4' }
+      ]);
     });
   });
 
@@ -1154,97 +1158,226 @@ describe('BasePackageLoader', () => {
     it('should return package info object', () => {
       const name = 'some.ig';
       const version = '1.2.3';
-      loader.findPackageInfo = jest.fn().mockReturnValueOnce({ name, version });
+      packageDBMock.findPackageInfo
+        .calledWith(name, version)
+        .mockReturnValueOnce({ name: 'some.ig', version: '1.2.3' });
       const result = loader.findPackageInfo(name, version);
-      expect(result.name).toBe(name);
-      expect(result.version).toBe(version);
+      expect(result.name).toBe('some.ig');
+      expect(result.version).toBe('1.2.3');
     });
   });
 
   describe('#findPackageJSONs', () => {
     it('should return package json array', () => {
       const name = 'some.ig';
-      loader.findPackageJSONs = jest
-        .fn()
-        .mockReturnValueOnce([
-          { resource: 'json/path/name', date: '20240824230227', resourceType: 'resourceTypeName' }
-        ]);
+      packageDBMock.findPackageInfos.calledWith(name).mockReturnValueOnce([
+        {
+          name: 'some.ig',
+          version: '1.2.3',
+          packageJSONPath: '/first/package/package.json'
+        },
+        {
+          name: 'some.ig',
+          version: '2.3.4'
+        },
+        {
+          name: 'some.ig',
+          version: '3.4.5',
+          packageJSONPath: '/third/package/package.json'
+        }
+      ]);
+      packageCacheMock.getResourceAtPath
+        .calledWith('/first/package/package.json')
+        .mockReturnValueOnce({ id: 'some.ig', version: '1.2.3' });
+      packageCacheMock.getResourceAtPath
+        .calledWith('/second/package/package.json')
+        .mockReturnValueOnce({ id: 'some.ig', version: '2.3.4' });
+      packageCacheMock.getResourceAtPath
+        .calledWith('/third/package/package.json')
+        .mockReturnValueOnce({ id: 'some.ig', version: '3.4.5' });
       const result = loader.findPackageJSONs(name);
-      expect(result[0].resource).toBe('json/path/name');
-      expect(result[0].date).toBe('20240824230227');
-      expect(result[0].resourceType).toBe('resourceTypeName');
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(2);
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({ id: 'some.ig', version: '1.2.3' });
+      expect(result[1]).toEqual({ id: 'some.ig', version: '3.4.5' });
     });
   });
 
   describe('#findPackageJSON', () => {
-    it('should return package json array', () => {
+    it('should return package json', () => {
       const name = 'some.ig';
       const version = '1.2.3';
-      loader.findPackageJSON = jest.fn().mockReturnValueOnce({
-        resource: 'json/path/name',
+      packageDBMock.findPackageInfo.calledWith('some.ig', '1.2.3').mockReturnValueOnce({
+        name: 'some.ig',
+        version: '1.2.3',
+        packageJSONPath: '/some/package/package.json'
+      });
+      packageCacheMock.getResourceAtPath
+        .calledWith('/some/package/package.json')
+        .mockReturnValueOnce({
+          date: '20240824230227',
+          resourceType: 'resourceTypeName'
+        });
+      const result = loader.findPackageJSON(name, version);
+      expect(result).toEqual({
         date: '20240824230227',
         resourceType: 'resourceTypeName'
       });
+    });
+
+    it('should return undefined when the info does not contain a packageJSONPath', () => {
+      const name = 'some.ig';
+      const version = '1.2.3';
+      packageDBMock.findPackageInfo.calledWith('some.ig', '1.2.3').mockReturnValueOnce({
+        name: 'some.ig',
+        version: '1.2.3'
+      });
+      packageCacheMock.getResourceAtPath
+        .calledWith('/some/package/package.json')
+        .mockReturnValueOnce({
+          date: '20240824230227',
+          resourceType: 'resourceTypeName'
+        });
       const result = loader.findPackageJSON(name, version);
-      expect(result.resource).toBe('json/path/name');
-      expect(result.date).toBe('20240824230227');
-      expect(result.resourceType).toBe('resourceTypeName');
+      expect(result).toBeUndefined();
+    });
+
+    it('should return undefined when no info is found', () => {
+      const name = 'some.ig';
+      const version = '1.2.3';
+      packageDBMock.findPackageInfo.calledWith('some.ig', '1.2.3').mockReturnValueOnce(undefined);
+      packageCacheMock.getResourceAtPath
+        .calledWith('/some/package/package.json')
+        .mockReturnValueOnce({
+          date: '20240824230227',
+          resourceType: 'resourceTypeName'
+        });
+      const result = loader.findPackageJSON(name, version);
+      expect(result).toBeUndefined();
     });
   });
 
   describe('#findResourceInfos', () => {
     it('should return resource array', () => {
-      const name = 'some.ig';
-      loader.findResourceInfos = jest
-        .fn()
-        .mockReturnValueOnce([
-          { resource: 'json/path/name', date: '20240824230227', resourceType: 'resourceTypeName' }
-        ]);
-      const result = loader.findResourceInfos(name);
-      expect(result[0].resourceType).toBe('resourceTypeName');
+      const resourceInfos = [
+        {
+          name: 'firstResource',
+          resourceType: 'StructureDefinition',
+          version: '1.2.3',
+          resourcePath: '/some/package/first-thing.json'
+        },
+        {
+          name: 'secondResource',
+          resourceType: 'ValueSet',
+          version: '1.2.3'
+        },
+        {
+          name: 'thirdResource',
+          resourceType: 'CodeSystem',
+          version: '1.2.3',
+          resourcePath: '/some/package/third-thing.json'
+        }
+      ];
+      packageDBMock.findResourceInfos.calledWith('*').mockReturnValueOnce(resourceInfos);
+      // packageCacheMock.getResourceAtPath
+      //   .calledWith('/some/package/first-thing.json')
+      //   .mockReturnValueOnce({ id: 'first-thing', version: '1.2.3' });
+      // packageCacheMock.getResourceAtPath
+      //   .calledWith('/some/package/second-thing.json')
+      //   .mockReturnValueOnce({ id: 'second-thing', version: '1.2.3' });
+      // packageCacheMock.getResourceAtPath
+      //   .calledWith('/some/package/third-thing.json')
+      //   .mockReturnValueOnce({ id: 'third-thing', version: '1.2.3' });
+      const result = loader.findResourceInfos('*');
+      // expect(packageCacheMock).toHaveBeenCalledTimes(2);
+      expect(result).toHaveLength(3);
+      expect(result).toEqual(resourceInfos);
     });
   });
 
   describe('#findResourceInfo', () => {
     it('should return resource info', () => {
-      const name = 'some.ig';
-      loader.findResourceInfo = jest.fn().mockReturnValueOnce({
-        resource: 'json/path/name',
-        date: '20240824230227',
-        resourceType: 'resourceTypeName'
+      packageDBMock.findResourceInfo.calledWith('firstResource').mockReturnValueOnce({
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3',
+        resourcePath: '/some/package/first-thing.json'
       });
-      const result = loader.findResourceInfo(name);
-      expect(result.resourceType).toBe('resourceTypeName');
+      const result = loader.findResourceInfo('firstResource');
+      expect(result).toEqual({
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3',
+        resourcePath: '/some/package/first-thing.json'
+      });
     });
   });
 
   describe('#findResourceJSONs', () => {
     it('should return resource json array', () => {
-      const name = 'some.ig';
-      loader.findResourceJSONs = jest
-        .fn()
-        .mockReturnValueOnce([
-          { resource: 'json/path/name', date: '20240824230227', resourceType: 'resourceTypeName' }
-        ]);
-      const result = loader.findResourceJSONs(name);
-      expect(result[0].resource).toBe('json/path/name');
-      expect(result[0].date).toBe('20240824230227');
-      expect(result[0].resourceType).toBe('resourceTypeName');
+      const resourceInfos = [
+        {
+          name: 'firstResource',
+          resourceType: 'StructureDefinition',
+          version: '1.2.3',
+          resourcePath: '/some/package/first-thing.json'
+        },
+        {
+          name: 'secondResource',
+          resourceType: 'ValueSet',
+          version: '1.2.3'
+        },
+        {
+          name: 'thirdResource',
+          resourceType: 'CodeSystem',
+          version: '1.2.3',
+          resourcePath: '/some/package/third-thing.json'
+        }
+      ];
+      packageDBMock.findResourceInfos.calledWith('*').mockReturnValueOnce(resourceInfos);
+      packageCacheMock.getResourceAtPath
+        .calledWith('/some/package/first-thing.json')
+        .mockReturnValueOnce({ id: 'first-thing', version: '1.2.3' });
+      packageCacheMock.getResourceAtPath
+        .calledWith('/some/package/second-thing.json')
+        .mockReturnValueOnce({ id: 'second-thing', version: '1.2.3' });
+      packageCacheMock.getResourceAtPath
+        .calledWith('/some/package/third-thing.json')
+        .mockReturnValueOnce({ id: 'third-thing', version: '1.2.3' });
+      const result = loader.findResourceJSONs('*');
+      expect(result).toEqual([
+        { id: 'first-thing', version: '1.2.3' },
+        { id: 'third-thing', version: '1.2.3' }
+      ]);
     });
   });
 
   describe('#findResourceJSON', () => {
     it('should return resource json', () => {
-      const name = 'some.ig';
-      loader.findResourceJSON = jest.fn().mockReturnValueOnce({
-        resource: 'json/path/name',
-        date: '20240824230227',
-        resourceType: 'resourceTypeName'
+      packageDBMock.findResourceInfo.calledWith('firstResource').mockReturnValueOnce({
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3',
+        resourcePath: '/some/package/first-thing.json'
       });
-      const result = loader.findResourceJSON(name);
-      expect(result.resource).toBe('json/path/name');
-      expect(result.date).toBe('20240824230227');
-      expect(result.resourceType).toBe('resourceTypeName');
+      packageCacheMock.getResourceAtPath
+        .calledWith('/some/package/first-thing.json')
+        .mockReturnValueOnce({ id: 'first-thing', version: '1.2.3' });
+      const result = loader.findResourceJSON('firstResource');
+      expect(result).toEqual({ id: 'first-thing', version: '1.2.3' });
+    });
+
+    it('should return undefined when the info does not contain a resourcePath', () => {
+      packageDBMock.findResourceInfo.calledWith('first-thing').mockReturnValueOnce({
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3'
+      });
+      packageCacheMock.getResourceAtPath
+        .calledWith('/some/package/first-thing.json')
+        .mockReturnValueOnce({ id: 'first-thing', version: '1.2.3' });
+      const result = loader.findResourceJSON('firstResource');
+      expect(result).toBeUndefined();
     });
   });
 
