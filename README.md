@@ -183,7 +183,7 @@ jest.mock('fhir-package-loader', () => {
 
 ## Intro to FHIR Package Loader
 
-To learn more about FHIR Package Loader, watch the Knowledge Sharing Sessions for [Developing FSH Tools](https://vimeo.com/990594107/c35c3f5e43) (view the slides [here](https://confluence.hl7.org/display/FHIR/FSH+Knowledge+Sharing+Sessions?preview=/256509612/256514908/KSS%203%20-%20Developing%20FSH%20Tools.pdf)) and [Developing FHIR Package Loader](https://vimeo.com/1008502493/76aba15913) (view the slides [here](https://confluence.hl7.org/display/FHIR/FSH+Knowledge+Sharing+Sessions?preview=/256509612/265096146/KSS%208%20-%20Developing%20FHIR%20Package%20Loader.pdf)).
+To learn more about FHIR Package Loader, watch the Knowledge Sharing Sessions for [Developing FSH Tools](https://vimeo.com/990594228/056b5c075f) (view the slides [here](https://confluence.hl7.org/display/FHIR/FSH+Knowledge+Sharing+Sessions?preview=/256509612/256514908/KSS%203%20-%20Developing%20FSH%20Tools.pdf)) and [Developing FHIR Package Loader](https://vimeo.com/1008502493/76aba15913) (view the slides [here](https://confluence.hl7.org/display/FHIR/FSH+Knowledge+Sharing+Sessions?preview=/256509612/265096146/KSS%208%20-%20Developing%20FHIR%20Package%20Loader.pdf)).
 These sessions provide a technical overview of the codebase and summarize key concepts for developers.
 
 ## Installation
