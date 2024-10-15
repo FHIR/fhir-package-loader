@@ -100,6 +100,8 @@ const INSERT_RESOURCE = `INSERT INTO resource
     :resourcePath
   );`;
 
+const SD_FLAVORS = ['Extension', 'Logical', 'Profile', 'Resource', 'Type'];
+
 export class SQLJSPackageDB implements PackageDB {
   private insertPackageStmt: Statement;
   private insertResourceStmt: Statement;
@@ -233,15 +235,19 @@ export class SQLJSPackageDB implements PackageDB {
       key = '';
     }
     // TODO: Upgrade to class-level property once query and parameters are sorted out
-    // TODO: Support versions when canonical form is used
+    const [keyText, ...keyVersion] = key.split('|');
     const bindStmt: { [key: string]: string } = {};
     let findStmt = 'SELECT * FROM resource WHERE ';
-    if (key !== '*') {
+    if (keyText !== '*') {
       // special case for selecting all
-      bindStmt[':key'] = key;
+      bindStmt[':key'] = keyText;
       findStmt += '(id = :key OR name = :key OR url = :key)';
     } else {
       findStmt += '1';
+    }
+    if (keyVersion.length) {
+      bindStmt[':version'] = keyVersion.join('|');
+      findStmt += ' AND version = :version';
     }
     if (options.scope?.length) {
       const [packageName, ...packageVersion] = options.scope.split('|');
@@ -255,9 +261,10 @@ export class SQLJSPackageDB implements PackageDB {
     if (options.type?.length) {
       const conditions = options.type.map((t, i) => {
         bindStmt[`:type${i}`] = t;
-        return `(sdFlavor = :type${i} OR resourceType = :type${i})`;
+        const field = SD_FLAVORS.includes(t) ? 'sdFlavor' : 'resourceType';
+        return `${field} = :type${i}`;
       });
-      findStmt += ` AND (${conditions.join(' OR ')}) ORDER BY ${conditions.map(c => `${c} DESC`).join(', ')}, rowid DESC`;
+      findStmt += ` AND (${conditions.join(' OR ')}) ORDER BY ${conditions.map(c => `(${c} OR NULL) DESC`).join(', ')}, rowid DESC`;
     } else {
       findStmt += ' ORDER BY rowid DESC';
     }

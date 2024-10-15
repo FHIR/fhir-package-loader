@@ -473,6 +473,46 @@ describe('SQLJSPackageDB', () => {
       });
       expect(resources).toHaveLength(2);
     });
+
+    it('should sort results using the descending order in which resources were saved (e.g., last in first out) when no types are passed in', () => {
+      const resources = packageDb.findResourceInfos('*');
+      expect(resources).toHaveLength(5);
+      expect(resources).toEqual([
+        expect.objectContaining(valueSetFour),
+        expect.objectContaining(valueSetThree),
+        expect.objectContaining(specialExtension),
+        expect.objectContaining(observationProfile),
+        expect.objectContaining(patientProfile)
+      ]);
+    });
+
+    it('should sort results using the ascending order of passed in types, then descending order in which resources were saved', () => {
+      const resources = packageDb.findResourceInfos('*', {
+        type: ['StructureDefinition', 'ValueSet']
+      });
+      expect(resources).toHaveLength(5);
+      expect(resources).toEqual([
+        expect.objectContaining(specialExtension),
+        expect.objectContaining(observationProfile),
+        expect.objectContaining(patientProfile),
+        expect.objectContaining(valueSetFour),
+        expect.objectContaining(valueSetThree)
+      ]);
+    });
+
+    it('should support SD flavors when sorting results using passed in types', () => {
+      const resources = packageDb.findResourceInfos('*', {
+        type: ['Profile', 'ValueSet', 'Extension']
+      });
+      expect(resources).toHaveLength(5);
+      expect(resources).toEqual([
+        expect.objectContaining(observationProfile),
+        expect.objectContaining(patientProfile),
+        expect.objectContaining(valueSetFour),
+        expect.objectContaining(valueSetThree),
+        expect.objectContaining(specialExtension)
+      ]);
+    });
   });
 
   describe('#findResourceInfo', () => {
@@ -516,6 +556,25 @@ describe('SQLJSPackageDB', () => {
       // both valueSetThree and valueSetFour have a matching id,
       // but the last resource added wins.
       expect(resource).toEqual(expect.objectContaining(valueSetFour));
+    });
+
+    it('should return last saved resource when no types are passed in', () => {
+      const resource = packageDb.findResourceInfo('*');
+      expect(resource).toEqual(expect.objectContaining(valueSetFour));
+    });
+
+    it('should return resource of first matching type when types are passed in', () => {
+      const resource = packageDb.findResourceInfo('*', {
+        type: ['StructureDefinition', 'ValueSet']
+      });
+      expect(resource).toEqual(expect.objectContaining(specialExtension));
+    });
+
+    it('should support SD flavors when types are passed in', () => {
+      const resource = packageDb.findResourceInfo('*', {
+        type: ['Profile', 'Extension', 'ValueSet']
+      });
+      expect(resource).toEqual(expect.objectContaining(specialExtension));
     });
 
     it('should return undefined when there are no matches', () => {

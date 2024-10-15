@@ -6,3 +6,4 @@ export * from './db';
 export * from './loader';
 export * from './package';
 export * from './registry';
+export * from './virtual';

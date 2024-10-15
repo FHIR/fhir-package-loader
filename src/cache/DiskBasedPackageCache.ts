@@ -90,43 +90,47 @@ export class DiskBasedPackageCache implements PackageCache {
       const invalidFileCounts = new Map<string, number>();
       const resourcePaths: string[] = [];
       this.localResourceFolders.forEach(folder => {
-        let spreadSheetCount = 0;
-        let invalidFileCount = 0;
-        fs.readdirSync(folder, { withFileTypes: true })
-          .filter(entry => {
-            if (!entry.isFile()) {
-              return false;
-            } else if (/\.json$/i.test(entry.name)) {
-              return true;
-            } else if (/-spreadsheet.xml/i.test(entry.name)) {
-              spreadSheetCount++;
-              this.log(
-                'debug',
-                `Skipped spreadsheet XML file: ${path.resolve(entry.path, entry.name)}`
-              );
-              return false;
-            } else if (/\.xml/i.test(entry.name)) {
-              const xml = fs.readFileSync(path.resolve(entry.path, entry.name)).toString();
-              if (/<\?mso-application progid="Excel\.Sheet"\?>/m.test(xml)) {
+        try {
+          let spreadSheetCount = 0;
+          let invalidFileCount = 0;
+          fs.readdirSync(folder, { withFileTypes: true })
+            .filter(entry => {
+              if (!entry.isFile()) {
+                return false;
+              } else if (/\.json$/i.test(entry.name)) {
+                return true;
+              } else if (/-spreadsheet.xml/i.test(entry.name)) {
                 spreadSheetCount++;
                 this.log(
                   'debug',
                   `Skipped spreadsheet XML file: ${path.resolve(entry.path, entry.name)}`
                 );
                 return false;
+              } else if (/\.xml/i.test(entry.name)) {
+                const xml = fs.readFileSync(path.resolve(entry.path, entry.name)).toString();
+                if (/<\?mso-application progid="Excel\.Sheet"\?>/m.test(xml)) {
+                  spreadSheetCount++;
+                  this.log(
+                    'debug',
+                    `Skipped spreadsheet XML file: ${path.resolve(entry.path, entry.name)}`
+                  );
+                  return false;
+                }
+                return true;
               }
-              return true;
-            }
-            invalidFileCount++;
-            this.log(
-              'debug',
-              `Skipped non-JSON / non-XML file: ${path.resolve(entry.path, entry.name)}`
-            );
-            return false;
-          })
-          .forEach(entry => resourcePaths.push(path.resolve(entry.path, entry.name)));
-        spreadSheetCounts.set(folder, spreadSheetCount);
-        invalidFileCounts.set(folder, invalidFileCount);
+              invalidFileCount++;
+              this.log(
+                'debug',
+                `Skipped non-JSON / non-XML file: ${path.resolve(entry.path, entry.name)}`
+              );
+              return false;
+            })
+            .forEach(entry => resourcePaths.push(path.resolve(entry.path, entry.name)));
+          spreadSheetCounts.set(folder, spreadSheetCount);
+          invalidFileCounts.set(folder, invalidFileCount);
+        } catch {
+          this.log('error', `Failed to load resources from local path: ${folder}`);
+        }
       });
       spreadSheetCounts.forEach((count, folder) => {
         if (count) {

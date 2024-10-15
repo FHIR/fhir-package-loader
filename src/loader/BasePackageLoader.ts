@@ -3,6 +3,7 @@ import { CurrentBuildClient } from '../current';
 import { PackageDB } from '../db';
 import { InvalidResourceError } from '../errors';
 import { FindResourceInfoOptions, PackageInfo, PackageStats, ResourceInfo } from '../package';
+import { VirtualPackage } from '../virtual';
 import { RegistryClient } from '../registry';
 import { LogFunction } from '../utils';
 import { PackageCache } from '../cache/PackageCache';
@@ -14,6 +15,8 @@ export type BasePackageLoaderOptions = {
 
 export class BasePackageLoader implements PackageLoader {
   private log: LogFunction;
+  private virtualPackages: Map<string, VirtualPackage>;
+
   constructor(
     private packageDB: PackageDB,
     private packageCache: PackageCache,
@@ -22,6 +25,7 @@ export class BasePackageLoader implements PackageLoader {
     options: BasePackageLoaderOptions = {}
   ) {
     this.log = options.log ?? (() => {});
+    this.virtualPackages = new Map<string, VirtualPackage>();
   }
 
   async loadPackage(name: string, version: string): Promise<LoadStatus> {
@@ -77,14 +81,55 @@ export class BasePackageLoader implements PackageLoader {
     return LoadStatus.LOADED;
   }
 
-  // async loadLocalPackage(
-  //   name: string,
-  //   version: string,
-  //   packagePath: string,
-  //   strict: boolean
-  // ): Promise<PackageLoadStatus> {
-  //   return PackageLoadStatus.FAILED;
-  // }
+  async loadVirtualPackage(pkg: VirtualPackage): Promise<LoadStatus> {
+    // Ensure package.json has at least the name and version
+    const packageJSON = pkg.getPackageJSON();
+    if (
+      packageJSON?.name == null ||
+      packageJSON.name.trim() === '' ||
+      packageJSON.version == null ||
+      packageJSON.version.trim() == ''
+    ) {
+      this.log(
+        'error',
+        `Failed to load virtual package ${packageJSON?.name ?? '<unknown>'}#${packageJSON?.version ?? '<unknown>'} because the provided packageJSON did not have a valid name and/or version`
+      );
+      return LoadStatus.FAILED;
+    }
+
+    // If it's already loaded, then there's nothing to do
+    if (this.getPackageLoadStatus(packageJSON.name, packageJSON.version) === LoadStatus.LOADED) {
+      this.log('info', `Virtual package ${packageJSON.name}#${packageJSON.version} already loaded`);
+      return LoadStatus.LOADED;
+    }
+
+    // Store the virtual package by its name#version key
+    const packageKey = `${packageJSON.name}#${packageJSON.version}`;
+    this.virtualPackages.set(packageKey, pkg);
+
+    // Save the package info
+    const info: PackageInfo = {
+      name: packageJSON.name,
+      version: packageJSON.version,
+      packagePath: `virtual:${packageKey}`,
+      packageJSONPath: `virtual:${packageKey}:package.json`
+    };
+    this.packageDB.savePackageInfo(info);
+
+    // Register the resources
+    await pkg.registerResources((key: string, resource: any) => {
+      this.loadResource(
+        `virtual:${packageKey}:${key}`,
+        resource,
+        packageJSON.name,
+        packageJSON.version
+      );
+    });
+
+    const stats = this.packageDB.getPackageStats(packageJSON.name, packageJSON.version);
+    this.log('info', `Loaded virtual package ${packageKey} with ${stats.resourceCount} resources`);
+    return LoadStatus.LOADED;
+  }
 
   private loadPackageFromCache(name: string, version: string) {
     // Ensure the package is cached
@@ -103,6 +148,7 @@ export class BasePackageLoader implements PackageLoader {
     };
 
     if (name === 'LOCAL' && version === 'LOCAL') {
+      // it's a list of ;-separated paths, so don't try to resolve it
       info.packagePath = packagePath;
     } else {
       const packageJSONPath = this.packageCache.getPackageJSONPath(name, version);
@@ -258,6 +304,20 @@ export class BasePackageLoader implements PackageLoader {
     return isStale;
   }
 
+  private getResourceAtPath(resourcePath: string): any {
+    if (/^virtual:/.test(resourcePath)) {
+      const [, packageKey, resourceKey] = resourcePath.match(/^virtual:([^:]+):(.*)$/);
+      if (packageKey && resourceKey) {
+        const pkg = this.virtualPackages.get(packageKey);
+        return resourceKey === 'package.json'
+          ? pkg?.getPackageJSON()
+          : pkg?.getResourceByKey(resourceKey);
+      }
+    } else {
+      return this.packageCache.getResourceAtPath(resourcePath);
+    }
+  }
+
   getPackageLoadStatus(name: string, version: string): LoadStatus {
     const pkg = this.packageDB.findPackageInfo(name, version);
     if (pkg) {
@@ -278,14 +338,14 @@ export class BasePackageLoader implements PackageLoader {
     return this.findPackageInfos(name)
       .filter(info => info.packageJSONPath)
       .map(info => {
-        return this.packageCache.getResourceAtPath(info.packageJSONPath);
+        return this.getResourceAtPath(info.packageJSONPath);
       });
   }
 
   findPackageJSON(name: string, version: string) {
     const info = this.findPackageInfo(name, version);
     if (info?.packageJSONPath) {
-      return this.packageCache.getResourceAtPath(info.packageJSONPath);
+      return this.getResourceAtPath(info.packageJSONPath);
     }
   }
 
@@ -301,14 +361,14 @@ export class BasePackageLoader implements PackageLoader {
     return this.findResourceInfos(key, options)
       .filter(info => info.resourcePath)
       .map(info => {
-        return this.packageCache.getResourceAtPath(info.resourcePath);
+        return this.getResourceAtPath(info.resourcePath);
       });
   }
 
   findResourceJSON(key: string, options?: FindResourceInfoOptions) {
     const info = this.findResourceInfo(key, options);
     if (info?.resourcePath) {
-      return this.packageCache.getResourceAtPath(info.resourcePath);
+      return this.getResourceAtPath(info.resourcePath);
     }
   }
 
