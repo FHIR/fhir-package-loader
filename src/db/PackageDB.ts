@@ -9,4 +9,5 @@ export interface PackageDB {
   findResourceInfos(key: string, options?: FindResourceInfoOptions): ResourceInfo[];
   findResourceInfo(key: string, options?: FindResourceInfoOptions): ResourceInfo | undefined;
   getPackageStats(name: string, version: string): PackageStats | undefined;
+  exportDB(): Promise<{ mimeType: string; data: Buffer }>;
 }

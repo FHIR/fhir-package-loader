@@ -4,6 +4,7 @@ import { VirtualPackage, VirtualPackageOptions } from './VirtualPackage';
 
 export class InMemoryVirtualPackage implements VirtualPackage {
   private log: LogFunction;
+  private allowNonResources: boolean;
 
   constructor(
     private packageJSON: PackageJSON,
@@ -11,11 +12,14 @@ export class InMemoryVirtualPackage implements VirtualPackage {
     options: VirtualPackageOptions = {}
   ) {
     this.log = options.log ?? (() => {});
+    this.allowNonResources = options.allowNonResources ?? false;
   }
 
-  async registerResources(register: (key: string, resource: any) => void): Promise<void> {
+  async registerResources(
+    register: (key: string, resource: any, allowNonResources?: boolean) => void
+  ): Promise<void> {
     // TODO: Error handling?
-    this.resources.forEach((resource, key) => register(key, resource));
+    this.resources.forEach((resource, key) => register(key, resource, this.allowNonResources));
   }
 
   getPackageJSON(): PackageJSON {

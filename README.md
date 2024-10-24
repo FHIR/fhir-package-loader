@@ -116,8 +116,6 @@ if (status !== LoadStatus.LOADED) {
 }
 ```
 
-To instantiate the default `PackageLoader` with a set of standalone JSON or XML resources that should be pre-loaded, use the `defaultPackageLoaderWithLocalResources` function instead, passing in an array of file paths to folders containing the resources to load.
-
 For more control over the `PackageLoader`, use the [BasePackageLoader](src/loader/BasePackageLoader.ts). This allows you to specify the [PackageDB](src/db), [PackageCache](src/cache), [RegistryClient](src/registry), and [CurrentBuildClient](src/current) you wish to use. FHIRPackageLoader comes with implementations of each of these, but you may also provide your own implementations that adhere to the relevant interfaces.
 
 ### PackageLoader Functions

@@ -318,6 +318,11 @@ export class SQLJSPackageDB implements PackageDB {
     };
   }
 
+  exportDB(): Promise<{ mimeType: string; data: Buffer }> {
+    const data = this.db.export();
+    return Promise.resolve({ mimeType: 'application/x-sqlite3', data: Buffer.from(data) });
+  }
+
   logPackageTable() {
     const res = this.db.exec('SELECT * FROM package');
     console.log(util.inspect(res, false, 3, true));

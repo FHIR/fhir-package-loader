@@ -1,8 +1,7 @@
 import { Readable } from 'stream';
 import { LogFunction, axiosGet } from '../utils';
 import { RegistryClient, RegistryClientOptions } from './RegistryClient';
-import { IncorrectWildcardVersionFormatError } from '../errors';
-import { lookUpLatestVersion, lookUpLatestPatchVersion } from './utils';
+import { resolveVersion } from './utils';
 
 export class FHIRRegistryClient implements RegistryClient {
   public endpoint: string;
@@ -14,15 +13,13 @@ export class FHIRRegistryClient implements RegistryClient {
     this.log = options.log ?? (() => {});
   }
 
+  async resolveVersion(name: string, version: string): Promise<string> {
+    return resolveVersion(this.endpoint, name, version);
+  }
+
   async download(name: string, version: string): Promise<Readable> {
     // Resolve version if necessary
-    if (version === 'latest') {
-      version = await lookUpLatestVersion(this.endpoint, name);
-    } else if (/^\d+\.\d+\.x$/.test(version)) {
-      version = await lookUpLatestPatchVersion(this.endpoint, name, version);
-    } else if (/^\d+\.x$/.test(version)) {
-      throw new IncorrectWildcardVersionFormatError(name, version);
-    }
+    version = await this.resolveVersion(name, version);
 
     // Construct URL from endpoint, name, and version
     // See: https://confluence.hl7.org/pages/viewpage.action?pageId=97454344#FHIRPackageRegistryUserDocumentation-Download

@@ -37,7 +37,7 @@ async function install(fhirPackages: string[], options: OptionValues) {
   const SQL = await initSqlJs();
   const packageDB = new SQLJSPackageDB(new SQL.Database());
   const fhirCache = options.cachePath ?? path.join(os.homedir(), '.fhir', 'packages');
-  const packageCache = new DiskBasedPackageCache(fhirCache, [], { log });
+  const packageCache = new DiskBasedPackageCache(fhirCache, { log });
   const registryClient = new DefaultRegistryClient({ log });
   const buildClient = new BuildDotFhirDotOrgClient({ log });
   const loader = new BasePackageLoader(packageDB, packageCache, registryClient, buildClient, {

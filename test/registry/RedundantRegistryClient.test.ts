@@ -1,11 +1,16 @@
 import { RedundantRegistryClient } from '../../src/registry/RedundantRegistryClient';
+import { RegistryClient } from '../../src/registry/RegistryClient';
 import { loggerSpy } from '../testhelpers';
 import { Readable } from 'stream';
 
-class MyMockClient {
+class MyMockClient implements RegistryClient {
   public endpoint: string;
   constructor(endpoint: string) {
     this.endpoint = endpoint;
+  }
+
+  async resolveVersion(name: string, version: string): Promise<string> {
+    return version;
   }
 
   async download(name: string, version: string): Promise<Readable> {

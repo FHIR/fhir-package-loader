@@ -109,13 +109,15 @@ describe('FHIRRegistryClient', () => {
         axiosSpy.mockRestore();
       });
 
+      // this
       it('should throw error if no name given for download method', async () => {
         const latest = client.download('', '5.5.5');
+        await expect(latest).rejects.toThrow(Error);
+        await expect(latest).rejects.toThrow('Not found');
+        // It should have successfully logged the attempt to download before rejecting
         expect(loggerSpy.getLastMessage('info')).toBe(
           'Attempting to download #5.5.5 from https://packages.fhir.org//5.5.5'
         );
-        await expect(latest).rejects.toThrow(Error);
-        await expect(latest).rejects.toThrow('Not found');
       });
 
       it('should throw error if no version given for download method', async () => {
@@ -149,12 +151,13 @@ describe('FHIRRegistryClient', () => {
 
       it('should throw error when trying to get the version of a package on the packages server but status is not 200', async () => {
         const latest = client.download('hl7.terminology.r4', '1.1.2');
-        expect(loggerSpy.getLastMessage('info')).toBe(
-          'Attempting to download hl7.terminology.r4#1.1.2 from https://packages.fhir.org/hl7.terminology.r4/1.1.2'
-        );
         await expect(latest).rejects.toThrow(Error);
         await expect(latest).rejects.toThrow(
           'Failed to download hl7.terminology.r4#1.1.2 from https://packages.fhir.org/hl7.terminology.r4/1.1.2'
+        );
+        // It should have successfully logged the attempt to download before rejecting
+        expect(loggerSpy.getLastMessage('info')).toBe(
+          'Attempting to download hl7.terminology.r4#1.1.2 from https://packages.fhir.org/hl7.terminology.r4/1.1.2'
         );
       });
 

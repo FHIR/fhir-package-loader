@@ -1,12 +1,7 @@
 import path from 'path';
 import fs from 'fs-extra';
 import { LogFunction } from '../utils';
-import {
-  PackageCache,
-  PackageCacheOptions,
-  LOCAL_PACKAGE_NAME,
-  LOCAL_PACKAGE_VERSION
-} from './PackageCache';
+import { PackageCache, PackageCacheOptions } from './PackageCache';
 import temp from 'temp';
 import * as tar from 'tar';
 import { Readable } from 'stream';
@@ -16,17 +11,14 @@ import { Fhir as FHIRConverter } from 'fhir/fhir';
 
 export class DiskBasedPackageCache implements PackageCache {
   private log: LogFunction;
-  private localResourceFolders: string[];
   private fhirConverter: FHIRConverter;
   private lruCache: LRUCache<string, any>;
 
   constructor(
     private cachePath: string,
-    localResourceFolders: string[] = [],
     options: PackageCacheOptions = {}
   ) {
     this.log = options.log ?? (() => {});
-    this.localResourceFolders = localResourceFolders.map(f => path.resolve(f));
     this.fhirConverter = new FHIRConverter();
     // TODO: Make Cache Size Configurable
     this.lruCache = new LRUCache<string, any>(500);
@@ -51,32 +43,19 @@ export class DiskBasedPackageCache implements PackageCache {
   }
 
   isPackageInCache(name: string, version: string): boolean {
-    if (isLocalPackage(name, version)) {
-      return true;
-    }
     return fs.existsSync(path.resolve(this.cachePath, `${name}#${version}`));
   }
 
   getPackagePath(name: string, version: string): string | undefined {
     if (this.isPackageInCache(name, version)) {
-      if (isLocalPackage(name, version)) {
-        return this.localResourceFolders.join(';');
-      }
       return path.resolve(this.cachePath, `${name}#${version}`);
     }
   }
 
   getPackageJSONPath(name: string, version: string): string | undefined {
-    if (!isLocalPackage(name, version)) {
-      const jsonPath = path.resolve(
-        this.cachePath,
-        `${name}#${version}`,
-        'package',
-        'package.json'
-      );
-      if (fs.existsSync(jsonPath)) {
-        return jsonPath;
-      }
+    const jsonPath = path.resolve(this.cachePath, `${name}#${version}`, 'package', 'package.json');
+    if (fs.existsSync(jsonPath)) {
+      return jsonPath;
     }
   }
 
@@ -85,77 +64,11 @@ export class DiskBasedPackageCache implements PackageCache {
       return [];
     }
 
-    if (isLocalPackage(name, version)) {
-      const spreadSheetCounts = new Map<string, number>();
-      const invalidFileCounts = new Map<string, number>();
-      const resourcePaths: string[] = [];
-      this.localResourceFolders.forEach(folder => {
-        try {
-          let spreadSheetCount = 0;
-          let invalidFileCount = 0;
-          fs.readdirSync(folder, { withFileTypes: true })
-            .filter(entry => {
-              if (!entry.isFile()) {
-                return false;
-              } else if (/\.json$/i.test(entry.name)) {
-                return true;
-              } else if (/-spreadsheet.xml/i.test(entry.name)) {
-                spreadSheetCount++;
-                this.log(
-                  'debug',
-                  `Skipped spreadsheet XML file: ${path.resolve(entry.path, entry.name)}`
-                );
-                return false;
-              } else if (/\.xml/i.test(entry.name)) {
-                const xml = fs.readFileSync(path.resolve(entry.path, entry.name)).toString();
-                if (/<\?mso-application progid="Excel\.Sheet"\?>/m.test(xml)) {
-                  spreadSheetCount++;
-                  this.log(
-                    'debug',
-                    `Skipped spreadsheet XML file: ${path.resolve(entry.path, entry.name)}`
-                  );
-                  return false;
-                }
-                return true;
-              }
-              invalidFileCount++;
-              this.log(
-                'debug',
-                `Skipped non-JSON / non-XML file: ${path.resolve(entry.path, entry.name)}`
-              );
-              return false;
-            })
-            .forEach(entry => resourcePaths.push(path.resolve(entry.path, entry.name)));
-          spreadSheetCounts.set(folder, spreadSheetCount);
-          invalidFileCounts.set(folder, invalidFileCount);
-        } catch {
-          this.log('error', `Failed to load resources from local path: ${folder}`);
-        }
-      });
-      spreadSheetCounts.forEach((count, folder) => {
-        if (count) {
-          this.log(
-            'info',
-            `Found ${count} spreadsheet(s) in directory: ${folder}. SUSHI does not support spreadsheets, so any resources in the spreadsheets will be ignored. To see the skipped files in the logs, run SUSHI with the "--log-level debug" flag.`
-          );
-        }
-      });
-      invalidFileCounts.forEach((count, folder) => {
-        if (count) {
-          this.log(
-            'info',
-            `Found ${count} non-JSON / non-XML file(s) in directory: ${folder}. SUSHI only processes resource files with JSON or XML extensions. To see the skipped files in the logs, run SUSHI with the "--log-level debug" flag.`
-          );
-        }
-      });
-      return resourcePaths;
-    } else {
-      const contentPath = path.resolve(this.cachePath, `${name}#${version}`, 'package');
-      return fs
-        .readdirSync(contentPath, { withFileTypes: true })
-        .filter(entry => entry.isFile() && /^[^.].*\.json$/i.test(entry.name))
-        .map(entry => path.resolve(entry.path, entry.name));
-    }
+    const contentPath = path.resolve(this.cachePath, `${name}#${version}`, 'package');
+    return fs
+      .readdirSync(contentPath, { withFileTypes: true })
+      .filter(entry => entry.isFile() && /^[^.].*\.json$/i.test(entry.name))
+      .map(entry => path.resolve(entry.path, entry.name));
   }
 
   getResourceAtPath(resourcePath: string) {
@@ -181,10 +94,6 @@ export class DiskBasedPackageCache implements PackageCache {
     }
     return resource;
   }
-}
-
-function isLocalPackage(name: string, version: string) {
-  return name === LOCAL_PACKAGE_NAME && version === LOCAL_PACKAGE_VERSION;
 }
 
 /**

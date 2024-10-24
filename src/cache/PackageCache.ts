@@ -1,9 +1,6 @@
 import { Readable } from 'stream';
 import { LogFunction } from '../utils';
 
-export const LOCAL_PACKAGE_NAME = 'LOCAL';
-export const LOCAL_PACKAGE_VERSION = 'LOCAL';
-
 export type PackageCacheOptions = {
   log?: LogFunction;
 };

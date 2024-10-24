@@ -2,7 +2,23 @@ import { IncorrectWildcardVersionFormatError, LatestVersionUnavailableError } fr
 import { axiosGet } from '../utils';
 import { maxSatisfying } from 'semver';
 
-export async function lookUpLatestVersion(endpoint: string, name: string): Promise<string> {
+export async function resolveVersion(
+  endpoint: string,
+  name: string,
+  version: string
+): Promise<string> {
+  let resolvedVersion = version;
+  if (version === 'latest') {
+    resolvedVersion = await lookUpLatestVersion(endpoint, name);
+  } else if (/^\d+\.\d+\.x$/.test(version)) {
+    resolvedVersion = await lookUpLatestPatchVersion(endpoint, name, version);
+  } else if (/^\d+\.x$/.test(version)) {
+    throw new IncorrectWildcardVersionFormatError(name, version);
+  }
+  return resolvedVersion;
+}
+
+async function lookUpLatestVersion(endpoint: string, name: string): Promise<string> {
   try {
     const res = await axiosGet(`${endpoint}/${name}`, {
       responseType: 'json'
@@ -17,7 +33,7 @@ export async function lookUpLatestVersion(endpoint: string, name: string): Promi
   }
 }
 
-export async function lookUpLatestPatchVersion(
+async function lookUpLatestPatchVersion(
   endpoint: string,
   name: string,
   version: string
