@@ -9,6 +9,7 @@ import { RegistryClient } from '../../src/registry';
 import { CurrentBuildClient } from '../../src/current';
 import { loggerSpy } from '../testhelpers';
 import fs from 'fs-extra';
+import { VirtualPackage } from '../../src/package';
 
 describe('BasePackageLoader', () => {
   let loader: BasePackageLoader;
@@ -28,6 +29,14 @@ describe('BasePackageLoader', () => {
       BasePackageLoader.prototype as any,
       'loadPackageFromCache'
     );
+    registryClientMock.resolveVersion.mockImplementation((name, version) => {
+      if (version === 'latest') {
+        return Promise.resolve('9.9.9');
+      } else if (/^\d+\.\d+\.x$/.test(version)) {
+        return Promise.resolve(version.replace(/x$/, '9'));
+      }
+      return Promise.resolve(version);
+    });
     loader = new BasePackageLoader(
       packageDBMock,
       packageCacheMock,
@@ -125,13 +134,13 @@ describe('BasePackageLoader', () => {
         .calledWith(pkg.name, 'current')
         .mockReturnValueOnce(pkg.packageJsonPath);
       packageCacheMock.getResourceAtPath
-        .calledWith(pkg.packageJsonPath)
-        .mockReturnValueOnce(pkg.resourcePath);
+        .calledWith(pkg.resourcePath)
+        .mockReturnValueOnce(pkg.resourceInfo);
       currentBuildClientMock.getCurrentBuildDate
         .calledWith(pkg.name, undefined)
         .mockReturnValueOnce(pkg.currentBuildDate);
       currentBuildClientMock.downloadCurrentBuild
-        .calledWith(pkg.name, 'current')
+        .calledWith(pkg.name)
         .mockResolvedValue(pkg.tarball);
       loadPackageFromCacheSpy.mockReturnValueOnce({
         name: pkg.name,
@@ -178,13 +187,12 @@ describe('BasePackageLoader', () => {
       const result = await loader.loadPackage('some.ig', 'current');
       expect(result).toBe(LoadStatus.FAILED);
       expect(loader.getPackageLoadStatus).toHaveBeenCalledWith('some.ig', 'current');
-      expect(loggerSpy.getMessageAtIndex(-1, 'debug')).toBe(
+      expect(loggerSpy.getLastMessage('debug')).toBe(
         'Cached package date for some.ig#current (2024-08-24T23:02:27) does not match last build date (2020-08-24T23:02:27)'
       );
-      expect(loggerSpy.getMessageAtIndex(-2, 'error')).toBe(
-        'Failed to download some.ig#current from current builds'
+      expect(loggerSpy.getLastMessage('error')).toBe(
+        'Failed to load some.ig#current: Failed to download most recent some.ig#current from current builds'
       );
-      expect(loggerSpy.getMessageAtIndex(-1, 'error')).toBe('Failed to load some.ig#current');
       expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', 'current');
     });
 
@@ -213,7 +221,7 @@ describe('BasePackageLoader', () => {
       expect(currentBuildClientMock.downloadCurrentBuild).not.toHaveBeenCalled();
       expect(packageCacheMock.cachePackageTarball).not.toHaveBeenCalled();
       expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', 'current');
-      expect(loggerSpy.getMessageAtIndex(-1, 'debug')).toBe(
+      expect(loggerSpy.getLastMessage('debug')).toBe(
         'Cached package date for some.ig#current (2024-08-24T23:02:27) matches last build date (2024-08-24T23:02:27), so the cached package will be used'
       );
       expect(loggerSpy.getLastMessage('info')).toBe('Loaded some.ig#current with 5 resources');
@@ -239,7 +247,7 @@ describe('BasePackageLoader', () => {
 
       const result = await loader.loadPackage('some.ig', 'current$bonus-items');
       expect(loader.getPackageLoadStatus).toHaveBeenCalledWith('some.ig', 'current$bonus-items');
-      expect(loggerSpy.getMessageAtIndex(-1, 'debug')).toBe(
+      expect(loggerSpy.getLastMessage('debug')).toBe(
         'Cached package date for some.ig#current$bonus-items (2024-08-24T23:02:27) matches last build date (2024-08-24T23:02:27), so the cached package will be used'
       );
       expect(currentBuildClientMock.downloadCurrentBuild).not.toHaveBeenCalled();
@@ -270,38 +278,42 @@ describe('BasePackageLoader', () => {
 
     it('should load a patch versioned package from the registry when it is not in the cache', async () => {
       const pkg = setupLoadPackage('some.ig', '1.2.x', 'not-loaded');
-      packageCacheMock.isPackageInCache
-        .calledWith(pkg.name, pkg.version)
-        .mockReturnValueOnce(false);
-      registryClientMock.download.calledWith(pkg.name, pkg.version).mockResolvedValue(pkg.tarball);
+      // default mock always changes .x to .9
+      packageCacheMock.isPackageInCache.calledWith(pkg.name, '1.2.9').mockReturnValueOnce(false);
+      registryClientMock.download.calledWith(pkg.name, '1.2.9').mockResolvedValue(pkg.tarball);
       loadPackageFromCacheSpy.mockReturnValueOnce({
         name: pkg.name,
-        version: '1.2.3',
+        version: '1.2.9',
         resourceCount: 5
       });
 
       const result = await loader.loadPackage(pkg.name, pkg.version);
       expect(result).toBe(LoadStatus.LOADED);
-      expect(loggerSpy.getLastMessage('info')).toBe('Loaded some.ig#1.2.3 with 5 resources');
-      expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', '1.2.x');
+      expect(loggerSpy.getMessageAtIndex(-2, 'info')).toBe(
+        'Resolved some.ig#1.2.x to concrete version 1.2.9'
+      );
+      expect(loggerSpy.getLastMessage('info')).toBe('Loaded some.ig#1.2.9 with 5 resources');
+      expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', '1.2.9');
     });
 
     it('should load a latest versioned package from the registry when it is not in the cache', async () => {
       const pkg = setupLoadPackage('some.ig', 'latest', 'not-loaded');
-      packageCacheMock.isPackageInCache
-        .calledWith(pkg.name, pkg.version)
-        .mockReturnValueOnce(false);
-      registryClientMock.download.calledWith(pkg.name, pkg.version).mockResolvedValue(pkg.tarball);
+      // default mock always changes latest to 9.9.9
+      packageCacheMock.isPackageInCache.calledWith(pkg.name, '9.9.9').mockReturnValueOnce(false);
+      registryClientMock.download.calledWith(pkg.name, '9.9.9').mockResolvedValue(pkg.tarball);
       loadPackageFromCacheSpy.mockReturnValueOnce({
         name: pkg.name,
-        version: '1.2.3',
+        version: '9.9.9',
         resourceCount: 5
       });
 
       const result = await loader.loadPackage(pkg.name, pkg.version);
       expect(result).toBe(LoadStatus.LOADED);
-      expect(loggerSpy.getLastMessage('info')).toBe('Loaded some.ig#1.2.3 with 5 resources');
-      expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', 'latest');
+      expect(loggerSpy.getMessageAtIndex(-2, 'info')).toBe(
+        'Resolved some.ig#latest to concrete version 9.9.9'
+      );
+      expect(loggerSpy.getLastMessage('info')).toBe('Loaded some.ig#9.9.9 with 5 resources');
+      expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', '9.9.9');
     });
 
     it('should log error when a versioned package is unable to be downloaded from the registry', async () => {
@@ -319,10 +331,9 @@ describe('BasePackageLoader', () => {
 
       const result = await loader.loadPackage(pkg.name, pkg.version);
       expect(result).toBe(LoadStatus.FAILED);
-      expect(loggerSpy.getMessageAtIndex(-2, 'error')).toBe(
-        'Failed to download some.ig#1.2.3 from registry'
+      expect(loggerSpy.getLastMessage('error')).toBe(
+        'Failed to load some.ig#1.2.3: Failed to download some.ig#1.2.3 from the registry'
       );
-      expect(loggerSpy.getLastMessage('error')).toBe('Failed to load some.ig#1.2.3');
       expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', '1.2.3');
     });
 
@@ -347,7 +358,7 @@ describe('BasePackageLoader', () => {
         .calledWith(pkg.name, undefined)
         .mockReturnValueOnce(pkg.currentBuildDate);
       currentBuildClientMock.downloadCurrentBuild
-        .calledWith(pkg.name, 'current')
+        .calledWith(pkg.name)
         .mockResolvedValue(pkg.tarball);
       loadPackageFromCacheSpy.mockReturnValue({
         name: pkg.name,
@@ -359,7 +370,7 @@ describe('BasePackageLoader', () => {
       expect(packageCacheMock.getPackageJSONPath).toHaveBeenCalledWith('some.ig', 'current');
       expect(packageCacheMock.getResourceAtPath).toHaveBeenCalled();
       expect(currentBuildClientMock.getCurrentBuildDate).toHaveBeenCalled();
-      expect(loggerSpy.getMessageAtIndex(-1, 'debug')).toBe(
+      expect(loggerSpy.getLastMessage('debug')).toBe(
         'Cached package date for some.ig#current (2024-08-24T23:02:27) does not match last build date (2020-08-24T23:02:27)'
       );
       expect(loggerSpy.getMessageAtIndex(-2, 'info')).toBe(
@@ -382,7 +393,7 @@ describe('BasePackageLoader', () => {
         .calledWith(pkg.name, undefined)
         .mockReturnValueOnce(pkg.currentBuildDate);
       currentBuildClientMock.downloadCurrentBuild
-        .calledWith(pkg.name, 'current')
+        .calledWith(pkg.name)
         .mockResolvedValue(pkg.tarball);
       loadPackageFromCacheSpy.mockReturnValue({
         name: pkg.name,
@@ -391,7 +402,7 @@ describe('BasePackageLoader', () => {
       });
 
       await loader.loadPackage('some.ig', 'current');
-      expect(loggerSpy.getMessageAtIndex(-1, 'debug')).toContain('2024-08-24T23:02:27');
+      expect(loggerSpy.getLastMessage('debug')).toContain('2024-08-24T23:02:27');
     });
 
     it('should catch error and assume stale version if packageJSONPath was not found', async () => {
@@ -400,7 +411,7 @@ describe('BasePackageLoader', () => {
         .calledWith(pkg.name, 'current')
         .mockReturnValueOnce(undefined);
       currentBuildClientMock.downloadCurrentBuild
-        .calledWith(pkg.name, 'current')
+        .calledWith(pkg.name)
         .mockResolvedValue(pkg.tarball);
       loadPackageFromCacheSpy.mockReturnValue({
         name: pkg.name,
@@ -427,7 +438,7 @@ describe('BasePackageLoader', () => {
         .calledWith(pkg.packageJsonPath)
         .mockReturnValueOnce(undefined);
       currentBuildClientMock.downloadCurrentBuild
-        .calledWith(pkg.name, 'current')
+        .calledWith(pkg.name)
         .mockResolvedValue(pkg.tarball);
       loadPackageFromCacheSpy.mockReturnValueOnce({
         name: pkg.name,
@@ -441,6 +452,52 @@ describe('BasePackageLoader', () => {
       expect(currentBuildClientMock.getCurrentBuildDate).not.toHaveBeenCalled();
       expect(currentBuildClientMock.downloadCurrentBuild).toHaveBeenCalled();
       expect(loggerSpy.getLastMessage('info')).toBe('Loaded some.ig#current with 5 resources');
+      expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', 'current');
+      expect(result).toBe(LoadStatus.LOADED);
+    });
+
+    it('should log an error but load cached version if it cannot download current package when current version in cache out of date', async () => {
+      const pkg = setupLoadPackage(
+        'some.ig',
+        'current',
+        'not-loaded',
+        undefined,
+        undefined,
+        undefined,
+        '20200824230227'
+      );
+      packageCacheMock.getPackageJSONPath
+        .calledWith(pkg.name, 'current')
+        .mockReturnValueOnce(pkg.packageJsonPath);
+      packageCacheMock.getResourceAtPath
+        .calledWith(pkg.packageJsonPath)
+        .mockReturnValueOnce(pkg.resourceInfo);
+      currentBuildClientMock.getCurrentBuildDate
+        .calledWith(pkg.name, undefined)
+        .mockReturnValueOnce(pkg.currentBuildDate);
+      currentBuildClientMock.downloadCurrentBuild
+        .calledWith(pkg.name)
+        .mockRejectedValue(new Error('failed download'));
+      loadPackageFromCacheSpy.mockReturnValue({
+        name: pkg.name,
+        version: pkg.version,
+        resourceCount: 4
+      });
+
+      const result = await loader.loadPackage('some.ig', 'current');
+      expect(packageCacheMock.getPackageJSONPath).toHaveBeenCalledWith('some.ig', 'current');
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalled();
+      expect(currentBuildClientMock.getCurrentBuildDate).toHaveBeenCalled();
+      expect(loggerSpy.getLastMessage('debug')).toBe(
+        'Cached package date for some.ig#current (2024-08-24T23:02:27) does not match last build date (2020-08-24T23:02:27)'
+      );
+      expect(loggerSpy.getMessageAtIndex(-2, 'info')).toBe(
+        'Cached package some.ig#current is out of date and will be replaced by the most recent current build.'
+      );
+      expect(loggerSpy.getLastMessage('error')).toBe(
+        'Failed to download most recent some.ig#current from current builds. Using most recent cached package instead.'
+      );
+      expect(loggerSpy.getLastMessage('info')).toBe('Loaded some.ig#current with 4 resources');
       expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', 'current');
       expect(result).toBe(LoadStatus.LOADED);
     });
@@ -467,7 +524,7 @@ describe('BasePackageLoader', () => {
 
       const result = await loader.loadPackage('human-being-logical-model', '1.0.0');
       expect(result).toBe(LoadStatus.FAILED);
-      expect(loggerSpy.getMessageAtIndex(-1, 'error')).toBe(
+      expect(loggerSpy.getLastMessage('error')).toBe(
         'Failed to load human-being-logical-model#1.0.0'
       );
       expect(packageCacheMock.getPackagePath).not.toHaveBeenCalled();
@@ -501,41 +558,13 @@ describe('BasePackageLoader', () => {
       expect(result).toBe(LoadStatus.LOADED);
     });
 
-    it('should use LOCAL package paths to find package', async () => {
+    it('should use non local package paths to find package with logical flavor that uses the logical-target extension to set its characteristics', async () => {
       const fixturePath = setupPackageWithFixture(
-        'LOCAL',
-        'LOCAL',
-        'StructureDefinition-human-being-logical-model.json'
-      );
-      const result = await loader.loadPackage('LOCAL', 'LOCAL');
-      expect(packageDBMock.savePackageInfo).toHaveBeenCalled();
-      expect(packageDBMock.saveResourceInfo).toHaveBeenCalledWith({
-        resourceType: 'StructureDefinition',
-        id: 'human-being-logical-model',
-        url: 'http://example.org/fhir/locals/StructureDefinition/human-being-logical-model',
-        name: 'Human',
-        version: '1.0.0',
-        sdKind: 'logical',
-        sdDerivation: 'specialization',
-        sdType: 'http://example.org/fhir/locals/StructureDefinition/human-being-logical-model',
-        sdBaseDefinition: 'http://hl7.org/fhir/StructureDefinition/Base',
-        sdAbstract: false,
-        sdCharacteristics: ['can-be-target'],
-        sdFlavor: 'Logical',
-        packageName: 'LOCAL',
-        packageVersion: 'LOCAL',
-        resourcePath: fixturePath
-      });
-      expect(result).toBe(LoadStatus.LOADED);
-    });
-
-    it('should find a logical that uses the logical-target extension to set its characteristics', async () => {
-      const fixturePath = setupPackageWithFixture(
-        'LOCAL',
-        'LOCAL',
+        'futureplanet',
+        '1.0.0',
         'StructureDefinition-FuturePlanet.json'
       );
-      const result = await loader.loadPackage('LOCAL', 'LOCAL');
+      const result = await loader.loadPackage('futureplanet', '1.0.0');
       expect(packageDBMock.savePackageInfo).toHaveBeenCalled();
       expect(packageDBMock.saveResourceInfo).toHaveBeenCalledWith({
         resourceType: 'StructureDefinition',
@@ -549,8 +578,8 @@ describe('BasePackageLoader', () => {
         sdAbstract: false,
         sdCharacteristics: ['can-be-target'],
         sdFlavor: 'Logical',
-        packageName: 'LOCAL',
-        packageVersion: 'LOCAL',
+        packageName: 'futureplanet',
+        packageVersion: '1.0.0',
         resourcePath: fixturePath
       });
       expect(result).toBe(LoadStatus.LOADED);
@@ -776,15 +805,19 @@ describe('BasePackageLoader', () => {
       packageCacheMock.getPotentialResourcePaths
         .calledWith(pkg.name, pkg.version)
         .mockReturnValue([
-          path.join(pkg.packageJsonPath, '1.json'),
-          path.join(pkg.packageJsonPath, '2.json')
+          path.join(pkg.packageBasePath, 'package', '1.json'),
+          path.join(pkg.packageBasePath, 'package', '2.json'),
+          path.join(pkg.packageBasePath, 'package', 'package.json')
         ]);
       packageCacheMock.getResourceAtPath
-        .calledWith(path.join(pkg.packageJsonPath, '1.json'))
+        .calledWith(path.join(pkg.packageBasePath, 'package', '1.json'))
         .mockReturnValue(birthPlaceJSON);
       packageCacheMock.getResourceAtPath
-        .calledWith(path.join(pkg.packageJsonPath, '2.json'))
+        .calledWith(path.join(pkg.packageBasePath, 'package', '2.json'))
         .mockReturnValue({ blanket: 'cozy' });
+      packageCacheMock.getResourceAtPath
+        .calledWith(path.join(pkg.packageBasePath, 'package', 'package.json'))
+        .mockReturnValue({ name: 'package-with-non-resource', version: '4.0.1' });
       packageDBMock.getPackageStats
         .calledWith(pkg.name, pkg.version)
         .mockReturnValue({ name: pkg.name, version: pkg.version, resourceCount: 1 });
@@ -792,8 +825,13 @@ describe('BasePackageLoader', () => {
       const result = await loader.loadPackage('package-with-non-resource', '4.0.1');
       // expect debug message for 2.json
       expect(loggerSpy.getLastMessage('debug')).toBe(
-        `JSON file at path ${path.join(pkg.packageJsonPath, '2.json')} was not FHIR resource`
+        `JSON file at path ${path.join(pkg.packageBasePath, 'package', '2.json')} was not FHIR resource`
       );
+      // it should not log a debug message for package.json since it is so common
+      const debugLoggedPackageJSON = loggerSpy
+        .getAllMessages('debug')
+        .some(m => /package\.json was not FHIR resource/.test(m));
+      expect(debugLoggedPackageJSON).toBeFalsy();
       expect(packageDBMock.savePackageInfo).toHaveBeenCalled();
       expect(packageDBMock.saveResourceInfo).toHaveBeenCalledTimes(1);
       expect(packageDBMock.saveResourceInfo).toHaveBeenCalledWith({
@@ -810,9 +848,335 @@ describe('BasePackageLoader', () => {
         sdFlavor: 'Extension',
         packageName: 'package-with-non-resource',
         packageVersion: '4.0.1',
-        resourcePath: path.join(pkg.packageJsonPath, '1.json')
+        resourcePath: path.join(pkg.packageBasePath, 'package', '1.json')
       });
       expect(result).toBe(LoadStatus.LOADED);
+    });
+  });
+
+  describe('#loadVirtualPackage', () => {
+    it('should return LOADED when the package is already loaded', async () => {
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: 'my-vp', version: '1.1.1' });
+      vPackMock.registerResources.mockResolvedValue();
+      vPackMock.getResourceByKey.mockReturnValue({});
+      loader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.LOADED);
+
+      const result = await loader.loadVirtualPackage(vPackMock);
+      expect(result).toBe(LoadStatus.LOADED);
+      expect(loader.getPackageLoadStatus).toHaveBeenCalledWith('my-vp', '1.1.1');
+      expect(packageDBMock.savePackageInfo).not.toHaveBeenCalled();
+    });
+
+    it('should load a virtual package and save registered resources to the database', async () => {
+      const logicalKey = 'StructureDefinition-human-being-logical-model.json';
+      const logicalPath = path.resolve(
+        __dirname,
+        'fixtures',
+        'StructureDefinition-human-being-logical-model.json'
+      );
+      const logicalJSON = await fs.readJSON(logicalPath);
+      const profileKey = 'StructureDefinition-named-and-gendered-patient.json';
+      const profilePath = path.resolve(
+        __dirname,
+        'fixtures',
+        'StructureDefinition-named-and-gendered-patient.json'
+      );
+      const profileJSON = await fs.readJSON(profilePath);
+
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: 'my-vp', version: '1.1.1' });
+      vPackMock.registerResources.mockImplementation(
+        (register: (key: string, resource: any, allowNonResources?: boolean) => void) => {
+          register(logicalKey, logicalJSON, true);
+          register(profileKey, profileJSON, true);
+          return Promise.resolve();
+        }
+      );
+      loader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+      packageDBMock.getPackageStats
+        .calledWith('my-vp', '1.1.1')
+        .mockReturnValue({ name: 'my-vp', version: '1.1.1', resourceCount: 2 });
+
+      const result = await loader.loadVirtualPackage(vPackMock);
+      expect(result).toBe(LoadStatus.LOADED);
+      expect(packageDBMock.savePackageInfo).toHaveBeenCalledWith({
+        name: 'my-vp',
+        version: '1.1.1',
+        packagePath: 'virtual:my-vp#1.1.1',
+        packageJSONPath: 'virtual:my-vp#1.1.1:package.json'
+      });
+      expect(packageDBMock.saveResourceInfo).toHaveBeenNthCalledWith(1, {
+        resourceType: 'StructureDefinition',
+        id: 'human-being-logical-model',
+        url: 'http://example.org/fhir/locals/StructureDefinition/human-being-logical-model',
+        name: 'Human',
+        version: '1.0.0',
+        sdKind: 'logical',
+        sdDerivation: 'specialization',
+        sdType: 'http://example.org/fhir/locals/StructureDefinition/human-being-logical-model',
+        sdBaseDefinition: 'http://hl7.org/fhir/StructureDefinition/Base',
+        sdAbstract: false,
+        sdCharacteristics: ['can-be-target'],
+        sdFlavor: 'Logical',
+        packageName: 'my-vp',
+        packageVersion: '1.1.1',
+        resourcePath: 'virtual:my-vp#1.1.1:StructureDefinition-human-being-logical-model.json'
+      });
+      expect(packageDBMock.saveResourceInfo).toHaveBeenNthCalledWith(2, {
+        resourceType: 'StructureDefinition',
+        id: 'named-and-gendered-patient',
+        url: 'http://example.org/impose/StructureDefinition/named-and-gendered-patient',
+        name: 'NamedAndGenderedPatient',
+        version: '0.1.0',
+        sdKind: 'resource',
+        sdDerivation: 'constraint',
+        sdType: 'Patient',
+        sdBaseDefinition: 'http://hl7.org/fhir/StructureDefinition/Patient',
+        sdAbstract: false,
+        sdFlavor: 'Profile',
+        sdImposeProfiles: [
+          'http://example.org/impose/StructureDefinition/named-patient',
+          'http://example.org/impose/StructureDefinition/gendered-patient'
+        ],
+        packageName: 'my-vp',
+        packageVersion: '1.1.1',
+        resourcePath: 'virtual:my-vp#1.1.1:StructureDefinition-named-and-gendered-patient.json'
+      });
+    });
+
+    it('should load a virtual package and save non-resource instances if allowed', async () => {
+      const logicalInstanceKey = 'CustomModel-1.json';
+      const logicalInstanceJSON = { hello: 'world' };
+      const logicalInstance2Key = 'CustomModel-2.json';
+      const logicalInstance2JSON = { goodnight: 'moon' };
+
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: 'my-vp', version: '1.1.2' });
+      vPackMock.registerResources.mockImplementation(
+        (register: (key: string, resource: any, allowNonResources?: boolean) => void) => {
+          register(logicalInstanceKey, logicalInstanceJSON, true);
+          register(logicalInstance2Key, logicalInstance2JSON, true);
+          return Promise.resolve();
+        }
+      );
+      loader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+      packageDBMock.getPackageStats
+        .calledWith('my-vp', '1.1.2')
+        .mockReturnValue({ name: 'my-vp', version: '1.1.2', resourceCount: 2 });
+
+      const result = await loader.loadVirtualPackage(vPackMock);
+      expect(result).toBe(LoadStatus.LOADED);
+      expect(packageDBMock.savePackageInfo).toHaveBeenCalledWith({
+        name: 'my-vp',
+        version: '1.1.2',
+        packagePath: 'virtual:my-vp#1.1.2',
+        packageJSONPath: 'virtual:my-vp#1.1.2:package.json'
+      });
+      expect(packageDBMock.saveResourceInfo).toHaveBeenNthCalledWith(1, {
+        resourceType: 'Unknown',
+        packageName: 'my-vp',
+        packageVersion: '1.1.2',
+        resourcePath: 'virtual:my-vp#1.1.2:CustomModel-1.json'
+      });
+      expect(packageDBMock.saveResourceInfo).toHaveBeenNthCalledWith(2, {
+        resourceType: 'Unknown',
+        packageName: 'my-vp',
+        packageVersion: '1.1.2',
+        resourcePath: 'virtual:my-vp#1.1.2:CustomModel-2.json'
+      });
+    });
+
+    it('should load a virtual package and skip non-resource instances if not allowed', async () => {
+      const logicalInstanceKey = 'CustomModel-1.json';
+      const logicalInstanceJSON = { hello: 'world' };
+      const profileKey = 'StructureDefinition-named-and-gendered-patient.json';
+      const profilePath = path.resolve(
+        __dirname,
+        'fixtures',
+        'StructureDefinition-named-and-gendered-patient.json'
+      );
+      const profileJSON = await fs.readJSON(profilePath);
+
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: 'my-vp', version: '1.1.3' });
+      let logicalException: any, profileException: any;
+      vPackMock.registerResources.mockImplementation(
+        (register: (key: string, resource: any, allowNonResources?: boolean) => void) => {
+          try {
+            register(logicalInstanceKey, logicalInstanceJSON, false);
+          } catch (e) {
+            logicalException = e;
+          }
+          try {
+            register(profileKey, profileJSON, false);
+          } catch (e) {
+            profileException = e;
+          }
+          return Promise.resolve();
+        }
+      );
+      loader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+      packageDBMock.getPackageStats
+        .calledWith('my-vp', '1.1.3')
+        .mockReturnValue({ name: 'my-vp', version: '1.1.3', resourceCount: 1 });
+
+      const result = await loader.loadVirtualPackage(vPackMock);
+      expect(result).toBe(LoadStatus.LOADED);
+      expect(packageDBMock.savePackageInfo).toHaveBeenCalledWith({
+        name: 'my-vp',
+        version: '1.1.3',
+        packagePath: 'virtual:my-vp#1.1.3',
+        packageJSONPath: 'virtual:my-vp#1.1.3:package.json'
+      });
+      expect(logicalException).toBeDefined();
+      expect(logicalException.toString()).toMatch(
+        'The resource at virtual:my-vp#1.1.3:CustomModel-1.json is not a valid FHIR resource: resource does not specify its resourceType.'
+      );
+      expect(profileException).toBeUndefined();
+      expect(packageDBMock.saveResourceInfo).toHaveBeenCalledTimes(1);
+      expect(packageDBMock.saveResourceInfo).toHaveBeenCalledWith({
+        resourceType: 'StructureDefinition',
+        id: 'named-and-gendered-patient',
+        url: 'http://example.org/impose/StructureDefinition/named-and-gendered-patient',
+        name: 'NamedAndGenderedPatient',
+        version: '0.1.0',
+        sdKind: 'resource',
+        sdDerivation: 'constraint',
+        sdType: 'Patient',
+        sdBaseDefinition: 'http://hl7.org/fhir/StructureDefinition/Patient',
+        sdAbstract: false,
+        sdFlavor: 'Profile',
+        sdImposeProfiles: [
+          'http://example.org/impose/StructureDefinition/named-patient',
+          'http://example.org/impose/StructureDefinition/gendered-patient'
+        ],
+        packageName: 'my-vp',
+        packageVersion: '1.1.3',
+        resourcePath: 'virtual:my-vp#1.1.3:StructureDefinition-named-and-gendered-patient.json'
+      });
+    });
+
+    it('should load a virtual package and save registered resources to the database', async () => {
+      const logicalKey = 'StructureDefinition-human-being-logical-model.json';
+      const logicalPath = path.resolve(
+        __dirname,
+        'fixtures',
+        'StructureDefinition-human-being-logical-model.json'
+      );
+      const logicalJSON = await fs.readJSON(logicalPath);
+      const profileKey = 'StructureDefinition-named-and-gendered-patient.json';
+      const profilePath = path.resolve(
+        __dirname,
+        'fixtures',
+        'StructureDefinition-named-and-gendered-patient.json'
+      );
+      const profileJSON = await fs.readJSON(profilePath);
+
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: 'my-vp', version: '1.1.1' });
+      vPackMock.registerResources.mockImplementation(
+        (register: (key: string, resource: any, allowNonResources?: boolean) => void) => {
+          register(logicalKey, logicalJSON, true);
+          register(profileKey, profileJSON, true);
+          return Promise.resolve();
+        }
+      );
+      loader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+      packageDBMock.getPackageStats
+        .calledWith('my-vp', '1.1.1')
+        .mockReturnValue({ name: 'my-vp', version: '1.1.1', resourceCount: 2 });
+
+      const result = await loader.loadVirtualPackage(vPackMock);
+      expect(result).toBe(LoadStatus.LOADED);
+      expect(packageDBMock.savePackageInfo).toHaveBeenCalledWith({
+        name: 'my-vp',
+        version: '1.1.1',
+        packagePath: 'virtual:my-vp#1.1.1',
+        packageJSONPath: 'virtual:my-vp#1.1.1:package.json'
+      });
+      expect(packageDBMock.saveResourceInfo).toHaveBeenNthCalledWith(1, {
+        resourceType: 'StructureDefinition',
+        id: 'human-being-logical-model',
+        url: 'http://example.org/fhir/locals/StructureDefinition/human-being-logical-model',
+        name: 'Human',
+        version: '1.0.0',
+        sdKind: 'logical',
+        sdDerivation: 'specialization',
+        sdType: 'http://example.org/fhir/locals/StructureDefinition/human-being-logical-model',
+        sdBaseDefinition: 'http://hl7.org/fhir/StructureDefinition/Base',
+        sdAbstract: false,
+        sdCharacteristics: ['can-be-target'],
+        sdFlavor: 'Logical',
+        packageName: 'my-vp',
+        packageVersion: '1.1.1',
+        resourcePath: 'virtual:my-vp#1.1.1:StructureDefinition-human-being-logical-model.json'
+      });
+      expect(packageDBMock.saveResourceInfo).toHaveBeenNthCalledWith(2, {
+        resourceType: 'StructureDefinition',
+        id: 'named-and-gendered-patient',
+        url: 'http://example.org/impose/StructureDefinition/named-and-gendered-patient',
+        name: 'NamedAndGenderedPatient',
+        version: '0.1.0',
+        sdKind: 'resource',
+        sdDerivation: 'constraint',
+        sdType: 'Patient',
+        sdBaseDefinition: 'http://hl7.org/fhir/StructureDefinition/Patient',
+        sdAbstract: false,
+        sdFlavor: 'Profile',
+        sdImposeProfiles: [
+          'http://example.org/impose/StructureDefinition/named-patient',
+          'http://example.org/impose/StructureDefinition/gendered-patient'
+        ],
+        packageName: 'my-vp',
+        packageVersion: '1.1.1',
+        resourcePath: 'virtual:my-vp#1.1.1:StructureDefinition-named-and-gendered-patient.json'
+      });
+    });
+
+    it('should not load a virtual package that does not specify name', async () => {
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: '', version: '1.2.4' });
+      vPackMock.registerResources.mockResolvedValue();
+      vPackMock.getResourceByKey.mockReturnValue({});
+      loader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+
+      const result = await loader.loadVirtualPackage(vPackMock);
+      expect(result).toBe(LoadStatus.FAILED);
+      expect(loggerSpy.getLastMessage('error')).toBe(
+        'Failed to load virtual package #1.2.4 because the provided packageJSON did not have a valid name and/or version'
+      );
+      expect(packageDBMock.savePackageInfo).not.toHaveBeenCalled();
+    });
+
+    it('should not load a virtual package that does not specify version', async () => {
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: 'my-vp', version: '' });
+      vPackMock.registerResources.mockResolvedValue();
+      vPackMock.getResourceByKey.mockReturnValue({});
+      loader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+
+      const result = await loader.loadVirtualPackage(vPackMock);
+      expect(result).toBe(LoadStatus.FAILED);
+      expect(loggerSpy.getLastMessage('error')).toBe(
+        'Failed to load virtual package my-vp# because the provided packageJSON did not have a valid name and/or version'
+      );
+      expect(packageDBMock.savePackageInfo).not.toHaveBeenCalled();
+    });
+
+    it('should log an error and report loading failure when a virtual package throws an exception registering resources', async () => {
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: 'my-vp', version: '1.2.5' });
+      vPackMock.registerResources.mockRejectedValue(new Error('Unexpected exception!'));
+      vPackMock.getResourceByKey.mockReturnValue({});
+      loader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+
+      const result = await loader.loadVirtualPackage(vPackMock);
+      expect(result).toBe(LoadStatus.FAILED);
+      expect(loggerSpy.getLastMessage('error')).toBe(
+        'Virtual package my-vp#1.2.5 threw an exception while registering resources, so it was only partially loaded.'
+      );
+      expect(packageDBMock.savePackageInfo).toHaveBeenCalled();
     });
   });
 
@@ -883,18 +1247,70 @@ describe('BasePackageLoader', () => {
       ]);
       packageCacheMock.getResourceAtPath
         .calledWith('/first/package/package.json')
-        .mockReturnValueOnce({ id: 'some.ig', version: '1.2.3' });
+        .mockReturnValueOnce({ name: 'some.ig', version: '1.2.3' });
       packageCacheMock.getResourceAtPath
         .calledWith('/second/package/package.json')
-        .mockReturnValueOnce({ id: 'some.ig', version: '2.3.4' });
+        .mockReturnValueOnce({ name: 'some.ig', version: '2.3.4' });
       packageCacheMock.getResourceAtPath
         .calledWith('/third/package/package.json')
-        .mockReturnValueOnce({ id: 'some.ig', version: '3.4.5' });
+        .mockReturnValueOnce({ name: 'some.ig', version: '3.4.5' });
       const result = loader.findPackageJSONs(name);
       expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(2);
       expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({ id: 'some.ig', version: '1.2.3' });
-      expect(result[1]).toEqual({ id: 'some.ig', version: '3.4.5' });
+      expect(result[0]).toEqual({ name: 'some.ig', version: '1.2.3' });
+      expect(result[1]).toEqual({ name: 'some.ig', version: '3.4.5' });
+    });
+
+    it('should return package json array including virtual packages', () => {
+      loader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+      // Virtual Package 1
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: 'some.ig', version: '1.2.3' });
+      vPackMock.registerResources.mockResolvedValue();
+      packageDBMock.getPackageStats
+        .calledWith('some.ig', '1.2.3')
+        .mockReturnValue({ name: 'some.ig', version: '1.2.3', resourceCount: 0 });
+      loader.loadVirtualPackage(vPackMock);
+      // Virtual Package 2
+      const vPackMock2 = mock<VirtualPackage>();
+      vPackMock2.getPackageJSON.mockReturnValue({ name: 'some.ig', version: '2.3.4' });
+      vPackMock2.registerResources.mockResolvedValue();
+      packageDBMock.getPackageStats
+        .calledWith('some.ig', '2.3.4')
+        .mockReturnValue({ name: 'some.ig', version: '2.3.4', resourceCount: 0 });
+      loader.loadVirtualPackage(vPackMock2);
+      // Normal (non-virtual) Package
+      packageCacheMock.getResourceAtPath
+        .calledWith('/third/package/package.json')
+        .mockReturnValueOnce({ name: 'some.ig', version: '3.4.5' });
+
+      const name = 'some.ig';
+      packageDBMock.findPackageInfos.calledWith(name).mockReturnValueOnce([
+        {
+          name: 'some.ig',
+          version: '1.2.3',
+          packageJSONPath: 'virtual:some.ig#1.2.3:package.json'
+        },
+        {
+          name: 'some.ig',
+          version: '2.3.4',
+          packageJSONPath: 'virtual:some.ig#2.3.4:package.json'
+        },
+        {
+          name: 'some.ig',
+          version: '3.4.5',
+          packageJSONPath: '/third/package/package.json'
+        }
+      ]);
+
+      const result = loader.findPackageJSONs(name);
+      expect(vPackMock.getPackageJSON).toHaveBeenCalledTimes(2); // once at registration and once at find
+      expect(vPackMock2.getPackageJSON).toHaveBeenCalledTimes(2); // once at registration and once at find
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(1);
+      expect(result).toHaveLength(3);
+      expect(result[0]).toEqual({ name: 'some.ig', version: '1.2.3' });
+      expect(result[1]).toEqual({ name: 'some.ig', version: '2.3.4' });
+      expect(result[2]).toEqual({ name: 'some.ig', version: '3.4.5' });
     });
   });
 
@@ -918,6 +1334,31 @@ describe('BasePackageLoader', () => {
         date: '20240824230227',
         resourceType: 'resourceTypeName'
       });
+    });
+
+    it('should return package json for virtual package', () => {
+      loader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({
+        name: 'some.ig',
+        version: '1.2.3',
+        date: '20240824230227'
+      });
+      vPackMock.registerResources.mockResolvedValue();
+      packageDBMock.getPackageStats
+        .calledWith('some.ig', '1.2.3')
+        .mockReturnValue({ name: 'some.ig', version: '1.2.3', resourceCount: 0 });
+      loader.loadVirtualPackage(vPackMock);
+
+      packageDBMock.findPackageInfo.calledWith('some.ig', '1.2.3').mockReturnValueOnce({
+        name: 'some.ig',
+        version: '1.2.3',
+        packageJSONPath: 'virtual:some.ig#1.2.3:package.json'
+      });
+
+      const result = loader.findPackageJSON('some.ig', '1.2.3');
+      expect(vPackMock.getPackageJSON).toHaveBeenCalledTimes(2); // once at registration and once at find
+      expect(result).toEqual({ name: 'some.ig', version: '1.2.3', date: '20240824230227' });
     });
 
     it('should return undefined when the info does not contain a packageJSONPath', () => {
@@ -1035,6 +1476,180 @@ describe('BasePackageLoader', () => {
         { id: 'third-thing', version: '1.2.3' }
       ]);
     });
+
+    it('should return resource json array with resources from virtual packages', () => {
+      loader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+      // Virtual Package 1
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: 'some.ig', version: '1.2.3' });
+      vPackMock.registerResources.mockResolvedValue();
+      vPackMock.getResourceByKey.calledWith('firstResource.json').mockReturnValue({
+        id: '1',
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3'
+      });
+      packageDBMock.getPackageStats
+        .calledWith('some.ig', '1.2.3')
+        .mockReturnValue({ name: 'some.ig', version: '1.2.3', resourceCount: 1 });
+      loader.loadVirtualPackage(vPackMock);
+      // Virtual Package 2
+      const vPackMock2 = mock<VirtualPackage>();
+      vPackMock2.getPackageJSON.mockReturnValue({ name: 'some.ig', version: '2.3.4' });
+      vPackMock2.registerResources.mockResolvedValue();
+      vPackMock2.getResourceByKey.calledWith('secondResource.json').mockReturnValue({
+        id: '2',
+        name: 'secondResource',
+        resourceType: 'ValueSet',
+        version: '1.2.3'
+      });
+      packageDBMock.getPackageStats
+        .calledWith('some.ig', '2.3.4')
+        .mockReturnValue({ name: 'some.ig', version: '2.3.4', resourceCount: 1 });
+      loader.loadVirtualPackage(vPackMock2);
+      // Resource from normal (non-virtual) Package
+      packageCacheMock.getResourceAtPath
+        .calledWith('/some/package/third-thing.json')
+        .mockReturnValueOnce({
+          id: '3',
+          name: 'third-thing',
+          resourceType: 'CodeSystem',
+          version: '1.2.3'
+        });
+
+      const resourceInfos = [
+        {
+          name: 'firstResource',
+          resourceType: 'StructureDefinition',
+          version: '1.2.3',
+          resourcePath: 'virtual:some.ig#1.2.3:firstResource.json'
+        },
+        {
+          name: 'secondResource',
+          resourceType: 'ValueSet',
+          version: '1.2.3',
+          resourcePath: 'virtual:some.ig#2.3.4:secondResource.json'
+        },
+        {
+          name: 'thirdResource',
+          resourceType: 'CodeSystem',
+          version: '1.2.3',
+          resourcePath: '/some/package/third-thing.json'
+        }
+      ];
+      packageDBMock.findResourceInfos.calledWith('*').mockReturnValueOnce(resourceInfos);
+
+      const result = loader.findResourceJSONs('*');
+      expect(result).toEqual([
+        {
+          id: '1',
+          name: 'firstResource',
+          resourceType: 'StructureDefinition',
+          version: '1.2.3'
+        },
+        {
+          id: '2',
+          name: 'secondResource',
+          resourceType: 'ValueSet',
+          version: '1.2.3'
+        },
+        {
+          id: '3',
+          name: 'third-thing',
+          resourceType: 'CodeSystem',
+          version: '1.2.3'
+        }
+      ]);
+    });
+
+    it('should use LRU cache for resource json in subsequent results', () => {
+      loader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+      // Virtual Package
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: 'some.ig', version: '1.2.3' });
+      vPackMock.registerResources.mockResolvedValue();
+      vPackMock.getResourceByKey.calledWith('firstResource.json').mockReturnValue({
+        id: '1',
+        name: 'firstResource'
+      });
+      vPackMock.getResourceByKey.calledWith('secondResource.json').mockReturnValue({
+        id: '2',
+        name: 'secondResource'
+      });
+      packageDBMock.getPackageStats
+        .calledWith('some.ig', '1.2.3')
+        .mockReturnValue({ name: 'some.ig', version: '1.2.3', resourceCount: 1 });
+      loader.loadVirtualPackage(vPackMock);
+      // Resource from normal (non-virtual) Package
+      packageCacheMock.getResourceAtPath
+        .calledWith('/some/package/third-thing.json')
+        .mockReturnValue({
+          id: '3',
+          name: 'third-thing'
+        });
+
+      const resourceInfos = [
+        {
+          name: 'firstResource',
+          resourceType: 'StructureDefinition',
+          version: '1.2.3',
+          resourcePath: 'virtual:some.ig#1.2.3:firstResource.json'
+        },
+        {
+          name: 'secondResource',
+          resourceType: 'ValueSet',
+          version: '1.2.3',
+          resourcePath: 'virtual:some.ig#1.2.3:secondResource.json'
+        },
+        {
+          name: 'thirdResource',
+          resourceType: 'CodeSystem',
+          version: '1.2.3',
+          resourcePath: '/some/package/third-thing.json'
+        }
+      ];
+      packageDBMock.findResourceInfos
+        .calledWith('firstTwo')
+        .mockReturnValue(resourceInfos.slice(0, 2));
+      packageDBMock.findResourceInfos.calledWith('*').mockReturnValue(resourceInfos);
+
+      // First call for first two, should call the virtual package but not the package cache
+      expect(vPackMock.getResourceByKey).toHaveBeenCalledTimes(0);
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(0);
+      const result = loader.findResourceJSONs('firstTwo');
+      expect(result).toEqual([
+        { id: '1', name: 'firstResource' },
+        { id: '2', name: 'secondResource' }
+      ]);
+      expect(vPackMock.getResourceByKey).toHaveBeenCalledTimes(2);
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(0);
+      // Second call for first two, should not call the virtual package nor the package cache
+      const result2 = loader.findResourceJSONs('firstTwo');
+      expect(result2).toEqual([
+        { id: '1', name: 'firstResource' },
+        { id: '2', name: 'secondResource' }
+      ]);
+      expect(vPackMock.getResourceByKey).toHaveBeenCalledTimes(2); // still just 2
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(0); // still not called
+      // New call for all three, should not call the virtual package but should call the package cache
+      const result3 = loader.findResourceJSONs('*');
+      expect(result3).toEqual([
+        { id: '1', name: 'firstResource' },
+        { id: '2', name: 'secondResource' },
+        { id: '3', name: 'third-thing' }
+      ]);
+      expect(vPackMock.getResourceByKey).toHaveBeenCalledTimes(2); // still just 2
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(1); // now called once
+      // One more call for all three, should not call the virtual package nor the package cache
+      const result4 = loader.findResourceJSONs('*');
+      expect(result4).toEqual([
+        { id: '1', name: 'firstResource' },
+        { id: '2', name: 'secondResource' },
+        { id: '3', name: 'third-thing' }
+      ]);
+      expect(vPackMock.getResourceByKey).toHaveBeenCalledTimes(2); // still just 2
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(1); // still just 1
+    });
   });
 
   describe('#findResourceJSON', () => {
@@ -1052,6 +1667,148 @@ describe('BasePackageLoader', () => {
       expect(result).toEqual({ id: 'first-thing', version: '1.2.3' });
     });
 
+    it('should use the LRU cache for resource JSON on subsequent retrievals of the same resource', () => {
+      packageDBMock.findResourceInfo.mockReturnValue({
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3',
+        resourcePath: '/some/package/first-thing.json'
+      });
+      packageCacheMock.getResourceAtPath
+        .calledWith('/some/package/first-thing.json')
+        .mockReturnValue({ id: 'first-thing', version: '1.2.3' });
+      // First call, should get it from the package cache (typically disk-based)
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(0);
+      const result = loader.findResourceJSON('firstResource');
+      expect(result).toEqual({ id: 'first-thing', version: '1.2.3' });
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(1);
+      // Second call, should not call the package cache again
+      const result2 = loader.findResourceJSON('firstResource');
+      expect(result2).toEqual({ id: 'first-thing', version: '1.2.3' });
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(1); // still 1
+      // Third call, using a different key, but resolves to same resource, should not call the package cache again
+      const result3 = loader.findResourceJSON('first-thing');
+      expect(result3).toEqual({ id: 'first-thing', version: '1.2.3' });
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(1); // still 1
+    });
+
+    it('should not use the LRU cache for resource JSON when cache size is 0', () => {
+      // Re-assign loader to an instance with cache-size 0
+      loader = new BasePackageLoader(
+        packageDBMock,
+        packageCacheMock,
+        registryClientMock,
+        currentBuildClientMock,
+        { log: loggerSpy.log, resourceCacheSize: 0 }
+      );
+      packageDBMock.findResourceInfo.mockReturnValue({
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3',
+        resourcePath: '/some/package/first-thing.json'
+      });
+      packageCacheMock.getResourceAtPath
+        .calledWith('/some/package/first-thing.json')
+        .mockReturnValue({ id: 'first-thing', version: '1.2.3' });
+      // First call, should get it from the package cache (typically disk-based)
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(0);
+      const result = loader.findResourceJSON('firstResource');
+      expect(result).toEqual({ id: 'first-thing', version: '1.2.3' });
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(1);
+      // Second call, should still get it from the package cache (no LRU cache)
+      const result2 = loader.findResourceJSON('firstResource');
+      expect(result2).toEqual({ id: 'first-thing', version: '1.2.3' });
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(2); // called again
+      // Third call, using a different key, but resolves to same resource, should still get it from the package cache (no LRU cache)
+      const result3 = loader.findResourceJSON('first-thing');
+      expect(result3).toEqual({ id: 'first-thing', version: '1.2.3' });
+      expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(3); // called again
+    });
+
+    it('should return resource json from a virtual package', () => {
+      loader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: 'some.ig', version: '1.2.3' });
+      vPackMock.registerResources.mockResolvedValue();
+      vPackMock.getResourceByKey.calledWith('firstResource.json').mockReturnValue({
+        id: '1',
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3'
+      });
+      packageDBMock.getPackageStats
+        .calledWith('some.ig', '1.2.3')
+        .mockReturnValue({ name: 'some.ig', version: '1.2.3', resourceCount: 1 });
+      loader.loadVirtualPackage(vPackMock);
+      packageDBMock.findResourceInfo.calledWith('firstResource').mockReturnValueOnce({
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3',
+        resourcePath: 'virtual:some.ig#1.2.3:firstResource.json'
+      });
+      const result = loader.findResourceJSON('firstResource');
+      expect(result).toEqual({
+        id: '1',
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3'
+      });
+    });
+
+    it('should use the LRU cache for resource JSON on subsequent retrievals of the same resource from virtual package', () => {
+      loader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: 'some.ig', version: '1.2.3' });
+      vPackMock.registerResources.mockResolvedValue();
+      vPackMock.getResourceByKey.calledWith('firstResource.json').mockReturnValue({
+        id: '1',
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3'
+      });
+      packageDBMock.getPackageStats
+        .calledWith('some.ig', '1.2.3')
+        .mockReturnValue({ name: 'some.ig', version: '1.2.3', resourceCount: 1 });
+      loader.loadVirtualPackage(vPackMock);
+      packageDBMock.findResourceInfo.mockReturnValue({
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3',
+        resourcePath: 'virtual:some.ig#1.2.3:firstResource.json'
+      });
+
+      // First call, should get it from the virtual package
+      expect(vPackMock.getResourceByKey).toHaveBeenCalledTimes(0);
+      const result = loader.findResourceJSON('firstResource');
+      expect(result).toEqual({
+        id: '1',
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3'
+      });
+      expect(vPackMock.getResourceByKey).toHaveBeenCalledTimes(1);
+
+      // Second call, should not call the virtual package again
+      const result2 = loader.findResourceJSON('firstResource');
+      expect(result2).toEqual({
+        id: '1',
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3'
+      });
+      expect(vPackMock.getResourceByKey).toHaveBeenCalledTimes(1); // still 1
+
+      // Third call, using a different key, but resolves to same resource, should not call the virtual package again
+      const result3 = loader.findResourceJSON('1');
+      expect(result3).toEqual({
+        id: '1',
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3'
+      });
+      expect(vPackMock.getResourceByKey).toHaveBeenCalledTimes(1); // still 1
+    });
+
     it('should return undefined when the info does not contain a resourcePath', () => {
       packageDBMock.findResourceInfo.calledWith('first-thing').mockReturnValueOnce({
         name: 'firstResource',
@@ -1063,6 +1820,13 @@ describe('BasePackageLoader', () => {
         .mockReturnValueOnce({ id: 'first-thing', version: '1.2.3' });
       const result = loader.findResourceJSON('firstResource');
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe('#exportDB', () => {
+    it('should export the package DB', () => {
+      loader.exportDB();
+      expect(packageDBMock.exportDB).toHaveBeenCalled();
     });
   });
 

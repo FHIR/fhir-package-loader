@@ -8,8 +8,15 @@ export type FindResourceInfoOptions = {
   type?: string[];
   // search only within a specific package, identified by a package id with an optional "|version" suffix
   scope?: string;
+  // sort algorithm(s)
+  sort?: SortBy[];
   // limit the number of results returned
   limit?: number;
+};
+
+export type SortBy = {
+  sortBy: string;
+  [key: string]: any;
 };
 
 export type ResourceInfo = {

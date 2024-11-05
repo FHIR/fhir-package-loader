@@ -1,6 +1,6 @@
 import { loggerSpy } from '../testhelpers';
 import { jest } from '@jest/globals';
-import { defaultPackageLoader, defaultPackageLoaderWithLocalResources } from '../../src/loader';
+import { defaultPackageLoader } from '../../src/loader';
 import { BasePackageLoader } from '../../src/loader/BasePackageLoader';
 import { DiskBasedPackageCache } from '../../src/cache/DiskBasedPackageCache';
 
@@ -32,24 +32,8 @@ describe('DefaultPackageLoader', () => {
     const loader = await defaultPackageLoader({ log: loggerSpy.log });
     expect(loader).toBeInstanceOf(BasePackageLoader);
     expect(DiskBasedPackageCache as jest.Mock).toHaveBeenCalledTimes(1);
-    expect(DiskBasedPackageCache as jest.Mock).toHaveBeenCalledWith(expect.any(String), [], {
+    expect(DiskBasedPackageCache as jest.Mock).toHaveBeenCalledWith(expect.any(String), {
       log: loggerSpy.log
     });
-  });
-
-  it('should create an instance of BasePackageLoader with specified local resource folders', async () => {
-    const loader = await defaultPackageLoaderWithLocalResources(
-      ['/some/folder', '/another/good/folder'],
-      { log: loggerSpy.log }
-    );
-    expect(loader).toBeInstanceOf(BasePackageLoader);
-    expect(DiskBasedPackageCache as jest.Mock).toHaveBeenCalledTimes(1);
-    expect(DiskBasedPackageCache as jest.Mock).toHaveBeenCalledWith(
-      expect.any(String),
-      ['/some/folder', '/another/good/folder'],
-      {
-        log: loggerSpy.log
-      }
-    );
   });
 });

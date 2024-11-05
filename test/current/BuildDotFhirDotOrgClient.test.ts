@@ -107,43 +107,43 @@ describe('BuildDotFhirDotOrgClient', () => {
       });
 
       it ('should download the most current package from the main branch when no branch given', async () => {
-        const latest = await client.downloadCurrentBuild('simple.hl7.fhir.us.core.r4', null);
+        const latest = await client.downloadCurrentBuild('simple.hl7.fhir.us.core.r4');
         expect(loggerSpy.getLastMessage('info')).toBe('Attempting to download simple.hl7.fhir.us.core.r4#current from https://build.fhir.org/ig/HL7/simple-US-Core-R4/branches/main/package.tgz');
         expect(latest).toBeInstanceOf(Readable);
         expect(latest.read()).toBe('simple zipfile');
       });
 
       it ('should try to download the current package from master branch if not specified', async () => {
-        const latest = await client.downloadCurrentBuild('sushi-test', null);
+        const latest = await client.downloadCurrentBuild('sushi-test');
         expect(loggerSpy.getLastMessage('info')).toBe('Attempting to download sushi-test#current from https://build.fhir.org/ig/sushi/sushi-test/branches/master/package.tgz');
         expect(latest).toBeInstanceOf(Readable);
         expect(latest.read()).toBe('sushi-test master zip file');
       });
 
       it ('should download the most current package when a current package version has multiple versions', async () => {
-        const latest = await client.downloadCurrentBuild('hl7.fhir.us.core.r4', null);
+        const latest = await client.downloadCurrentBuild('hl7.fhir.us.core.r4');
         expect(loggerSpy.getLastMessage('info')).toBe('Attempting to download hl7.fhir.us.core.r4#current from https://build.fhir.org/ig/HL7/US-Core-R4/branches/main/package.tgz');
         expect(latest).toBeInstanceOf(Readable);
         expect(latest.read()).toBe('current multiple version zip file');
       });
 
       it ('should throw error when invalid package name (unknown name) given', async () => {
-        const latest = client.downloadCurrentBuild('invalid.pkg.name', null);
+        const latest = client.downloadCurrentBuild('invalid.pkg.name');
         await expect(latest).rejects.toThrow(/The package invalid.pkg.name#current is not available/);
       });
 
       it ('should throw error when invalid package name (empty string) given', async () => {
-        const latest = client.downloadCurrentBuild('', null);
+        const latest = client.downloadCurrentBuild('');
         await expect(latest).rejects.toThrow(/The package #current is not available/);
       });
 
       it ('should not try to download the latest package from a branch that is not main/master if one is not available', async () => {
-        const latest = client.downloadCurrentBuild('sushi-no-main', null);
+        const latest = client.downloadCurrentBuild('sushi-no-main');
         await expect(latest).rejects.toThrow(/The package sushi-no-main#current is not available/);
       });
 
       it ('should throw error if able to find current build base url, but downloading does not find matching package', async () => {
-        const latest = client.downloadCurrentBuild('sushi-test-no-download', null);
+        const latest = client.downloadCurrentBuild('sushi-test-no-download');
         await expect(latest).rejects.toThrow('Failed to download sushi-test-no-download#current from https://build.fhir.org/ig/sushi/sushi-test-no-download/branches/master/package.tgz');
       });
     });
@@ -274,17 +274,17 @@ describe('BuildDotFhirDotOrgClient', () => {
       });
 
       it ('should throw error if download has 404 status', async () => {
-        const latest = client.downloadCurrentBuild('sushi-test-bad-status', null);
+        const latest = client.downloadCurrentBuild('sushi-test-bad-status');
         await expect(latest).rejects.toThrow('Failed to download sushi-test-bad-status#current from https://build.fhir.org/ig/sushi/sushi-test-bad-status/branches/master/package.tgz');
       });
 
       it ('should throw error if download has no data', async () => {
-        const latest = client.downloadCurrentBuild('sushi-test-no-data', null);
+        const latest = client.downloadCurrentBuild('sushi-test-no-data');
         await expect(latest).rejects.toThrow('Failed to download sushi-test-no-data#current from https://build.fhir.org/ig/sushi/sushi-test-no-data/branches/master/package.tgz');
       });
 
       it ('should throw error if download is unsuccessful', async () => {
-        const latest = client.downloadCurrentBuild('test-nodownload', null);
+        const latest = client.downloadCurrentBuild('test-nodownload');
         await expect(latest).rejects.toThrow(/The package test-nodownload#current is not available/);
       });
     });

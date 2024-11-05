@@ -9,19 +9,17 @@ temp.track();
 
 describe('DiskBasedPackageCache', () => {
   const cacheFolder = path.resolve(__dirname, 'fixtures', 'fhircache');
-  const local1Folder = path.resolve(__dirname, 'fixtures', 'local', 'local1');
-  const local2Folder = path.resolve(__dirname, 'fixtures', 'local', 'local2');
   let cache: DiskBasedPackageCache;
 
   beforeEach(() => {
-    cache = new DiskBasedPackageCache(cacheFolder, [], { log: loggerSpy.log });
+    cache = new DiskBasedPackageCache(cacheFolder, { log: loggerSpy.log });
     loggerSpy.reset();
   });
 
   describe('#cachePackageTarball', () => {
     it('should cache a fhir package tarball to the cache folder', async () => {
       const tempCacheFolder = temp.mkdirSync('fpl-test');
-      const tempCache = new DiskBasedPackageCache(tempCacheFolder, [], { log: loggerSpy.log });
+      const tempCache = new DiskBasedPackageCache(tempCacheFolder, { log: loggerSpy.log });
       const tarballStream = fs.createReadStream(
         path.join(__dirname, 'fixtures', 'tarballs', 'small-package.tgz')
       );
@@ -46,7 +44,7 @@ describe('DiskBasedPackageCache', () => {
 
     it('should clean a malformed fhir package tarball when caching it', async () => {
       const tempCacheFolder = temp.mkdirSync('fpl-test');
-      const tempCache = new DiskBasedPackageCache(tempCacheFolder, [], { log: loggerSpy.log });
+      const tempCache = new DiskBasedPackageCache(tempCacheFolder, { log: loggerSpy.log });
       // NOTE: This package has example, xml, package, and other folders at root
       const tarballStream = fs.createReadStream(
         path.join(__dirname, 'fixtures', 'tarballs', 'small-wrong-package.tgz')
@@ -95,10 +93,6 @@ describe('DiskBasedPackageCache', () => {
     it('should return false for a package with different version in the cache', () => {
       expect(cache.isPackageInCache('fhir.small', '0.2.0')).toBeFalsy();
     });
-
-    it('should always return true for the special LOCAL#LOCAL package', () => {
-      expect(cache.isPackageInCache('LOCAL', 'LOCAL')).toBeTruthy();
-    });
   });
 
   describe('#getPackagePath', () => {
@@ -115,22 +109,6 @@ describe('DiskBasedPackageCache', () => {
     it('should return undefined for a package with different version in the cache', () => {
       expect(cache.getPackagePath('fhir.small', '0.2.0')).toBeUndefined();
     });
-
-    it('should return empty path for the special LOCAL#LOCAL package when no resource folders are configured', () => {
-      expect(cache.getPackagePath('LOCAL', 'LOCAL')).toBe('');
-    });
-
-    it('should return single path for the special LOCAL#LOCAL package when one resource folder is configured', () => {
-      const cacheWithFolder = new DiskBasedPackageCache(cacheFolder, [local1Folder]);
-      expect(cacheWithFolder.getPackagePath('LOCAL', 'LOCAL')).toBe(local1Folder);
-    });
-
-    it('should return semi-colon-separated path for the special LOCAL#LOCAL package when multiple resource folders are configured', () => {
-      const cacheWithFolder = new DiskBasedPackageCache(cacheFolder, [local1Folder, local2Folder]);
-      expect(cacheWithFolder.getPackagePath('LOCAL', 'LOCAL')).toBe(
-        `${local1Folder};${local2Folder}`
-      );
-    });
   });
 
   describe('#getPackageJSONPath', () => {
@@ -146,10 +124,6 @@ describe('DiskBasedPackageCache', () => {
 
     it('should return undefined for a package with different version in the cache', () => {
       expect(cache.getPackageJSONPath('fhir.small', '0.2.0')).toBeUndefined();
-    });
-
-    it('should return undefined for the special LOCAL#LOCAL package', () => {
-      expect(cache.getPackageJSONPath('LOCAL', 'LOCAL')).toBeUndefined();
     });
   });
 
@@ -175,59 +149,6 @@ describe('DiskBasedPackageCache', () => {
       expect(potentials).toHaveLength(0);
       expect(loggerSpy.getAllLogs()).toHaveLength(0);
     });
-
-    it('should return potential paths for the special LOCAL#LOCAL package', () => {
-      const cacheWithFolder = new DiskBasedPackageCache(cacheFolder, [local1Folder, local2Folder], {
-        log: loggerSpy.log
-      });
-      const potentials = cacheWithFolder.getPotentialResourcePaths('LOCAL', 'LOCAL');
-      expect(potentials).toHaveLength(12);
-      expect(potentials).toContain(path.resolve(local1Folder, 'CodeSystem-a-to-d.json'));
-      expect(potentials).toContain(path.resolve(local1Folder, 'CodeSystem-x-to-z.xml'));
-      expect(potentials).toContain(
-        path.resolve(local1Folder, 'StructureDefinition-family-member.json')
-      );
-      expect(potentials).toContain(
-        path.resolve(local1Folder, 'StructureDefinition-human-being-logical-model.json')
-      );
-      expect(potentials).toContain(
-        path.resolve(local1Folder, 'StructureDefinition-true-false.xml')
-      );
-      expect(potentials).toContain(
-        path.resolve(local1Folder, 'StructureDefinition-valued-observation.json')
-      );
-      expect(potentials).toContain(path.resolve(local1Folder, 'ValueSet-beginning-and-end.json'));
-      expect(potentials).toContain(path.resolve(local2Folder, 'Binary-LogicalModelExample.json'));
-      expect(potentials).toContain(path.resolve(local2Folder, 'Binary-LogicalModelExample.xml'));
-      expect(potentials).toContain(path.resolve(local2Folder, 'Observation-A1Example.xml'));
-      expect(potentials).toContain(path.resolve(local2Folder, 'Observation-B2Example.json'));
-      expect(potentials).toContain(path.resolve(local2Folder, 'Patient-JamesPondExample.json'));
-      expect(loggerSpy.getAllLogs('debug')).toHaveLength(3);
-      expect(
-        loggerSpy
-          .getAllMessages('debug')
-          .some(m => /^Skipped spreadsheet XML file: .*resources-spreadsheet\.xml$/.test(m))
-      ).toBeTruthy();
-      expect(
-        loggerSpy
-          .getAllMessages('debug')
-          .some(m =>
-            /^Skipped spreadsheet XML file: .*sneaky-spread-like-bread-sheet\.xml$/.test(m)
-          )
-      ).toBeTruthy();
-      expect(
-        loggerSpy
-          .getAllMessages('debug')
-          .some(m => /^Skipped non-JSON \/ non-XML file: .*not-a-resource\.txt$/.test(m))
-      ).toBeTruthy();
-      expect(loggerSpy.getAllLogs('info')).toHaveLength(2);
-      expect(loggerSpy.getFirstMessage('info')).toMatch(
-        /Found 2 spreadsheet\(s\) in directory: .*local1\./
-      );
-      expect(loggerSpy.getLastMessage('info')).toMatch(
-        /Found 1 non-JSON \/ non-XML file\(s\) in directory: .*local2\./
-      );
-    });
   });
 
   describe('#getResourceAtPath', () => {
@@ -238,43 +159,6 @@ describe('DiskBasedPackageCache', () => {
       expect(resource).toBeDefined();
       expect(resource.id).toBe('MyPatient');
       expect(loggerSpy.getAllLogs('error')).toHaveLength(0);
-    });
-
-    it('should return a resource with an xml path where xml was converted to a resource', () => {
-      const totalPath = path.resolve(local1Folder, 'StructureDefinition-true-false.xml');
-      const resource = cache.getResourceAtPath(totalPath);
-      expect(resource).toBeDefined();
-      expect(resource.id).toBe('true-false');
-      expect(resource.xml).toBeUndefined();
-      expect(loggerSpy.getAllLogs('error')).toHaveLength(0);
-    });
-
-    it('should throw error when path points to a xml file that does not exist', () => {
-      const totalPath = path.resolve(local1Folder, 'example-file-that-doesnt-exist.xml');
-      expect(() => {
-        cache.getResourceAtPath(totalPath);
-      }).toThrow(/Failed to get XML resource at path/);
-    });
-
-    it('should throw error when path points to a json file that does not exist', () => {
-      const totalPath = path.resolve(local1Folder, 'example-file-that-doesnt-exist.json');
-      expect(() => {
-        cache.getResourceAtPath(totalPath);
-      }).toThrow(/Failed to get JSON resource at path/);
-    });
-
-    it('should throw error when path points to an invalid file type that is not json or xml', () => {
-      const totalPath = path.resolve(local1Folder, 'example-file-that-doesnt-exist.txt');
-      expect(() => {
-        cache.getResourceAtPath(totalPath);
-      }).toThrow(/Failed to find XML or JSON file/);
-    });
-
-    it('should throw error when path points to a file that does not exist', () => {
-      const totalPath = path.resolve(local1Folder, '');
-      expect(() => {
-        cache.getResourceAtPath(totalPath);
-      }).toThrow(/Failed to find XML or JSON file/);
     });
   });
 });
