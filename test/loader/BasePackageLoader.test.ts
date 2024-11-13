@@ -196,6 +196,48 @@ describe('BasePackageLoader', () => {
       expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', 'current');
     });
 
+    it('should log error and troubleshooting tips when current build package cannot be downloaded due to certificate errors', async () => {
+      const pkg = setupLoadPackage(
+        'some.ig',
+        'current',
+        'not-loaded',
+        undefined,
+        undefined,
+        undefined,
+        '20200824230227'
+      );
+      packageCacheMock.getPackageJSONPath
+        .calledWith(pkg.name, 'current')
+        .mockReturnValueOnce(pkg.packageJsonPath);
+      packageCacheMock.getResourceAtPath
+        .calledWith(pkg.packageJsonPath)
+        .mockReturnValueOnce(pkg.resourceInfo);
+      currentBuildClientMock.getCurrentBuildDate
+        .calledWith(pkg.name, undefined)
+        .mockReturnValueOnce(pkg.currentBuildDate);
+      currentBuildClientMock.downloadCurrentBuild.mockRejectedValue(
+        new Error('self signed certificate in certificate chain')
+      );
+      loadPackageFromCacheSpy.mockImplementation(() => {
+        throw new Error('load pkg from cache error');
+      });
+
+      const result = await loader.loadPackage('some.ig', 'current');
+      expect(result).toBe(LoadStatus.FAILED);
+      expect(loader.getPackageLoadStatus).toHaveBeenCalledWith('some.ig', 'current');
+      expect(loggerSpy.getLastMessage('debug')).toBe(
+        'Cached package date for some.ig#current (2024-08-24T23:02:27) does not match last build date (2020-08-24T23:02:27)'
+      );
+      expect(loggerSpy.getLastMessage('error')).toMatch(
+        'Failed to load some.ig#current: Failed to download most recent some.ig#current from current builds'
+      );
+      // AND it should log the detailed message about SSL
+      expect(loggerSpy.getLastMessage('error')).toMatch(
+        'Sometimes this error occurs in corporate or educational environments that use proxies and/or SSL inspection'
+      );
+      expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', 'current');
+    });
+
     it('should successfully load current package in cache when current version is not missing or stale', async () => {
       const pkg = setupLoadPackage('some.ig', 'current', 'not-loaded');
       packageCacheMock.getPackageJSONPath
@@ -333,6 +375,31 @@ describe('BasePackageLoader', () => {
       expect(result).toBe(LoadStatus.FAILED);
       expect(loggerSpy.getLastMessage('error')).toBe(
         'Failed to load some.ig#1.2.3: Failed to download some.ig#1.2.3 from the registry'
+      );
+      expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', '1.2.3');
+    });
+
+    it('should log error and troubleshooting tips when a versioned package is unable to be downloaded from the registry due to certificate errors', async () => {
+      const pkg = setupLoadPackage('some.ig', '1.2.3', 'not-loaded');
+      packageCacheMock.isPackageInCache
+        .calledWith(pkg.name, pkg.version)
+        .mockReturnValueOnce(false);
+
+      registryClientMock.download.calledWith(pkg.name, pkg.version).mockImplementation(() => {
+        throw new Error('self signed certificate in certificate chain');
+      });
+      loadPackageFromCacheSpy.mockImplementation(() => {
+        throw new Error('load pkg from cache error');
+      });
+
+      const result = await loader.loadPackage(pkg.name, pkg.version);
+      expect(result).toBe(LoadStatus.FAILED);
+      expect(loggerSpy.getLastMessage('error')).toMatch(
+        'Failed to load some.ig#1.2.3: Failed to download some.ig#1.2.3 from the registry'
+      );
+      // AND it should log the detailed message about SSL
+      expect(loggerSpy.getLastMessage('error')).toMatch(
+        'Sometimes this error occurs in corporate or educational environments that use proxies and/or SSL inspection'
       );
       expect(loadPackageFromCacheSpy).toHaveBeenCalledWith('some.ig', '1.2.3');
     });

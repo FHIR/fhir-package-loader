@@ -12,6 +12,13 @@ import { LoadStatus, PackageLoader } from './PackageLoader';
 
 const DEFAULT_RESOURCE_CACHE_SIZE = 500;
 
+const CERTIFICATE_MESSAGE =
+  '\n\nSometimes this error occurs in corporate or educational environments that use proxies and/or SSL ' +
+  'inspection.\nTroubleshooting tips:\n' +
+  '  1. If a non-proxied network is available, consider connecting to that network instead.\n' +
+  '  2. Set NODE_EXTRA_CA_CERTS as described at https://bit.ly/3ghJqJZ (RECOMMENDED).\n' +
+  '  3. Disable certificate validation as described at https://bit.ly/3syjzm7 (NOT RECOMMENDED).\n';
+
 export type BasePackageLoaderOptions = {
   log?: LogFunction;
   resourceCacheSize?: number;
@@ -71,8 +78,11 @@ export class BasePackageLoader implements PackageLoader {
         try {
           const tarballStream = await this.currentBuildClient.downloadCurrentBuild(name, branch);
           await this.packageCache.cachePackageTarball(name, version, tarballStream);
-        } catch {
+        } catch (e) {
           downloadErrorMessage = `Failed to download most recent ${packageLabel} from current builds`;
+          if (/certificate/.test(e?.message)) {
+            downloadErrorMessage += CERTIFICATE_MESSAGE;
+          }
         }
       }
     }
@@ -81,8 +91,11 @@ export class BasePackageLoader implements PackageLoader {
       try {
         const tarballStream = await this.registryClient.download(name, version);
         await this.packageCache.cachePackageTarball(name, version, tarballStream);
-      } catch {
+      } catch (e) {
         downloadErrorMessage = `Failed to download ${packageLabel} from the registry`;
+        if (/certificate/.test(e?.message)) {
+          downloadErrorMessage += CERTIFICATE_MESSAGE;
+        }
       }
     }
 

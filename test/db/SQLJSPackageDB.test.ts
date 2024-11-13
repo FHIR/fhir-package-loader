@@ -285,6 +285,32 @@ describe('SQLJSPackageDB', () => {
       });
     });
 
+    it('should return all packages when * is passed in as the name', () => {
+      const results = packageDb.findPackageInfos('*');
+      expect(results).toHaveLength(3);
+      expect(results).toContainEqual(
+        expect.objectContaining({
+          name: 'CookiePackage',
+          version: '1.0.0',
+          packagePath: '/var/data/.fhir/CookiePackage-1.0.0'
+        })
+      );
+      expect(results).toContainEqual(
+        expect.objectContaining({
+          name: 'CookiePackage',
+          version: '1.0.3',
+          packagePath: '/var/data/.fhir/CookiePackage-1.0.3'
+        })
+      );
+      expect(results).toContainEqual(
+        expect.objectContaining({
+          name: 'BagelPackage',
+          version: '1.0.0',
+          packagePath: '/var/data/.fhir/BagelPackage-1.0.0'
+        })
+      );
+    });
+
     it('should return all packages that match a name', () => {
       const results = packageDb.findPackageInfos('CookiePackage');
       expect(results).toHaveLength(2);

@@ -29,6 +29,8 @@ const INSERT_PACKAGE = `INSERT INTO package
     :packageJSONPath
   )`;
 
+const FIND_ALL_PACKAGES = 'SELECT * FROM package';
+
 const FIND_PACKAGES = 'SELECT * FROM package WHERE name = :name';
 
 const FIND_PACKAGE = 'SELECT * FROM package WHERE name = :name and version = :version LIMIT 1';
@@ -105,6 +107,7 @@ const SD_FLAVORS = ['Extension', 'Logical', 'Profile', 'Resource', 'Type'];
 export class SQLJSPackageDB implements PackageDB {
   private insertPackageStmt: Statement;
   private insertResourceStmt: Statement;
+  private findAllPackagesStmt: Statement;
   private findPackagesStmt: Statement;
   private findPackageStmt: Statement;
   constructor(
@@ -123,6 +126,7 @@ export class SQLJSPackageDB implements PackageDB {
     }
     this.insertPackageStmt = this.db.prepare(INSERT_PACKAGE);
     this.insertResourceStmt = this.db.prepare(INSERT_RESOURCE);
+    this.findAllPackagesStmt = this.db.prepare(FIND_ALL_PACKAGES);
     this.findPackagesStmt = this.db.prepare(FIND_PACKAGES);
     this.findPackageStmt = this.db.prepare(FIND_PACKAGE);
   }
@@ -207,13 +211,16 @@ export class SQLJSPackageDB implements PackageDB {
 
   findPackageInfos(name: string): PackageInfo[] {
     const results: PackageInfo[] = [];
+    const findStmt = name === '*' ? this.findAllPackagesStmt : this.findPackagesStmt;
     try {
-      this.findPackagesStmt.bind({ ':name': name });
-      while (this.findPackagesStmt.step()) {
-        results.push(this.findPackagesStmt.getAsObject() as PackageInfo);
+      if (name !== '*') {
+        findStmt.bind({ ':name': name });
+      }
+      while (findStmt.step()) {
+        results.push(findStmt.getAsObject() as PackageInfo);
       }
     } finally {
-      this.findPackagesStmt.reset();
+      findStmt.reset();
     }
     return results;
   }
