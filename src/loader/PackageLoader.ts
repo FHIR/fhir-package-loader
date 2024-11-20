@@ -1,4 +1,4 @@
-import { FindResourceInfoOptions, PackageInfo, ResourceInfo } from '../package';
+import { FindResourceInfoOptions, PackageInfo, ResourceInfo, VirtualPackage } from '../package';
 
 export enum LoadStatus {
   LOADED = 'LOADED',
@@ -8,6 +8,7 @@ export enum LoadStatus {
 
 export interface PackageLoader {
   loadPackage(name: string, version: string): Promise<LoadStatus>;
+  loadVirtualPackage(pkg: VirtualPackage): Promise<LoadStatus>;
   getPackageLoadStatus(name: string, version: string): LoadStatus;
   findPackageInfos(name: string): PackageInfo[];
   findPackageInfo(name: string, version: string): PackageInfo | undefined;
@@ -17,5 +18,6 @@ export interface PackageLoader {
   findResourceInfo(key: string, options?: FindResourceInfoOptions): ResourceInfo | undefined;
   findResourceJSONs(key: string, options?: FindResourceInfoOptions): any[];
   findResourceJSON(key: string, options?: FindResourceInfoOptions): any | undefined;
+  optimize(): void;
   clear(): void;
 }

@@ -2,6 +2,7 @@ import { FindResourceInfoOptions, PackageInfo, PackageStats, ResourceInfo } from
 
 export interface PackageDB {
   clear(): void;
+  optimize(): void;
   savePackageInfo(info: PackageInfo): void;
   saveResourceInfo(info: ResourceInfo): void;
   findPackageInfos(name: string): PackageInfo[];
@@ -9,4 +10,5 @@ export interface PackageDB {
   findResourceInfos(key: string, options?: FindResourceInfoOptions): ResourceInfo[];
   findResourceInfo(key: string, options?: FindResourceInfoOptions): ResourceInfo | undefined;
   getPackageStats(name: string, version: string): PackageStats | undefined;
+  exportDB(): Promise<{ mimeType: string; data: Buffer }>;
 }

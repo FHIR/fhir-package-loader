@@ -1,4 +1,5 @@
 import { FHIRRegistryClient } from '../../src/registry/FHIRRegistryClient';
+import * as registryUtils from '../../src/registry/utils';
 import { loggerSpy } from '../testhelpers';
 import axios from 'axios';
 import { Readable } from 'stream';
@@ -18,7 +19,7 @@ const TERM_PKG_RESPONSE = {
       version: '1.2.3-test',
       description: 'None.',
       dist: {
-        shasum: '1a1467bce19aace45771e0a51ef2ad9c3fe74983',
+        shasum: '1a1467bce19aace45771e0a51ef2ad9c3fe74984',
         tarball: 'https://packages.simplifier.net/hl7.terminology.r4/1.2.3-test'
       },
       fhirVersion: 'R4',
@@ -59,6 +60,55 @@ describe('FHIRRegistryClient', () => {
         log: loggerSpy.log
       });
       expect(clientWithSlash.endpoint).toBe('https://packages.fhir.org');
+    });
+  });
+
+  describe('#resolveVersion', () => {
+    let resolveVersionSpy: jest.SpyInstance;
+
+    // There's no need to re-test all the functionality in utils.resolveVersion,
+    // so just be sure the data is being passed correctly to the util function
+    // and the response is being passed back as expected.
+    beforeEach(() => {
+      resolveVersionSpy = jest.spyOn(registryUtils, 'resolveVersion');
+      loggerSpy.reset();
+    });
+    afterEach(() => {
+      resolveVersionSpy.mockRestore();
+    });
+
+    it('should resolve the latest using the util function and the client endpoint', async () => {
+      resolveVersionSpy.mockResolvedValue('2.4.6');
+      const latest = await client.resolveVersion('my.favorite.package', 'latest');
+      expect(loggerSpy.getAllMessages('error')).toHaveLength(0);
+      expect(resolveVersionSpy).toHaveBeenCalledWith(
+        'https://packages.fhir.org',
+        'my.favorite.package',
+        'latest'
+      );
+      expect(latest).toEqual('2.4.6');
+    });
+
+    it('should bubble up LatestVersionUnavailableError when the util function throws it', async () => {
+      resolveVersionSpy.mockRejectedValueOnce(
+        new LatestVersionUnavailableError('my.unavailable.package')
+      );
+      const latest = client.resolveVersion('my.unavailable.package', 'latest');
+      await expect(latest).rejects.toThrow(LatestVersionUnavailableError);
+      await expect(latest).rejects.toThrow(
+        /Latest version of package my.unavailable.package could not be determined from the package registry/
+      );
+    });
+
+    it('should bubble up IncorrectWildcardVersionFormatError when the util function throws it', async () => {
+      resolveVersionSpy.mockRejectedValueOnce(
+        new IncorrectWildcardVersionFormatError('my.other.package', '1.x')
+      );
+      const latest = client.resolveVersion('my.other.package', '1.x');
+      await expect(latest).rejects.toThrow(IncorrectWildcardVersionFormatError);
+      await expect(latest).rejects.toThrow(
+        /Incorrect version format for package my.other.package: 1.x. Wildcard should only be used to specify patch versions./
+      );
     });
   });
 
@@ -109,19 +159,21 @@ describe('FHIRRegistryClient', () => {
         axiosSpy.mockRestore();
       });
 
+      // this
       it('should throw error if no name given for download method', async () => {
-        const latest = client.download('', '5.5.5');
+        const result = client.download('', '5.5.5');
+        await expect(result).rejects.toThrow(Error);
+        await expect(result).rejects.toThrow('Not found');
+        // It should have successfully logged the attempt to download before rejecting
         expect(loggerSpy.getLastMessage('info')).toBe(
           'Attempting to download #5.5.5 from https://packages.fhir.org//5.5.5'
         );
-        await expect(latest).rejects.toThrow(Error);
-        await expect(latest).rejects.toThrow('Not found');
       });
 
       it('should throw error if no version given for download method', async () => {
-        const latest = client.download('hl7.terminology.r4', '');
-        await expect(latest).rejects.toThrow(Error);
-        await expect(latest).rejects.toThrow('Not found');
+        const result = client.download('hl7.terminology.r4', '');
+        await expect(result).rejects.toThrow(Error);
+        await expect(result).rejects.toThrow('Not found');
         expect(loggerSpy.getLastMessage('info')).toBe(
           'Attempting to download hl7.terminology.r4# from https://packages.fhir.org/hl7.terminology.r4/'
         );
@@ -129,59 +181,60 @@ describe('FHIRRegistryClient', () => {
 
       it('should throw error if no endpoint given for download method', async () => {
         const emptyClient = new FHIRRegistryClient('', { log: loggerSpy.log });
-        const latest = emptyClient.download('hl7.terminology.r4', '1.2.3-test');
-        await expect(latest).rejects.toThrow(Error);
-        await expect(latest).rejects.toThrow('Not found');
+        const result = emptyClient.download('hl7.terminology.r4', '1.2.3-test');
+        await expect(result).rejects.toThrow(Error);
+        await expect(result).rejects.toThrow('Not found');
         expect(loggerSpy.getLastMessage('info')).toBe(
           'Attempting to download hl7.terminology.r4#1.2.3-test from /hl7.terminology.r4/1.2.3-test'
         );
       });
 
       it('should get the data of the package when 200 response', async () => {
-        const latest = await client.download('hl7.terminology.r4', '1.2.3-test');
+        const result = await client.download('hl7.terminology.r4', '1.2.3-test');
         expect(loggerSpy.getLastMessage('info')).toBe(
           'Attempting to download hl7.terminology.r4#1.2.3-test from https://packages.fhir.org/hl7.terminology.r4/1.2.3-test'
         );
         expect(loggerSpy.getAllMessages('error')).toHaveLength(0);
-        expect(latest).toBeInstanceOf(Readable);
-        expect(latest.read()).toBe('1.2.3-test-data');
+        expect(result).toBeInstanceOf(Readable);
+        expect(result.read()).toBe('1.2.3-test-data');
       });
 
       it('should throw error when trying to get the version of a package on the packages server but status is not 200', async () => {
-        const latest = client.download('hl7.terminology.r4', '1.1.2');
+        const result = client.download('hl7.terminology.r4', '1.1.2');
+        await expect(result).rejects.toThrow(Error);
+        await expect(result).rejects.toThrow(
+          'Failed to download hl7.terminology.r4#1.1.2 from https://packages.fhir.org/hl7.terminology.r4/1.1.2'
+        );
+        // It should have successfully logged the attempt to download before rejecting
         expect(loggerSpy.getLastMessage('info')).toBe(
           'Attempting to download hl7.terminology.r4#1.1.2 from https://packages.fhir.org/hl7.terminology.r4/1.1.2'
-        );
-        await expect(latest).rejects.toThrow(Error);
-        await expect(latest).rejects.toThrow(
-          'Failed to download hl7.terminology.r4#1.1.2 from https://packages.fhir.org/hl7.terminology.r4/1.1.2'
         );
       });
 
       it('should throw error when trying to get the version of a package on the server but returns status with incorrect type', async () => {
-        const latest = client.download('hl7.terminology.r4', '5.5.5');
-        await expect(latest).rejects.toThrow(
+        const result = client.download('hl7.terminology.r4', '5.5.5');
+        await expect(result).rejects.toThrow(
           'Failed to download hl7.terminology.r4#5.5.5 from https://packages.fhir.org/hl7.terminology.r4/5.5.5'
         );
       });
 
       it('should throw error when trying to get the version of a package on the server but returns no status', async () => {
-        const latest = client.download('hl7.terminology.r4', '5.5.6-test');
-        await expect(latest).rejects.toThrow(
+        const result = client.download('hl7.terminology.r4', '5.5.6-test');
+        await expect(result).rejects.toThrow(
           'Failed to download hl7.terminology.r4#5.5.6-test from https://packages.fhir.org/hl7.terminology.r4/5.5.6-test'
         );
       });
 
       it('should throw error when trying to get the version of a package on the server but returns 200 status and data of incorrect type', async () => {
-        const latest = client.download('hl7.terminology.r4', '2.2.2');
-        await expect(latest).rejects.toThrow(
+        const result = client.download('hl7.terminology.r4', '2.2.2');
+        await expect(result).rejects.toThrow(
           'Failed to download hl7.terminology.r4#2.2.2 from https://packages.fhir.org/hl7.terminology.r4/2.2.2'
         );
       });
 
       it('should throw error when trying to get the version of a package on the server but returns 200 status and no data field', async () => {
-        const latest = client.download('hl7.terminology.r4', '3.3.3');
-        await expect(latest).rejects.toThrow(
+        const result = client.download('hl7.terminology.r4', '3.3.3');
+        await expect(result).rejects.toThrow(
           'Failed to download hl7.terminology.r4#3.3.3 from https://packages.fhir.org/hl7.terminology.r4/3.3.3'
         );
       });
@@ -234,7 +287,7 @@ describe('FHIRRegistryClient', () => {
         const latest = client.download('hl7.bogus.package', 'latest');
         await expect(latest).rejects.toThrow(LatestVersionUnavailableError);
         await expect(latest).rejects.toThrow(
-          /Latest version of package hl7.bogus.package could not be determined from the FHIR package registry/
+          /Latest version of package hl7.bogus.package could not be determined from the package registry/
         );
       });
 
@@ -242,7 +295,7 @@ describe('FHIRRegistryClient', () => {
         const latest = client.download('hl7.no.latest', 'latest');
         await expect(latest).rejects.toThrow(LatestVersionUnavailableError);
         await expect(latest).rejects.toThrow(
-          /Latest version of package hl7.no.latest could not be determined from the FHIR package registry/
+          /Latest version of package hl7.no.latest could not be determined from the package registry/
         );
       });
     });
@@ -345,7 +398,7 @@ describe('FHIRRegistryClient', () => {
         const latest = client.download('hl7.bogus.package', '1.0.x');
         await expect(latest).rejects.toThrow(LatestVersionUnavailableError);
         await expect(latest).rejects.toThrow(
-          /Latest patch version of package hl7.bogus.package could not be determined from the FHIR package registry/
+          /Latest patch version of package hl7.bogus.package could not be determined from the package registry/
         );
       });
 
@@ -353,7 +406,7 @@ describe('FHIRRegistryClient', () => {
         const latest = client.download('hl7.no.versions', '1.0.x');
         await expect(latest).rejects.toThrow(LatestVersionUnavailableError);
         await expect(latest).rejects.toThrow(
-          /Latest patch version of package hl7.no.versions could not be determined from the FHIR package registry/
+          /Latest patch version of package hl7.no.versions could not be determined from the package registry/
         );
       });
 
@@ -361,7 +414,7 @@ describe('FHIRRegistryClient', () => {
         const latest = client.download('hl7.no.good.patches', '1.0.x');
         await expect(latest).rejects.toThrow(LatestVersionUnavailableError);
         await expect(latest).rejects.toThrow(
-          /Latest patch version of package hl7.no.good.patches could not be determined from the FHIR package registry/
+          /Latest patch version of package hl7.no.good.patches could not be determined from the package registry/
         );
       });
 
