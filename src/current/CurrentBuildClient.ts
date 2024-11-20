@@ -6,6 +6,6 @@ export type CurrentBuildClientOptions = {
 };
 
 export interface CurrentBuildClient {
-  downloadCurrentBuild(name: string, branch: string | null): Promise<Readable>;
+  downloadCurrentBuild(name: string, branch?: string): Promise<Readable>;
   getCurrentBuildDate(name: string, branch?: string): Promise<string>;
 }

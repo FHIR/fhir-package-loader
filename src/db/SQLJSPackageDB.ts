@@ -4,7 +4,7 @@ import { FindResourceInfoOptions, PackageInfo, PackageStats, ResourceInfo } from
 import { PackageDB } from './PackageDB';
 
 const CREATE_PACKAGE_TABLE = `CREATE TABLE package (
-  rowId INTEGER PRIMARY KEY,
+  rowid INTEGER PRIMARY KEY,
   name CHAR,
   version CHAR,
   packagePath CHAR,
@@ -29,12 +29,14 @@ const INSERT_PACKAGE = `INSERT INTO package
     :packageJSONPath
   )`;
 
+const FIND_ALL_PACKAGES = 'SELECT * FROM package';
+
 const FIND_PACKAGES = 'SELECT * FROM package WHERE name = :name';
 
 const FIND_PACKAGE = 'SELECT * FROM package WHERE name = :name and version = :version LIMIT 1';
 
 const CREATE_RESOURCE_TABLE = `CREATE TABLE resource (
-  rowId INTEGER PRIMARY KEY,
+  rowid INTEGER PRIMARY KEY,
   resourceType CHAR,
   id CHAR,
   url CHAR,
@@ -55,12 +57,12 @@ const CREATE_RESOURCE_TABLE = `CREATE TABLE resource (
 
 const CREATE_RESOURCE_TABLE_INDICES = [
   'CREATE INDEX idx_resource_rowid ON resource (rowid);',
-  'CREATE INDEX idx_resource_id ON resource (id);',
-  'CREATE INDEX idx_resource_url ON resource (url);',
-  'CREATE INDEX idx_resource_name ON resource (name);',
+  'CREATE INDEX idx_resource_id_resourceType_sdFlavor ON resource (id, resourceType, sdFlavor);',
+  'CREATE INDEX idx_resource_url_resourceType_sdFlavor ON resource (url, resourceType, sdFlavor);',
+  'CREATE INDEX idx_resource_name_resourceType_sdFlavor ON resource (name, resourceType, sdFlavor);',
   'CREATE INDEX idx_resource_sdFlavor ON resource (sdFlavor);',
   'CREATE INDEX idx_resource_resourceType ON resource (resourceType);',
-  'CREATE INDEX idx_resource_package ON resource (packageName, packageVersion);'
+  'CREATE INDEX idx_resource_packageName_packageVersion ON resource (packageName, packageVersion);'
 ].join(' ');
 
 const INSERT_RESOURCE = `INSERT INTO resource
@@ -100,11 +102,15 @@ const INSERT_RESOURCE = `INSERT INTO resource
     :resourcePath
   );`;
 
+const SD_FLAVORS = ['Extension', 'Logical', 'Profile', 'Resource', 'Type'];
+
 export class SQLJSPackageDB implements PackageDB {
   private insertPackageStmt: Statement;
   private insertResourceStmt: Statement;
+  private findAllPackagesStmt: Statement;
   private findPackagesStmt: Statement;
   private findPackageStmt: Statement;
+  private optimized: boolean;
   constructor(
     private db: Database,
     initialize = true
@@ -121,14 +127,25 @@ export class SQLJSPackageDB implements PackageDB {
     }
     this.insertPackageStmt = this.db.prepare(INSERT_PACKAGE);
     this.insertResourceStmt = this.db.prepare(INSERT_RESOURCE);
+    this.findAllPackagesStmt = this.db.prepare(FIND_ALL_PACKAGES);
     this.findPackagesStmt = this.db.prepare(FIND_PACKAGES);
     this.findPackageStmt = this.db.prepare(FIND_PACKAGE);
+    this.optimized = false;
   }
 
   clear() {
     this.db.exec('DELETE FROM package');
     this.db.exec('DELETE FROM resource');
     this.db.exec('VACUUM');
+  }
+
+  optimize() {
+    if (!this.optimized) {
+      this.db.exec('PRAGMA optimize=0x10002');
+      this.optimized = true;
+    } else {
+      this.db.exec('PRAGMA optimize');
+    }
   }
 
   savePackageInfo(info: PackageInfo): void {
@@ -205,13 +222,16 @@ export class SQLJSPackageDB implements PackageDB {
 
   findPackageInfos(name: string): PackageInfo[] {
     const results: PackageInfo[] = [];
+    const findStmt = name === '*' ? this.findAllPackagesStmt : this.findPackagesStmt;
     try {
-      this.findPackagesStmt.bind({ ':name': name });
-      while (this.findPackagesStmt.step()) {
-        results.push(this.findPackagesStmt.getAsObject() as PackageInfo);
+      if (name !== '*') {
+        findStmt.bind({ ':name': name });
+      }
+      while (findStmt.step()) {
+        results.push(findStmt.getAsObject() as PackageInfo);
       }
     } finally {
-      this.findPackagesStmt.reset();
+      findStmt.reset();
     }
     return results;
   }
@@ -232,34 +252,81 @@ export class SQLJSPackageDB implements PackageDB {
     if (key == null) {
       key = '';
     }
-    // TODO: Upgrade to class-level property once query and parameters are sorted out
-    // TODO: Support versions when canonical form is used
+    const [keyText, ...keyVersion] = key.split('|');
     const bindStmt: { [key: string]: string } = {};
-    let findStmt = 'SELECT * FROM resource WHERE ';
-    if (key !== '*') {
+    const conditions: string[] = [];
+    let findStmt = 'SELECT * FROM resource';
+    if (keyText !== '*') {
       // special case for selecting all
-      bindStmt[':key'] = key;
-      findStmt += '(id = :key OR name = :key OR url = :key)';
-    } else {
-      findStmt += '1';
+      bindStmt[':key'] = keyText;
+      conditions.push('(id = :key OR name = :key OR url = :key)');
+    }
+    if (keyVersion.length) {
+      bindStmt[':version'] = keyVersion.join('|');
+      conditions.push('version = :version');
+    }
+    if (options.type?.length) {
+      // build condition to take advantage of indices w/ resourceType and sdFlavor
+      const sdFlavors: string[] = [];
+      const resourceTypes: string[] = [];
+      options.type.forEach((t, i) => {
+        bindStmt[`:type${i}`] = t;
+        (SD_FLAVORS.includes(t) ? sdFlavors : resourceTypes).push(`:type${i}`);
+      });
+      let rtStatement: string;
+      if (resourceTypes.length === 1) {
+        rtStatement = `resourceType = ${resourceTypes[0]}`;
+      } else if (resourceTypes.length > 1) {
+        rtStatement = `resourceType in (${resourceTypes.join(', ')})`;
+      }
+      let sdfStatement: string;
+      if (sdFlavors.length === 1) {
+        sdfStatement = `sdFlavor = ${sdFlavors[0]}`;
+      } else if (sdFlavors.length > 1) {
+        sdfStatement = `sdFlavor in (${sdFlavors.join(', ')})`;
+      }
+      if (resourceTypes.length) {
+        if (sdFlavors.length) {
+          conditions.push(`(${rtStatement} OR ${sdfStatement})`);
+        } else {
+          conditions.push(rtStatement);
+        }
+      } else {
+        conditions.push(`resourceType = "StructureDefinition" AND ${sdfStatement}`);
+      }
     }
     if (options.scope?.length) {
       const [packageName, ...packageVersion] = options.scope.split('|');
       bindStmt[':packageName'] = packageName;
-      findStmt += ' AND packageName = :packageName';
+      conditions.push('packageName = :packageName');
       if (packageVersion.length) {
         bindStmt[':packageVersion'] = packageVersion.join('|');
-        findStmt += ' AND packageVersion = :packageVersion';
+        conditions.push('packageVersion = :packageVersion');
       }
     }
-    if (options.type?.length) {
-      const conditions = options.type.map((t, i) => {
-        bindStmt[`:type${i}`] = t;
-        return `(sdFlavor = :type${i} OR resourceType = :type${i})`;
+    if (conditions.length) {
+      findStmt += ` WHERE ${conditions.join(' AND ')}`;
+    }
+    if (options.sort) {
+      const sortExpressions: string[] = [];
+      options.sort.forEach(s => {
+        switch (s.sortBy) {
+          case 'LoadOrder':
+            sortExpressions.push(`rowid ${s.ascending ? 'ASC' : 'DESC'}`);
+            break;
+          case 'Type':
+            (s.types as string[]).forEach((t, i) => {
+              bindStmt[`:sortType${i}`] = t;
+              const field = SD_FLAVORS.includes(t) ? 'sdFlavor' : 'resourceType';
+              // This sort expression is weird, but... it's the only way it works as expected!
+              sortExpressions.push(`(${field} = :sortType${i} OR NULL) DESC`);
+            });
+            break;
+        }
       });
-      findStmt += ` AND (${conditions.join(' OR ')}) ORDER BY ${conditions.map(c => `${c} DESC`).join(', ')}, rowid DESC`;
+      findStmt += ` ORDER BY ${sortExpressions.join(', ')}`;
     } else {
-      findStmt += ' ORDER BY rowid DESC';
+      findStmt += ' ORDER BY rowid ASC';
     }
     if (options.limit) {
       bindStmt[':limit'] = String(options.limit);
@@ -309,6 +376,11 @@ export class SQLJSPackageDB implements PackageDB {
       version,
       resourceCount: count
     };
+  }
+
+  exportDB(): Promise<{ mimeType: string; data: Buffer }> {
+    const data = this.db.export();
+    return Promise.resolve({ mimeType: 'application/x-sqlite3', data: Buffer.from(data) });
   }
 
   logPackageTable() {
