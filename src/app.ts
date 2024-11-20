@@ -37,7 +37,7 @@ async function install(fhirPackages: string[], options: OptionValues) {
   const SQL = await initSqlJs();
   const packageDB = new SQLJSPackageDB(new SQL.Database());
   const fhirCache = options.cachePath ?? path.join(os.homedir(), '.fhir', 'packages');
-  const packageCache = new DiskBasedPackageCache(fhirCache, [], { log });
+  const packageCache = new DiskBasedPackageCache(fhirCache, { log });
   const registryClient = new DefaultRegistryClient({ log });
   const buildClient = new BuildDotFhirDotOrgClient({ log });
   const loader = new BasePackageLoader(packageDB, packageCache, registryClient, buildClient, {
@@ -47,6 +47,15 @@ async function install(fhirPackages: string[], options: OptionValues) {
   for (const pkg of fhirPackages) {
     const [name, version] = pkg.split(/[#@]/, 2);
     await loader.loadPackage(name, version);
+  }
+
+  if (options.export) {
+    const fplExport = await loader.exportDB();
+    if (fplExport.mimeType === 'application/x-sqlite3') {
+      const exportPath = path.join(process.cwd(), 'FPL.sqlite');
+      fs.writeFileSync(exportPath, fplExport.data);
+      logger.info(`Exported FPL database to ${exportPath}`);
+    }
   }
 }
 
@@ -70,6 +79,7 @@ async function app() {
       'where to save packages to and load definitions from (default is the local FHIR cache)'
     )
     .option('-d, --debug', 'output extra debugging information')
+    .option('-e, --export', 'export a SQLite DB file with data from the loaded packages')
     .action(install);
 
   await program.parseAsync(process.argv);

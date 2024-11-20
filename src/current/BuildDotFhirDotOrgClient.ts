@@ -9,7 +9,7 @@ export class BuildDotFhirDotOrgClient implements CurrentBuildClient {
     this.log = options.log ?? (() => {});
   }
 
-  async downloadCurrentBuild(name: string, branch: string | null): Promise<Readable> {
+  async downloadCurrentBuild(name: string, branch?: string): Promise<Readable> {
     const version = branch ? `current$${branch}` : 'current';
     const baseURL = await this.getCurrentBuildBaseURL(name, branch);
     if (!baseURL) {

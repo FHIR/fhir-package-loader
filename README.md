@@ -43,12 +43,13 @@ Usage: fpl install <fhirPackages...> [options]
 download and unzip specified FHIR packages
 
 Arguments:
-  fhirPackages      list of FHIR packages to load using the format packageId#packageVersion or packageId@packageVersion
+  fhirPackages           list of FHIR packages to load using the format packageId#packageVersion or packageId@packageVersion
 
 Options:
-  -c, --cachePath <dir>  where to save packages to and load definitions from (default is the local [FHIR cache](https://confluence.hl7.org/pages/viewpage.action?pageId=66928417#FHIRPackageCache-Location))
-  -d, --debug       output extra debugging information
-  -h, --help        display help for command
+  -c, --cachePath <dir>  where to save packages to and load definitions from (default is the local FHIR cache)
+  -d, --debug            output extra debugging information
+  -e, --export           export a SQLite DB file with data from the loaded packages
+  -h, --help             display help for command
 ```
 
 General information about any command can be found with `fpl --help`:
@@ -78,6 +79,7 @@ FHIR Package Loader can be used as a library to download FHIR packages, query th
 ```ts
 export interface PackageLoader {
   loadPackage(name: string, version: string): Promise<LoadStatus>;
+  loadVirtualPackage(pkg: VirtualPackage): Promise<LoadStatus>;
   getPackageLoadStatus(name: string, version: string): LoadStatus;
   findPackageInfos(name: string): PackageInfo[];
   findPackageInfo(name: string, version: string): PackageInfo | undefined;
@@ -101,6 +103,7 @@ The [default PackageLoader](src/loader/DefaultPackageLoader.ts) implementation p
 * the standard FHIR registry is used (`packages.fhir.org`) for downloading published packages, falling back to `packages2.fhir.org` when necessary
   * unless an `FPL_REGISTRY` environment variable is defined, in which case its value is used as the URL for an NPM registry to use _instead_ of the standard FHIR registry
 * the `build.fhir.org` build server is used for downloading _current_ builds of packages
+* a 500-item LRU in-memory cache is used to minimize repeated disk reads for resource files
 
 To instantiate the default `PackageLoader`, import the asynchronous `defaultPackageLoader` function and invoke it, optionally passing in an `options` object with a log method to use for logging:
 
@@ -116,9 +119,7 @@ if (status !== LoadStatus.LOADED) {
 }
 ```
 
-To instantiate the default `PackageLoader` with a set of standalone JSON or XML resources that should be pre-loaded, use the `defaultPackageLoaderWithLocalResources` function instead, passing in an array of file paths to folders containing the resources to load.
-
-For more control over the `PackageLoader`, use the [BasePackageLoader](src/loader/BasePackageLoader.ts). This allows you to specify the [PackageDB](src/db), [PackageCache](src/cache), [RegistryClient](src/registry), and [CurrentBuildClient](src/current) you wish to use. FHIRPackageLoader comes with implementations of each of these, but you may also provide your own implementations that adhere to the relevant interfaces.
+For more control over the `PackageLoader`, use the [BasePackageLoader](src/loader/BasePackageLoader.ts). This allows you to specify the [PackageDB](src/db), [PackageCache](src/cache), [RegistryClient](src/registry), and [CurrentBuildClient](src/current) you wish to use FHIRPackageLoader comes with implementations of each of these, but you may also provide your own implementations that adhere to the relevant interfaces. The BasePackageLoader also allows you to configure the size of the in-memory LRU resource cache.
 
 ### PackageLoader Functions
 
@@ -127,6 +128,10 @@ The `PackageLoader` interface provides the following functions:
 #### `loadPackage(name: string, version: string): Promise<LoadStatus>`
 
 Loads the specified package version. The version may be a specific version (e.g., `1.2.3`), a wildcard patch version (e.g., `1.2.x`), `dev` (to indicate the local development build in your FHIR cache), `current` (to indicate the current master/main build), `current$branchname` (to indicate the current build on a specific branch), or `latest` (to indicate the most recent published version). Returns the [LoadStatus](src/loader/PackageLoader.ts).
+
+#### `loadVirtualPackage(pkg: VirtualPackage): Promise<LoadStatus>`
+
+Loads a resources from a passed in implementation of the [VirtualPackage](src/virtual/VirtualPackage.ts) interface. This allows for "virtual" packages that do not come from a registry nor are stored in the local FHIR package cache. The [DiskBasedVirtualPackage](src/virtual/DiskBasedVirtualPackage.ts) implementation allows resources from arbitrary file paths (folders or direct files) to be loaded as a package. The [InMemoryVirtualPackage](src/virtual/InMemoryVirtualPackage.ts) implementation allows resources in a Map to be loaded as a package. Developers may also provide their own implementation of the VirtualPackage interface. Returns the [LoadStatus](src/loader/PackageLoader.ts).
 
 #### `getPackageLoadStatus(name: string, version: string): LoadStatus`
 

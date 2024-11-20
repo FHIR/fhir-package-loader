@@ -1,19 +1,34 @@
 import path from 'path';
+import { LRUCache } from 'mnemonist';
 import { CurrentBuildClient } from '../current';
 import { PackageDB } from '../db';
 import { InvalidResourceError } from '../errors';
 import { FindResourceInfoOptions, PackageInfo, PackageStats, ResourceInfo } from '../package';
+import { VirtualPackage } from '../virtual';
 import { RegistryClient } from '../registry';
 import { LogFunction } from '../utils';
 import { PackageCache } from '../cache/PackageCache';
 import { LoadStatus, PackageLoader } from './PackageLoader';
 
+const DEFAULT_RESOURCE_CACHE_SIZE = 500;
+
+const CERTIFICATE_MESSAGE =
+  '\n\nSometimes this error occurs in corporate or educational environments that use proxies and/or SSL ' +
+  'inspection.\nTroubleshooting tips:\n' +
+  '  1. If a non-proxied network is available, consider connecting to that network instead.\n' +
+  '  2. Set NODE_EXTRA_CA_CERTS as described at https://bit.ly/3ghJqJZ (RECOMMENDED).\n' +
+  '  3. Disable certificate validation as described at https://bit.ly/3syjzm7 (NOT RECOMMENDED).\n';
+
 export type BasePackageLoaderOptions = {
   log?: LogFunction;
+  resourceCacheSize?: number;
 };
 
 export class BasePackageLoader implements PackageLoader {
   private log: LogFunction;
+  private virtualPackages: Map<string, VirtualPackage>;
+  private resourceCache?: LRUCache<string, any>;
+
   constructor(
     private packageDB: PackageDB,
     private packageCache: PackageCache,
@@ -22,10 +37,22 @@ export class BasePackageLoader implements PackageLoader {
     options: BasePackageLoaderOptions = {}
   ) {
     this.log = options.log ?? (() => {});
+    this.virtualPackages = new Map<string, VirtualPackage>();
+    const resourceCacheSize = options.resourceCacheSize ?? DEFAULT_RESOURCE_CACHE_SIZE;
+    if (resourceCacheSize > 0) {
+      this.resourceCache = new LRUCache<string, any>(resourceCacheSize);
+    }
   }
 
   async loadPackage(name: string, version: string): Promise<LoadStatus> {
     let packageLabel = `${name}#${version}`;
+
+    const originalVersion = version;
+    version = await this.registryClient.resolveVersion(name, version);
+    if (version !== originalVersion) {
+      this.log('info', `Resolved ${packageLabel} to concrete version ${version}`);
+      packageLabel = `${name}#${version}`;
+    }
 
     // If it's already loaded, then there's nothing to do
     if (this.getPackageLoadStatus(name, version) === LoadStatus.LOADED) {
@@ -43,6 +70,7 @@ export class BasePackageLoader implements PackageLoader {
       packageLabel = `${name}#${version}`;
     }
 
+    let downloadErrorMessage: string;
     // If it's a "current" version, download the latest version from the build server (if applicable)
     if (isCurrentVersion(version)) {
       const branch = version.indexOf('$') !== -1 ? version.split('$')[1] : undefined;
@@ -50,8 +78,11 @@ export class BasePackageLoader implements PackageLoader {
         try {
           const tarballStream = await this.currentBuildClient.downloadCurrentBuild(name, branch);
           await this.packageCache.cachePackageTarball(name, version, tarballStream);
-        } catch {
-          this.log('error', `Failed to download ${packageLabel} from current builds`);
+        } catch (e) {
+          downloadErrorMessage = `Failed to download most recent ${packageLabel} from current builds`;
+          if (/certificate/.test(e?.message)) {
+            downloadErrorMessage += CERTIFICATE_MESSAGE;
+          }
         }
       }
     }
@@ -60,8 +91,11 @@ export class BasePackageLoader implements PackageLoader {
       try {
         const tarballStream = await this.registryClient.download(name, version);
         await this.packageCache.cachePackageTarball(name, version, tarballStream);
-      } catch {
-        this.log('error', `Failed to download ${packageLabel} from registry`);
+      } catch (e) {
+        downloadErrorMessage = `Failed to download ${packageLabel} from the registry`;
+        if (/certificate/.test(e?.message)) {
+          downloadErrorMessage += CERTIFICATE_MESSAGE;
+        }
       }
     }
 
@@ -70,26 +104,86 @@ export class BasePackageLoader implements PackageLoader {
     try {
       stats = this.loadPackageFromCache(name, version);
     } catch {
-      this.log('error', `Failed to load ${name}#${version}`);
+      this.log(
+        'error',
+        `Failed to load ${packageLabel}${downloadErrorMessage ? `: ${downloadErrorMessage}` : ''}`
+      );
       return LoadStatus.FAILED;
+    }
+    if (downloadErrorMessage) {
+      // Loading succeeded despite a download error. This might happen if a current build is stale,
+      // but the download fails, in which case the stale build will be loaded instead.
+      this.log('error', `${downloadErrorMessage}. Using most recent cached package instead.`);
     }
     this.log('info', `Loaded ${stats.name}#${stats.version} with ${stats.resourceCount} resources`);
     return LoadStatus.LOADED;
   }
 
-  // async loadLocalPackage(
-  //   name: string,
-  //   version: string,
-  //   packagePath: string,
-  //   strict: boolean
-  // ): Promise<PackageLoadStatus> {
-  //   return PackageLoadStatus.FAILED;
-  // }
+  async loadVirtualPackage(pkg: VirtualPackage): Promise<LoadStatus> {
+    // Ensure package.json has at least the name and version
+    const packageJSON = pkg.getPackageJSON();
+    if (
+      packageJSON?.name == null ||
+      packageJSON.name.trim() === '' ||
+      packageJSON.version == null ||
+      packageJSON.version.trim() == ''
+    ) {
+      this.log(
+        'error',
+        `Failed to load virtual package ${packageJSON?.name ?? '<unknown>'}#${packageJSON?.version ?? '<unknown>'} because the provided packageJSON did not have a valid name and/or version`
+      );
+      return LoadStatus.FAILED;
+    }
+
+    // If it's already loaded, then there's nothing to do
+    if (this.getPackageLoadStatus(packageJSON.name, packageJSON.version) === LoadStatus.LOADED) {
+      this.log('info', `Virtual package ${packageJSON.name}#${packageJSON.version} already loaded`);
+      return LoadStatus.LOADED;
+    }
+
+    // Store the virtual package by its name#version key
+    const packageKey = `${packageJSON.name}#${packageJSON.version}`;
+    this.virtualPackages.set(packageKey, pkg);
+
+    // Save the package info
+    const info: PackageInfo = {
+      name: packageJSON.name,
+      version: packageJSON.version,
+      packagePath: `virtual:${packageKey}`,
+      packageJSONPath: `virtual:${packageKey}:package.json`
+    };
+    this.packageDB.savePackageInfo(info);
+
+    // Register the resources
+    try {
+      await pkg.registerResources((key: string, resource: any, allowNonResources?: boolean) => {
+        this.loadResource(
+          `virtual:${packageKey}:${key}`,
+          resource,
+          packageJSON.name,
+          packageJSON.version,
+          allowNonResources
+        );
+      });
+    } catch (e) {
+      this.log(
+        'error',
+        `Virtual package ${packageKey} threw an exception while registering resources, so it was only partially loaded.`
+      );
+      if (e.stack) {
+        this.log('debug', e.stack);
+      }
+      return LoadStatus.FAILED;
+    }
+
+    const stats = this.packageDB.getPackageStats(packageJSON.name, packageJSON.version);
+    this.log('info', `Loaded virtual package ${packageKey} with ${stats.resourceCount} resources`);
+    return LoadStatus.LOADED;
+  }
 
   private loadPackageFromCache(name: string, version: string) {
     // Ensure the package is cached
     if (!this.packageCache.isPackageInCache(name, version)) {
-      // TODO: More specific error?
       throw new Error(`${name}#${version} cannot be loaded from the package cache`);
     }
 
@@ -102,13 +196,9 @@ export class BasePackageLoader implements PackageLoader {
       version
     };
 
-    if (name === 'LOCAL' && version === 'LOCAL') {
-      info.packagePath = packagePath;
-    } else {
-      const packageJSONPath = this.packageCache.getPackageJSONPath(name, version);
-      info.packagePath = path.resolve(packagePath);
-      info.packageJSONPath = path.resolve(packageJSONPath);
-    }
+    const packageJSONPath = this.packageCache.getPackageJSONPath(name, version);
+    info.packagePath = path.resolve(packagePath);
+    info.packageJSONPath = path.resolve(packageJSONPath);
 
     this.packageDB.savePackageInfo(info);
 
@@ -126,7 +216,10 @@ export class BasePackageLoader implements PackageLoader {
           this.loadResourceFromCache(resourcePath, packageName, packageVersion);
         } catch {
           // swallow this error because some JSON files will not be resources
-          this.log('debug', `JSON file at path ${resourcePath} was not FHIR resource`);
+          // and don't log it if it is package.json (since every package should have one)
+          if (path.basename(resourcePath) !== 'package.json') {
+            this.log('debug', `JSON file at path ${resourcePath} was not FHIR resource`);
+          }
         }
       });
   }
@@ -140,14 +233,21 @@ export class BasePackageLoader implements PackageLoader {
     resourcePath: string,
     resourceJSON: any,
     packageName?: string,
-    packageVersion?: string
+    packageVersion?: string,
+    allowNonResources = false
   ) {
     // We require at least a resourceType in order to know it is FHIR
-    if (typeof resourceJSON.resourceType !== 'string' || resourceJSON.resourceType === '') {
-      throw new InvalidResourceError(resourcePath, 'resource does not specify its resourceType');
+    let resourceType = resourceJSON.resourceType;
+    if (typeof resourceType !== 'string' || resourceType === '') {
+      if (allowNonResources) {
+        // SUSHI needs to support registering instances of logical models, but some code expects resourceType
+        resourceType = 'Unknown';
+      } else {
+        throw new InvalidResourceError(resourcePath, 'resource does not specify its resourceType');
+      }
     }
 
-    const info: ResourceInfo = { resourceType: resourceJSON.resourceType };
+    const info: ResourceInfo = { resourceType };
     if (typeof resourceJSON.id === 'string') {
       info.id = resourceJSON.id;
     }
@@ -160,7 +260,7 @@ export class BasePackageLoader implements PackageLoader {
     if (typeof resourceJSON.version === 'string') {
       info.version = resourceJSON.version;
     }
-    if (resourceJSON.resourceType === 'StructureDefinition') {
+    if (resourceType === 'StructureDefinition') {
       if (typeof resourceJSON.kind === 'string') {
         info.sdKind = resourceJSON.kind;
       }
@@ -258,6 +358,26 @@ export class BasePackageLoader implements PackageLoader {
     return isStale;
   }
 
+  private getResourceAtPath(resourcePath: string): any {
+    let resource = this.resourceCache?.get(resourcePath);
+    if (!resource) {
+      if (/^virtual:/.test(resourcePath)) {
+        const [, packageKey, resourceKey] = resourcePath.match(/^virtual:([^:]+):(.*)$/);
+        if (packageKey && resourceKey) {
+          const pkg = this.virtualPackages.get(packageKey);
+          resource =
+            resourceKey === 'package.json'
+              ? pkg?.getPackageJSON()
+              : pkg?.getResourceByKey(resourceKey);
+        }
+      } else {
+        resource = this.packageCache.getResourceAtPath(resourcePath);
+      }
+      this.resourceCache?.set(resourcePath, resource);
+    }
+    return resource;
+  }
+
   getPackageLoadStatus(name: string, version: string): LoadStatus {
     const pkg = this.packageDB.findPackageInfo(name, version);
     if (pkg) {
@@ -278,14 +398,14 @@ export class BasePackageLoader implements PackageLoader {
     return this.findPackageInfos(name)
       .filter(info => info.packageJSONPath)
       .map(info => {
-        return this.packageCache.getResourceAtPath(info.packageJSONPath);
+        return this.getResourceAtPath(info.packageJSONPath);
       });
   }
 
   findPackageJSON(name: string, version: string) {
     const info = this.findPackageInfo(name, version);
     if (info?.packageJSONPath) {
-      return this.packageCache.getResourceAtPath(info.packageJSONPath);
+      return this.getResourceAtPath(info.packageJSONPath);
     }
   }
 
@@ -301,15 +421,19 @@ export class BasePackageLoader implements PackageLoader {
     return this.findResourceInfos(key, options)
       .filter(info => info.resourcePath)
       .map(info => {
-        return this.packageCache.getResourceAtPath(info.resourcePath);
+        return this.getResourceAtPath(info.resourcePath);
       });
   }
 
   findResourceJSON(key: string, options?: FindResourceInfoOptions) {
     const info = this.findResourceInfo(key, options);
     if (info?.resourcePath) {
-      return this.packageCache.getResourceAtPath(info.resourcePath);
+      return this.getResourceAtPath(info.resourcePath);
     }
+  }
+
+  exportDB(): Promise<{ mimeType: string; data: Buffer }> {
+    return this.packageDB.exportDB();
   }
 
   clear() {

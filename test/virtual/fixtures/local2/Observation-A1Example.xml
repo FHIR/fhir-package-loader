@@ -17,7 +17,7 @@
     </coding>
   </code>
   <subject>
-    <reference value="JamesPond"/>
+    <reference value="Patient/JamesPondExample"/>
   </subject>
   <valueInteger value="1"/>
 </Observation>
