@@ -103,7 +103,7 @@ The [default PackageLoader](src/loader/DefaultPackageLoader.ts) implementation p
 * the standard FHIR registry is used (`packages.fhir.org`) for downloading published packages, falling back to `packages2.fhir.org` when necessary
   * unless an `FPL_REGISTRY` environment variable is defined, in which case its value is used as the URL for an NPM registry to use _instead_ of the standard FHIR registry
 * the `build.fhir.org` build server is used for downloading _current_ builds of packages
-* a 500-item LRU in-memory cache is used to minimize repeated disk reads for resource files
+* a 200-item LRU in-memory cache is used to minimize repeated disk reads for resource files
 
 To instantiate the default `PackageLoader`, import the asynchronous `defaultPackageLoader` function and invoke it, optionally passing in an `options` object with a log method to use for logging:
 
@@ -119,7 +119,17 @@ if (status !== LoadStatus.LOADED) {
 }
 ```
 
-For more control over the `PackageLoader`, use the [BasePackageLoader](src/loader/BasePackageLoader.ts). This allows you to specify the [PackageDB](src/db), [PackageCache](src/cache), [RegistryClient](src/registry), and [CurrentBuildClient](src/current) you wish to use FHIRPackageLoader comes with implementations of each of these, but you may also provide your own implementations that adhere to the relevant interfaces. The BasePackageLoader also allows you to configure the size of the in-memory LRU resource cache.
+For more control over the `PackageLoader`, use the [BasePackageLoader](src/loader/BasePackageLoader.ts). This allows you to specify the [PackageDB](src/db), [PackageCache](src/cache), [RegistryClient](src/registry), and [CurrentBuildClient](src/current) you wish to use. FHIRPackageLoader comes with implementations of each of these, but you may also provide your own implementations that adhere to the relevant interfaces.
+
+#### BasePackageLoader Options
+
+The [BasePackageLoader](src/loader/BasePackageLoader.ts) allows for an options object to be passed in with the following optional keys:
+* `log`: a function with signature `(level: string, message: string) => void`. The BasePackageLoader logs messages with levels `'debug'`, `'info'`, `'warn'`, and `'error'`.
+* `resourceCacheSize`: the size of the LRU cache for caching resources. If `0`, the LRU cache will not be used. The default cache size is `200`.
+* `safeMode`: determines if/how returned resources can be modified without affecting subsequent calls. The default safe mode is SafeMode.OFF.
+  * `SafeMode.OFF`: No safety precautions are in place. This is the most performant mode but if users modify resources returned by the package loader, subsequent calls to the package loader may return the modified resources.
+  * `SafeMode.CLONE`: All resource results are cloned before being returned. This is the least performant but ensures that resource modifications never affect subsequent calls.
+  * `SafeMode.FREEZE`: All resource results are recursively frozen before being returned. This is more performant than cloning, but if users attempt to modify a returned resource, an error will be thrown. If users need to modify a returned resource, they must clone it first.
 
 ### PackageLoader Functions
 

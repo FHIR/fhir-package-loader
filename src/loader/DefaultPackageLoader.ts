@@ -16,7 +16,5 @@ export async function defaultPackageLoader(options: BasePackageLoaderOptions) {
   });
   const registryClient = new DefaultRegistryClient({ log: options.log });
   const buildClient = new BuildDotFhirDotOrgClient({ log: options.log });
-  return new BasePackageLoader(packageDB, packageCache, registryClient, buildClient, {
-    log: options.log
-  });
+  return new BasePackageLoader(packageDB, packageCache, registryClient, buildClient, options);
 }

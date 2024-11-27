@@ -1,7 +1,7 @@
 import path from 'path';
 import { mock, mockReset } from 'jest-mock-extended';
 import { Readable } from 'stream';
-import { BasePackageLoader } from '../../src/loader/BasePackageLoader';
+import { BasePackageLoader, SafeMode } from '../../src/loader/BasePackageLoader';
 import { LoadStatus } from '../../src/loader/PackageLoader';
 import { PackageDB } from '../../src/db';
 import { PackageCache } from '../../src/cache';
@@ -10,6 +10,7 @@ import { CurrentBuildClient } from '../../src/current';
 import { loggerSpy } from '../testhelpers';
 import fs from 'fs-extra';
 import { VirtualPackage } from '../../src/package';
+import { cloneDeep } from 'lodash';
 
 describe('BasePackageLoader', () => {
   let loader: BasePackageLoader;
@@ -1379,6 +1380,108 @@ describe('BasePackageLoader', () => {
       expect(result[1]).toEqual({ name: 'some.ig', version: '2.3.4' });
       expect(result[2]).toEqual({ name: 'some.ig', version: '3.4.5' });
     });
+
+    const setupSafeModeTest = (safeMode: SafeMode): BasePackageLoader => {
+      const smLoader = new BasePackageLoader(
+        packageDBMock,
+        packageCacheMock,
+        registryClientMock,
+        currentBuildClientMock,
+        { safeMode, log: loggerSpy.log }
+      );
+      smLoader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+      // Virtual Package
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: 'some.ig', version: '1.2.3' });
+      vPackMock.registerResources.mockResolvedValue();
+      packageDBMock.getPackageStats
+        .calledWith('some.ig', '1.2.3')
+        .mockReturnValue({ name: 'some.ig', version: '1.2.3', resourceCount: 0 });
+      smLoader.loadVirtualPackage(vPackMock);
+      // Normal (non-virtual) Package
+      packageCacheMock.getResourceAtPath
+        .calledWith('/local/package/package.json')
+        .mockReturnValue({ name: 'some.other.ig', version: '3.4.5' });
+
+      packageDBMock.findPackageInfos.calledWith('*').mockReturnValue([
+        {
+          name: 'some.ig',
+          version: '1.2.3',
+          packageJSONPath: 'virtual:some.ig#1.2.3:package.json'
+        },
+        {
+          name: 'some.other.ig',
+          version: '3.4.5',
+          packageJSONPath: '/local/package/package.json'
+        }
+      ]);
+
+      return smLoader;
+    };
+
+    it('should return modified results on second find when safe mode is OFF', () => {
+      const unsafeLoader = setupSafeModeTest(SafeMode.OFF);
+
+      // Initial result should be as expected
+      const result = unsafeLoader.findPackageJSONs('*');
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({ name: 'some.ig', version: '1.2.3' });
+      expect(result[1]).toEqual({ name: 'some.other.ig', version: '3.4.5' });
+
+      // Modify the package JSONs. When safe mode is OFF, these modifications will stick since they're cached.
+      result[0].modified = true;
+      result[1].version = '6.7.8';
+
+      // Get them again and confirm results are modified.
+      const result2 = unsafeLoader.findPackageJSONs('*');
+      expect(result2).toHaveLength(2);
+      expect(result2[0]).toEqual({ name: 'some.ig', version: '1.2.3', modified: true });
+      expect(result2[1]).toEqual({ name: 'some.other.ig', version: '6.7.8' });
+    });
+
+    it('should return unmodified results on second find when safe mode is CLONE', () => {
+      const cloneLoader = setupSafeModeTest(SafeMode.CLONE);
+
+      // Initial result should be as expected
+      const result = cloneLoader.findPackageJSONs('*');
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({ name: 'some.ig', version: '1.2.3' });
+      expect(result[1]).toEqual({ name: 'some.other.ig', version: '3.4.5' });
+
+      // Modify the package JSONs. When safe mode is CLONE, these modifications should not affect future calls.
+      result[0].modified = true;
+      result[1].version = '6.7.8';
+
+      // Get them again and confirm results are not modified.
+      const result2 = cloneLoader.findPackageJSONs('*');
+      expect(result2).toHaveLength(2);
+      expect(result2[0]).toEqual({ name: 'some.ig', version: '1.2.3' });
+      expect(result2[1]).toEqual({ name: 'some.other.ig', version: '3.4.5' });
+    });
+
+    it('should throw on attempted modifications when safe mode is FREEZE', () => {
+      const frozenLoader = setupSafeModeTest(SafeMode.FREEZE);
+
+      // Initial result should be as expected
+      const result = frozenLoader.findPackageJSONs('*');
+      expect(result).toHaveLength(2);
+      expect(result[0]).toEqual({ name: 'some.ig', version: '1.2.3' });
+      expect(result[1]).toEqual({ name: 'some.other.ig', version: '3.4.5' });
+
+      // Modify the package JSONs. When safe mode is FREEZE, these modifications should throw an error.
+      expect(() => (result[0].modified = true)).toThrow(/Cannot add property/);
+      expect(() => (result[1].version = '6.7.8')).toThrow(/Cannot assign to read only property/);
+
+      // But end users can clone the results if they need/want to make modifications
+      cloneDeep(result[0]).modified = true;
+      cloneDeep(result[1]).version = '6.7.8';
+
+      // Get them again and confirm results are not modified.
+      const result2 = frozenLoader.findPackageJSONs('*');
+      expect(result2).toHaveLength(2);
+      expect(result2[0]).toEqual({ name: 'some.ig', version: '1.2.3' });
+      expect(result2[1]).toEqual({ name: 'some.other.ig', version: '3.4.5' });
+    });
   });
 
   describe('#findPackageJSON', () => {
@@ -1426,6 +1529,98 @@ describe('BasePackageLoader', () => {
       const result = loader.findPackageJSON('some.ig', '1.2.3');
       expect(vPackMock.getPackageJSON).toHaveBeenCalledTimes(2); // once at registration and once at find
       expect(result).toEqual({ name: 'some.ig', version: '1.2.3', date: '20240824230227' });
+    });
+
+    const setupSafeModeTest = (safeMode: SafeMode): BasePackageLoader => {
+      const smLoader = new BasePackageLoader(
+        packageDBMock,
+        packageCacheMock,
+        registryClientMock,
+        currentBuildClientMock,
+        { safeMode, log: loggerSpy.log }
+      );
+      packageDBMock.findPackageInfo.calledWith('some.ig', '1.2.3').mockReturnValue({
+        name: 'some.ig',
+        version: '1.2.3',
+        packageJSONPath: '/some/package/package.json'
+      });
+      packageCacheMock.getResourceAtPath.calledWith('/some/package/package.json').mockReturnValue({
+        name: 'some.ig',
+        version: '1.2.3'
+      });
+      return smLoader;
+    };
+
+    it('should return modified result on second find when safe mode is OFF', () => {
+      const unsafeLoader = setupSafeModeTest(SafeMode.OFF);
+
+      // Initial result should be as expected
+      const result = unsafeLoader.findPackageJSON('some.ig', '1.2.3');
+      expect(result).toEqual({
+        name: 'some.ig',
+        version: '1.2.3'
+      });
+
+      // Modify the package JSON. When safe mode is OFF, these modifications will stick since it's cached.
+      result.modified = true;
+      result.version = '4.5.6';
+
+      // Get it again and confirm result is modified.
+      const result2 = unsafeLoader.findPackageJSON('some.ig', '1.2.3');
+      expect(result2).toEqual({
+        name: 'some.ig',
+        version: '4.5.6',
+        modified: true
+      });
+    });
+
+    it('should return unmodified result on second find when safe mode is CLONE', () => {
+      const cloneLoader = setupSafeModeTest(SafeMode.CLONE);
+
+      // Initial result should be as expected
+      const result = cloneLoader.findPackageJSON('some.ig', '1.2.3');
+      expect(result).toEqual({
+        name: 'some.ig',
+        version: '1.2.3'
+      });
+
+      // Modify the package JSON. When safe mode is CLONE, these modifications should not affect future calls.
+      result.modified = true;
+      result.version = '4.5.6';
+
+      // Get it again and confirm result is not modified.
+      const result2 = cloneLoader.findPackageJSON('some.ig', '1.2.3');
+      expect(result2).toEqual({
+        name: 'some.ig',
+        version: '1.2.3'
+      });
+    });
+
+    it('should throw on attempted modifications when safe mode is FREEZE', () => {
+      const frozenLoader = setupSafeModeTest(SafeMode.FREEZE);
+
+      // Initial result should be as expected
+      const result = frozenLoader.findPackageJSON('some.ig', '1.2.3');
+      expect(result).toEqual({
+        name: 'some.ig',
+        version: '1.2.3'
+      });
+
+      // Modify the package JSON. When safe mode is FREEZE, these modifications should throw an error.
+      expect(() => (result.modified = true)).toThrow(/Cannot add property/);
+      expect(() => (result.version = '6.7.8')).toThrow(/Cannot assign to read only property/);
+
+      // But end users can clone the result if they need/want to make modifications
+      const clone = cloneDeep(result);
+      clone.modified = true;
+      clone.version = '6.7.8';
+
+      // Get it again and confirm result is not modified.
+      const result2 = frozenLoader.findPackageJSON('some.ig', '1.2.3');
+      expect(result2).toEqual({
+        name: 'some.ig',
+        version: '1.2.3'
+      });
     });
 
     it('should return undefined when the info does not contain a packageJSONPath', () => {
@@ -1717,6 +1912,190 @@ describe('BasePackageLoader', () => {
       expect(vPackMock.getResourceByKey).toHaveBeenCalledTimes(2); // still just 2
       expect(packageCacheMock.getResourceAtPath).toHaveBeenCalledTimes(1); // still just 1
     });
+
+    const setupSafeModeTest = (safeMode: SafeMode): BasePackageLoader => {
+      const smLoader = new BasePackageLoader(
+        packageDBMock,
+        packageCacheMock,
+        registryClientMock,
+        currentBuildClientMock,
+        { safeMode, log: loggerSpy.log }
+      );
+
+      smLoader.getPackageLoadStatus = jest.fn().mockReturnValueOnce(LoadStatus.NOT_LOADED);
+      // Virtual Package
+      const vPackMock = mock<VirtualPackage>();
+      vPackMock.getPackageJSON.mockReturnValue({ name: 'some.ig', version: '1.2.3' });
+      vPackMock.registerResources.mockResolvedValue();
+      vPackMock.getResourceByKey.calledWith('firstResource.json').mockReturnValue({
+        id: '1',
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3'
+      });
+      packageDBMock.getPackageStats
+        .calledWith('some.ig', '1.2.3')
+        .mockReturnValue({ name: 'some.ig', version: '1.2.3', resourceCount: 1 });
+      smLoader.loadVirtualPackage(vPackMock);
+      // Resource from normal (non-virtual) Package
+      packageCacheMock.getResourceAtPath
+        .calledWith('/some/package/second-thing.json')
+        .mockReturnValue({
+          id: '2',
+          name: 'secondResource',
+          resourceType: 'CodeSystem',
+          version: '1.2.3'
+        });
+
+      const resourceInfos = [
+        {
+          name: 'firstResource',
+          resourceType: 'StructureDefinition',
+          version: '1.2.3',
+          resourcePath: 'virtual:some.ig#1.2.3:firstResource.json'
+        },
+        {
+          name: 'secondResource',
+          resourceType: 'CodeSystem',
+          version: '1.2.3',
+          resourcePath: '/some/package/second-thing.json'
+        }
+      ];
+      packageDBMock.findResourceInfos.calledWith('*').mockReturnValue(resourceInfos);
+
+      return smLoader;
+    };
+
+    it('should return modified results on second find when safe mode is OFF', () => {
+      const unsafeLoader = setupSafeModeTest(SafeMode.OFF);
+
+      // Initial result should be as expected
+      const result = unsafeLoader.findResourceJSONs('*');
+      expect(result).toEqual([
+        {
+          id: '1',
+          name: 'firstResource',
+          resourceType: 'StructureDefinition',
+          version: '1.2.3'
+        },
+        {
+          id: '2',
+          name: 'secondResource',
+          resourceType: 'CodeSystem',
+          version: '1.2.3'
+        }
+      ]);
+
+      // Modify the resources. When safe mode is OFF, these modifications will stick since they're cached.
+      result[0].modified = true;
+      result[1].version = '3.4.5';
+
+      // Get them again and confirm results are modified.
+      const result2 = unsafeLoader.findResourceJSONs('*');
+      expect(result2).toEqual([
+        {
+          id: '1',
+          name: 'firstResource',
+          resourceType: 'StructureDefinition',
+          version: '1.2.3',
+          modified: true
+        },
+        {
+          id: '2',
+          name: 'secondResource',
+          resourceType: 'CodeSystem',
+          version: '3.4.5'
+        }
+      ]);
+    });
+
+    it('should return unmodified results on second find when safe mode is CLONE', () => {
+      const cloneLoader = setupSafeModeTest(SafeMode.CLONE);
+
+      // Initial result should be as expected
+      const result = cloneLoader.findResourceJSONs('*');
+      expect(result).toEqual([
+        {
+          id: '1',
+          name: 'firstResource',
+          resourceType: 'StructureDefinition',
+          version: '1.2.3'
+        },
+        {
+          id: '2',
+          name: 'secondResource',
+          resourceType: 'CodeSystem',
+          version: '1.2.3'
+        }
+      ]);
+
+      // Modify the resources. When safe mode is CLONE, these modifications should not affect future calls.
+      result[0].modified = true;
+      result[1].version = '3.4.5';
+
+      // Get them again and confirm results are not modified.
+      const result2 = cloneLoader.findResourceJSONs('*');
+      expect(result2).toEqual([
+        {
+          id: '1',
+          name: 'firstResource',
+          resourceType: 'StructureDefinition',
+          version: '1.2.3'
+        },
+        {
+          id: '2',
+          name: 'secondResource',
+          resourceType: 'CodeSystem',
+          version: '1.2.3'
+        }
+      ]);
+    });
+
+    it('should throw on attempted modifications when safe mode is FREEZE', () => {
+      const frozenLoader = setupSafeModeTest(SafeMode.FREEZE);
+
+      // Initial result should be as expected
+      const result = frozenLoader.findResourceJSONs('*');
+      expect(result).toEqual([
+        {
+          id: '1',
+          name: 'firstResource',
+          resourceType: 'StructureDefinition',
+          version: '1.2.3'
+        },
+        {
+          id: '2',
+          name: 'secondResource',
+          resourceType: 'CodeSystem',
+          version: '1.2.3'
+        }
+      ]);
+
+      // Modify the resources. When safe mode is FREEZE, these modifications should throw an error.
+      expect(() => (result[0].modified = true)).toThrow(/Cannot add property/);
+      expect(() => (result[1].version = '3.4.5')).toThrow(/Cannot assign to read only property/);
+
+      // But end users can clone the results if they need/want to make modifications
+      cloneDeep(result[0]).modified = true;
+      cloneDeep(result[1]).version = '3.4.5';
+
+      // Get them again and confirm results are not modified.
+      const result2 = frozenLoader.findResourceJSONs('*');
+      expect(result2).toEqual([
+        {
+          id: '1',
+          name: 'firstResource',
+          resourceType: 'StructureDefinition',
+          version: '1.2.3'
+        },
+        {
+          id: '2',
+          name: 'secondResource',
+          resourceType: 'CodeSystem',
+          version: '1.2.3'
+        }
+      ]);
+    });
   });
 
   describe('#findResourceJSON', () => {
@@ -1874,6 +2253,81 @@ describe('BasePackageLoader', () => {
         version: '1.2.3'
       });
       expect(vPackMock.getResourceByKey).toHaveBeenCalledTimes(1); // still 1
+    });
+
+    const setupSafeModeTest = (safeMode: SafeMode): BasePackageLoader => {
+      const smLoader = new BasePackageLoader(
+        packageDBMock,
+        packageCacheMock,
+        registryClientMock,
+        currentBuildClientMock,
+        { safeMode, log: loggerSpy.log }
+      );
+
+      packageDBMock.findResourceInfo.calledWith('firstResource').mockReturnValue({
+        name: 'firstResource',
+        resourceType: 'StructureDefinition',
+        version: '1.2.3',
+        resourcePath: '/some/package/first-thing.json'
+      });
+      packageCacheMock.getResourceAtPath
+        .calledWith('/some/package/first-thing.json')
+        .mockReturnValue({ id: 'first-thing', version: '1.2.3' });
+
+      return smLoader;
+    };
+
+    it('should return modified results on second find when safe mode is OFF', () => {
+      const unsafeLoader = setupSafeModeTest(SafeMode.OFF);
+
+      // Initial result should be as expected
+      const result = unsafeLoader.findResourceJSON('firstResource');
+      expect(result).toEqual({ id: 'first-thing', version: '1.2.3' });
+
+      // Modify the resource. When safe mode is OFF, these modifications will stick since they're cached.
+      result.modified = true;
+      result.version = '3.4.5';
+
+      // Get it again and confirm result is modified.
+      const result2 = unsafeLoader.findResourceJSON('firstResource');
+      expect(result2).toEqual({ id: 'first-thing', version: '3.4.5', modified: true });
+    });
+
+    it('should return unmodified results on second find when safe mode is CLONE', () => {
+      const cloneLoader = setupSafeModeTest(SafeMode.CLONE);
+
+      // Initial result should be as expected
+      const result = cloneLoader.findResourceJSON('firstResource');
+      expect(result).toEqual({ id: 'first-thing', version: '1.2.3' });
+
+      // Modify the resource. When safe mode is CLONE, these modifications should not affect future calls.
+      result.modified = true;
+      result.version = '3.4.5';
+
+      // Get it again and confirm result is not modified.
+      const result2 = cloneLoader.findResourceJSON('firstResource');
+      expect(result2).toEqual({ id: 'first-thing', version: '1.2.3' });
+    });
+
+    it('should throw on attempted modifications when safe mode is FREEZE', () => {
+      const frozenLoader = setupSafeModeTest(SafeMode.FREEZE);
+
+      // Initial result should be as expected
+      const result = frozenLoader.findResourceJSON('firstResource');
+      expect(result).toEqual({ id: 'first-thing', version: '1.2.3' });
+
+      // Modify the resource. When safe mode is FREEZE, these modifications should throw an error.
+      expect(() => (result.modified = true)).toThrow(/Cannot add property/);
+      expect(() => (result.version = '3.4.5')).toThrow(/Cannot assign to read only property/);
+
+      // But end users can clone the result if they need/want to make modifications
+      const clone = cloneDeep(result);
+      clone.modified = true;
+      clone.version = '3.4.5';
+
+      // Get it again and confirm result is not modified.
+      const result2 = frozenLoader.findResourceJSON('firstResource');
+      expect(result2).toEqual({ id: 'first-thing', version: '1.2.3' });
     });
 
     it('should return undefined when the info does not contain a resourcePath', () => {
