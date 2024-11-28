@@ -179,6 +179,10 @@ Finds loaded resources by a key and returns the corresponding array of JSON FHIR
 
 Finds a loaded resource by a key and returns the corresponding FHIR JSON definition or `undefined` if there is not a match. The key will be matched against resources by their `id`, `name`, or `url`. An [options](src/package/ResourceInfo.ts) object may also be passed in to scope the search to a specific set of resource types and/or a specific package. If a set of resource types is specified in the options, then the order of the resource types determines which resource is returned in the case of multiple matches (i.e., the resource types are assumed to be in priority order). If there are still multiple matches, the the last resource loaded will be returned. 
 
+#### `optimize(): void`
+
+Runs optimization function(s) to improve query performance of the package loader. Typically, this should be run after loading all of the packages into the package loader. This function is optional, and depending on the circumstances may vary in its effectiveness.
+
 #### `clear(): void`
 
 Clears all packages and resources from the loader.

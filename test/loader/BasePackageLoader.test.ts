@@ -2351,6 +2351,13 @@ describe('BasePackageLoader', () => {
     });
   });
 
+  describe('#optimize', () => {
+    it('should optimize the package DB', () => {
+      loader.optimize();
+      expect(packageDBMock.optimize).toHaveBeenCalled();
+    });
+  });
+
   describe('#clear', () => {
     it('should clear the package DB', () => {
       loader.clear();

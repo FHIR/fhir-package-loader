@@ -2,6 +2,7 @@ import { FindResourceInfoOptions, PackageInfo, PackageStats, ResourceInfo } from
 
 export interface PackageDB {
   clear(): void;
+  optimize(): void;
   savePackageInfo(info: PackageInfo): void;
   saveResourceInfo(info: ResourceInfo): void;
   findPackageInfos(name: string): PackageInfo[];

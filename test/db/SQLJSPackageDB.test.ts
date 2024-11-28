@@ -92,6 +92,39 @@ describe('SQLJSPackageDB', () => {
     });
   });
 
+  describe('#optimize', () => {
+    let packageDb: SQLJSPackageDB;
+    const specialExtension: ResourceInfo = {
+      resourceType: 'StructureDefinition',
+      id: 'a-special-extension',
+      name: 'SpecialExtension',
+      url: 'http://example.org/Extensions/a-special-extension',
+      sdFlavor: 'Extension',
+      packageName: 'CookiePackage',
+      packageVersion: '4.5.6'
+    };
+
+    beforeEach(() => {
+      packageDb = new SQLJSPackageDB(sqlDb);
+      packageDb.savePackageInfo({
+        name: 'CookiePackage',
+        version: '4.5.6',
+        packagePath: '/var/data/.fhir/CookiePackage-4.5.6'
+      });
+      packageDb.saveResourceInfo(specialExtension);
+    });
+
+    it('should run optimization without any errors', () => {
+      // there's no good way to see if it actually is optimized,
+      // so just ensure it runs without error and queries still work.
+      packageDb.optimize();
+      const packageInfos = packageDb.findPackageInfos('CookiePackage');
+      expect(packageInfos).toHaveLength(1);
+      const resourceInfos = packageDb.findResourceInfos('*');
+      expect(resourceInfos).toHaveLength(1);
+    });
+  });
+
   describe('#savePackageInfo', () => {
     let packageDb: SQLJSPackageDB;
 

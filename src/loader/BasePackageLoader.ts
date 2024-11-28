@@ -449,6 +449,10 @@ export class BasePackageLoader implements PackageLoader {
     return this.packageDB.exportDB();
   }
 
+  optimize() {
+    this.packageDB.optimize();
+  }
+
   clear() {
     this.packageDB.clear();
   }
