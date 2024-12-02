@@ -18,5 +18,6 @@ export interface PackageLoader {
   findResourceInfo(key: string, options?: FindResourceInfoOptions): ResourceInfo | undefined;
   findResourceJSONs(key: string, options?: FindResourceInfoOptions): any[];
   findResourceJSON(key: string, options?: FindResourceInfoOptions): any | undefined;
+  optimize(): void;
   clear(): void;
 }

@@ -9,8 +9,15 @@ import { RegistryClient } from '../registry';
 import { LogFunction } from '../utils';
 import { PackageCache } from '../cache/PackageCache';
 import { LoadStatus, PackageLoader } from './PackageLoader';
+import { cloneDeep } from 'lodash';
 
-const DEFAULT_RESOURCE_CACHE_SIZE = 500;
+const DEFAULT_RESOURCE_CACHE_SIZE = 200;
+
+export enum SafeMode {
+  OFF = 'OFF',
+  FREEZE = 'FREEZE',
+  CLONE = 'CLONE'
+}
 
 const CERTIFICATE_MESSAGE =
   '\n\nSometimes this error occurs in corporate or educational environments that use proxies and/or SSL ' +
@@ -22,12 +29,14 @@ const CERTIFICATE_MESSAGE =
 export type BasePackageLoaderOptions = {
   log?: LogFunction;
   resourceCacheSize?: number;
+  safeMode?: SafeMode;
 };
 
 export class BasePackageLoader implements PackageLoader {
   private log: LogFunction;
   private virtualPackages: Map<string, VirtualPackage>;
   private resourceCache?: LRUCache<string, any>;
+  private safeMode: SafeMode;
 
   constructor(
     private packageDB: PackageDB,
@@ -42,6 +51,7 @@ export class BasePackageLoader implements PackageLoader {
     if (resourceCacheSize > 0) {
       this.resourceCache = new LRUCache<string, any>(resourceCacheSize);
     }
+    this.safeMode = options.safeMode ?? SafeMode.OFF;
   }
 
   async loadPackage(name: string, version: string): Promise<LoadStatus> {
@@ -373,9 +383,12 @@ export class BasePackageLoader implements PackageLoader {
       } else {
         resource = this.packageCache.getResourceAtPath(resourcePath);
       }
+      if (this.safeMode === SafeMode.FREEZE) {
+        resource = deepFreeze(resource);
+      }
       this.resourceCache?.set(resourcePath, resource);
     }
-    return resource;
+    return this.safeMode === SafeMode.CLONE ? cloneDeep(resource) : resource;
   }
 
   getPackageLoadStatus(name: string, version: string): LoadStatus {
@@ -436,6 +449,10 @@ export class BasePackageLoader implements PackageLoader {
     return this.packageDB.exportDB();
   }
 
+  optimize() {
+    this.packageDB.optimize();
+  }
+
   clear() {
     this.packageDB.clear();
   }
@@ -473,4 +490,18 @@ function getSDFlavor(resourceJSON: any) {
       return 'Logical';
     }
   }
+}
+
+// See: https://www.geeksforgeeks.org/how-to-deep-freeze-an-object-in-javascript/
+function deepFreeze(obj: any) {
+  Object.keys(obj).forEach(property => {
+    if (
+      typeof obj[property] === 'object' &&
+      obj[property] !== null &&
+      !Object.isFrozen(obj[property])
+    ) {
+      deepFreeze(obj[property]);
+    }
+  });
+  return Object.freeze(obj);
 }
