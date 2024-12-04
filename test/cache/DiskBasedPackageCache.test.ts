@@ -79,6 +79,40 @@ describe('DiskBasedPackageCache', () => {
       const exampleJSON = fs.readJSONSync(exampleJSONPath);
       expect(exampleJSON.id).toEqual('PatientExample');
     });
+
+    it('should cache a fhir package tarball to the cache folder and replace the existing cached package if applicable', async () => {
+      const tempCacheFolder = temp.mkdirSync('fpl-test');
+      const tempCache = new DiskBasedPackageCache(tempCacheFolder, { log: loggerSpy.log });
+      // Make a rubbish cache of the fhir.small#0.1.0 package
+      const packageFolder = path.join(tempCacheFolder, 'fhir.small#0.1.0', 'package');
+      await fs.ensureDir(packageFolder);
+      await fs.writeFile(path.join(packageFolder, 'rubbish.txt'), 'Total rubbish.', 'utf-8');
+      await fs.writeJSON(path.join(packageFolder, 'package.json'), { rubbish: true });
+      // cache the real fhir.small#0.1.0 package
+      const tarballStream = fs.createReadStream(
+        path.join(__dirname, 'fixtures', 'tarballs', 'small-package.tgz')
+      );
+      const targetFolder = await tempCache.cachePackageTarball(
+        'fhir.small',
+        '0.1.0',
+        tarballStream
+      );
+      expect(targetFolder).toEqual(path.join(tempCacheFolder, 'fhir.small#0.1.0'));
+      // Check that a few expected files are there
+      const packageJSONPath = path.join(targetFolder, 'package', 'package.json');
+      expect(fs.existsSync(packageJSONPath)).toBeTruthy();
+      const packageJSON = fs.readJSONSync(packageJSONPath);
+      expect(packageJSON.name).toEqual('fhir.small');
+      expect(packageJSON.version).toEqual('0.1.0');
+      const igJSONPath = path.join(targetFolder, 'package', 'ImplementationGuide-fhir.small.json');
+      expect(fs.existsSync(igJSONPath)).toBeTruthy();
+      const igJSON = fs.readJSONSync(igJSONPath);
+      expect(igJSON.resourceType).toEqual('ImplementationGuide');
+      expect(igJSON.id).toEqual('fhir.small');
+      // Ensure that the package.json was replaced and the rubbish file removed
+      expect(packageJSON.rubbish).toBeUndefined();
+      expect(fs.existsSync(path.join(packageFolder, 'rubbish.txt'))).toBeFalsy();
+    });
   });
 
   describe('#isPackageInCache', () => {
@@ -153,12 +187,53 @@ describe('DiskBasedPackageCache', () => {
 
   describe('#getResourceAtPath', () => {
     it('should return a resource with a given resource path', () => {
-      const rootPath = path.resolve(cacheFolder, 'fhir.small#0.1.0', 'package');
-      const totalPath = path.resolve(rootPath, 'StructureDefinition-MyPatient.json');
-      const resource = cache.getResourceAtPath(totalPath);
+      const resourcePath = path.resolve(
+        cacheFolder,
+        'fhir.small#0.1.0',
+        'package',
+        'StructureDefinition-MyPatient.json'
+      );
+      const resource = cache.getResourceAtPath(resourcePath);
       expect(resource).toBeDefined();
       expect(resource.id).toBe('MyPatient');
       expect(loggerSpy.getAllLogs('error')).toHaveLength(0);
+    });
+
+    it('should throw an error when attempting to get a JSON resource at an invalid path', () => {
+      const resourcePath = path.resolve(
+        cacheFolder,
+        'fhir.small#0.1.0',
+        'package',
+        'Wrong-Path.json'
+      );
+      expect(() => cache.getResourceAtPath(resourcePath)).toThrow(
+        `Failed to get JSON resource at path ${resourcePath}`
+      );
+    });
+
+    it('should throw an error when attempting to get a XML resource at an invalid path', () => {
+      const resourcePath = path.resolve(
+        cacheFolder,
+        'fhir.small#0.1.0',
+        'package',
+        'Wrong-Path.xml'
+      );
+      expect(() => cache.getResourceAtPath(resourcePath)).toThrow(
+        `Failed to get XML resource at path ${resourcePath}`
+      );
+    });
+
+    it('should throw an error when attempting to get a non-JSON/non-XML resource at an invalid path', () => {
+      const resourcePath = path.resolve(
+        cacheFolder,
+        'fhir.small#0.1.0',
+        'package',
+        'xml',
+        'StructureDefinition-MyPatient.sch'
+      );
+      expect(() => cache.getResourceAtPath(resourcePath)).toThrow(
+        `Failed to find XML or JSON file at path ${resourcePath}`
+      );
     });
   });
 });

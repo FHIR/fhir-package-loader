@@ -98,6 +98,7 @@ export interface PackageLoader {
   findResourceInfo(key: string, options?: FindResourceInfoOptions): ResourceInfo | undefined;
   findResourceJSONs(key: string, options?: FindResourceInfoOptions): any[];
   findResourceJSON(key: string, options?: FindResourceInfoOptions): any | undefined;
+  optimize(): void;
   clear(): void;
 }
 ```
@@ -128,7 +129,7 @@ if (status !== LoadStatus.LOADED) {
 }
 ```
 
-For more control over the `PackageLoader`, use the [BasePackageLoader](src/loader/BasePackageLoader.ts). This allows you to specify the [PackageDB](src/db), [PackageCache](src/cache), [RegistryClient](src/registry), and [CurrentBuildClient](src/current) you wish to use. FHIRPackageLoader comes with implementations of each of these, but you may also provide your own implementations that adhere to the relevant interfaces.
+For more control over the `PackageLoader`, use the [BasePackageLoader](src/loader/BasePackageLoader.ts). This allows you to specify the [PackageDB](src/db), [PackageCache](src/cache), [RegistryClient](src/registry), and [CurrentBuildClient](src/current) you wish to use. FHIR Package Loader comes with implementations of each of these, but you may also provide your own implementations that adhere to the relevant interfaces.
 
 #### BasePackageLoader Options
 
@@ -150,7 +151,7 @@ Loads the specified package version. The version may be a specific version (e.g.
 
 #### `loadVirtualPackage(pkg: VirtualPackage): Promise<LoadStatus>`
 
-Loads a resources from a passed in implementation of the [VirtualPackage](src/virtual/VirtualPackage.ts) interface. This allows for "virtual" packages that do not come from a registry nor are stored in the local FHIR package cache. The [DiskBasedVirtualPackage](src/virtual/DiskBasedVirtualPackage.ts) implementation allows resources from arbitrary file paths (folders or direct files) to be loaded as a package. The [InMemoryVirtualPackage](src/virtual/InMemoryVirtualPackage.ts) implementation allows resources in a Map to be loaded as a package. Developers may also provide their own implementation of the VirtualPackage interface. Returns the [LoadStatus](src/loader/PackageLoader.ts).
+Loads resources from a passed in implementation of the [VirtualPackage](src/virtual/VirtualPackage.ts) interface. This allows for "virtual" packages that do not come from a registry nor are stored in the local FHIR package cache. The [DiskBasedVirtualPackage](src/virtual/DiskBasedVirtualPackage.ts) implementation allows resources from arbitrary file paths (folders or direct files) to be loaded as a package. The [InMemoryVirtualPackage](src/virtual/InMemoryVirtualPackage.ts) implementation allows resources in a Map to be loaded as a package. Developers may also provide their own implementation of the VirtualPackage interface. Returns the [LoadStatus](src/loader/PackageLoader.ts).
 
 #### `getPackageLoadStatus(name: string, version: string): LoadStatus`
 
@@ -162,7 +163,7 @@ Finds loaded packages by name and returns the corresponding array of [PackageInf
 
 #### `findPackageInfo(name: string, version: string): PackageInfo | undefined`
 
-Finds a loaded package by its name and version, and returns the corresponding [PackageInfo](src/package/PackageInfo.ts) or `undefined` is there is not a match. In the case of multiple matches, the info for last package loaded will be returned. This function supports specific versions (e.g. `1.2.3`), `dev`, `current`, and `current$branchname`.
+Finds a loaded package by its name and version, and returns the corresponding [PackageInfo](src/package/PackageInfo.ts) or `undefined` if there is not a match. In the case of multiple matches, the info for last package loaded will be returned. This function supports specific versions (e.g. `1.2.3`), `dev`, `current`, and `current$branchname`.
 
 #### `findPackageJSONs(name: string): any[]`
 

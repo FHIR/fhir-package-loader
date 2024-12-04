@@ -9,7 +9,7 @@ import { RegistryClient } from '../../src/registry';
 import { CurrentBuildClient } from '../../src/current';
 import { loggerSpy } from '../testhelpers';
 import fs from 'fs-extra';
-import { VirtualPackage } from '../../src/package';
+import { VirtualPackage } from '../../src/virtual';
 import { cloneDeep } from 'lodash';
 
 describe('BasePackageLoader', () => {

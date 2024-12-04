@@ -17,7 +17,7 @@ export default [
     ignores: [
       'dist/*',
       'coverage/*',
-      'build*/*',
+      'build/*',
       '**/*.d.ts',
       'src/public/',
       'src/types/'
