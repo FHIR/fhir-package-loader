@@ -159,7 +159,6 @@ describe('FHIRRegistryClient', () => {
         axiosSpy.mockRestore();
       });
 
-      // this
       it('should throw error if no name given for download method', async () => {
         const result = client.download('', '5.5.5');
         await expect(result).rejects.toThrow(Error);

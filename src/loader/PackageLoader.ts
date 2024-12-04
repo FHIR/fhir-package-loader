@@ -1,4 +1,5 @@
-import { FindResourceInfoOptions, PackageInfo, ResourceInfo, VirtualPackage } from '../package';
+import { FindResourceInfoOptions, PackageInfo, ResourceInfo } from '../package';
+import { VirtualPackage } from '../virtual';
 
 export enum LoadStatus {
   LOADED = 'LOADED',

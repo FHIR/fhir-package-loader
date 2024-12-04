@@ -668,7 +668,7 @@ describe('SQLJSPackageDB', () => {
       // Try it both directions to ensure that options.type is not influencing order
       const resources2 = packageDb.findResourceInfos('*', {
         type: ['StructureDefinition', 'ValueSet'],
-        sort: [byType('ValueSet', 'StructureDefinition')]
+        sort: [byType('ValueSet', 'StructureDefinition'), byLoadOrder()]
       });
       expect(resources2).toHaveLength(5);
       expect(resources2).toEqual([
