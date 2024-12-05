@@ -1,7 +1,7 @@
+import { Readable } from 'stream';
+import axios from 'axios';
 import { BuildDotFhirDotOrgClient } from '../../src/current/BuildDotFhirDotOrgClient';
 import { loggerSpy } from '../testhelpers';
-import axios from 'axios';
-import { Readable } from 'stream';
 
 describe('BuildDotFhirDotOrgClient', () => {
   const client = new BuildDotFhirDotOrgClient({ log: loggerSpy.log });

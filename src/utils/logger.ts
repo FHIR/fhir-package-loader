@@ -1,5 +1,5 @@
-import { createLogger, format, transports } from 'winston';
 import chalk from 'chalk';
+import { createLogger, format, transports } from 'winston';
 
 const { combine, printf } = format;
 

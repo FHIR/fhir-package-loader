@@ -1,7 +1,7 @@
-import { loggerSpy } from '../testhelpers';
 import { DefaultRegistryClient } from '../../src/registry/DefaultRegistryClient';
-import { NPMRegistryClient } from '../../src/registry/NPMRegistryClient';
 import { FHIRRegistryClient } from '../../src/registry/FHIRRegistryClient';
+import { NPMRegistryClient } from '../../src/registry/NPMRegistryClient';
+import { loggerSpy } from '../testhelpers';
 
 describe('DefaultRegistryClient', () => {
   describe('#constructor', () => {

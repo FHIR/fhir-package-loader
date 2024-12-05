@@ -1,6 +1,6 @@
 import path from 'path';
-import temp from 'temp';
 import fs from 'fs-extra';
+import temp from 'temp';
 import { DiskBasedPackageCache } from '../../src/cache/DiskBasedPackageCache';
 import { loggerSpy } from '../testhelpers';
 
