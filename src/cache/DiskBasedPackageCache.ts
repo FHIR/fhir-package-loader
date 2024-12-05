@@ -1,12 +1,15 @@
 import path from 'path';
-import fs from 'fs-extra';
-import { LogFunction } from '../utils';
-import { PackageCache, PackageCacheOptions } from './PackageCache';
-import temp from 'temp';
-import * as tar from 'tar';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
+
 import { Fhir as FHIRConverter } from 'fhir/fhir';
+import fs from 'fs-extra';
+import * as tar from 'tar';
+import temp from 'temp';
+
+import { PackageCache, PackageCacheOptions } from './PackageCache';
+
+import { LogFunction } from '../utils';
 
 export class DiskBasedPackageCache implements PackageCache {
   private log: LogFunction;

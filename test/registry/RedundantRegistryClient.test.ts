@@ -1,8 +1,9 @@
+import { Readable } from 'stream';
+
 import { LatestVersionUnavailableError } from '../../src/errors';
 import { RedundantRegistryClient } from '../../src/registry/RedundantRegistryClient';
 import { RegistryClient } from '../../src/registry/RegistryClient';
 import { loggerSpy } from '../testhelpers';
-import { Readable } from 'stream';
 
 class MyMockClient implements RegistryClient {
   public endpoint: string;

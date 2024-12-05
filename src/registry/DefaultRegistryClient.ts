@@ -1,8 +1,9 @@
-import { LogFunction } from '../utils';
 import { FHIRRegistryClient } from './FHIRRegistryClient';
 import { NPMRegistryClient } from './NPMRegistryClient';
 import { RedundantRegistryClient } from './RedundantRegistryClient';
 import { RegistryClient, RegistryClientOptions } from './RegistryClient';
+
+import { LogFunction } from '../utils';
 
 const FHIR_PACKAGES_ENDPOINT = 'https://packages.fhir.org';
 const FHIR_PACKAGES2_ENDPOINT = 'https://packages2.fhir.org/packages';

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+
 import { axiosGet } from '../../src/utils/axiosUtils';
 
 describe('axiosUtils', () => {

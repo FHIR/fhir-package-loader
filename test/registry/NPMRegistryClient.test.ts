@@ -1,12 +1,14 @@
-import { NPMRegistryClient } from '../../src/registry/NPMRegistryClient';
-import * as registryUtils from '../../src/registry/utils';
-import { loggerSpy } from '../testhelpers';
-import axios from 'axios';
 import { Readable } from 'stream';
+
+import axios from 'axios';
+
 import {
   IncorrectWildcardVersionFormatError,
   LatestVersionUnavailableError
 } from '../../src/errors';
+import { NPMRegistryClient } from '../../src/registry/NPMRegistryClient';
+import * as registryUtils from '../../src/registry/utils';
+import { loggerSpy } from '../testhelpers';
 
 // Represents a typical (but abbreviated) package manifest response from an NPM registry
 const TERM_PKG_RESPONSE = {

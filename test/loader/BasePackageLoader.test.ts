@@ -1,16 +1,18 @@
 import path from 'path';
-import { mock, mockReset } from 'jest-mock-extended';
 import { Readable } from 'stream';
+
+import fs from 'fs-extra';
+import { mock, mockReset } from 'jest-mock-extended';
+import { cloneDeep } from 'lodash';
+
+import { PackageCache } from '../../src/cache';
+import { CurrentBuildClient } from '../../src/current';
+import { PackageDB } from '../../src/db';
 import { BasePackageLoader, SafeMode } from '../../src/loader/BasePackageLoader';
 import { LoadStatus } from '../../src/loader/PackageLoader';
-import { PackageDB } from '../../src/db';
-import { PackageCache } from '../../src/cache';
 import { RegistryClient } from '../../src/registry';
-import { CurrentBuildClient } from '../../src/current';
-import { loggerSpy } from '../testhelpers';
-import fs from 'fs-extra';
 import { VirtualPackage } from '../../src/virtual';
-import { cloneDeep } from 'lodash';
+import { loggerSpy } from '../testhelpers';
 
 describe('BasePackageLoader', () => {
   let loader: BasePackageLoader;

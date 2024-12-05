@@ -1,12 +1,14 @@
-import { FHIRRegistryClient } from '../../src/registry/FHIRRegistryClient';
-import * as registryUtils from '../../src/registry/utils';
-import { loggerSpy } from '../testhelpers';
-import axios from 'axios';
 import { Readable } from 'stream';
+
+import axios from 'axios';
+
 import {
   IncorrectWildcardVersionFormatError,
   LatestVersionUnavailableError
 } from '../../src/errors';
+import { FHIRRegistryClient } from '../../src/registry/FHIRRegistryClient';
+import * as registryUtils from '../../src/registry/utils';
+import { loggerSpy } from '../testhelpers';
 
 // Represents a typical package manifest response from packages.fhir.org
 const TERM_PKG_RESPONSE = {

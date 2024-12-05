@@ -1,6 +1,8 @@
 import { Readable } from 'stream';
-import { LogFunction } from '../utils';
+
 import { RegistryClient, RegistryClientOptions } from './RegistryClient';
+
+import { LogFunction } from '../utils';
 
 export class RedundantRegistryClient implements RegistryClient {
   protected log: LogFunction;

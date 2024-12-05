@@ -1,7 +1,9 @@
 import { Readable } from 'stream';
-import { LogFunction, axiosGet } from '../utils';
-import { CurrentPackageLoadError } from '../errors';
+
 import { CurrentBuildClient, CurrentBuildClientOptions } from './CurrentBuildClient';
+
+import { CurrentPackageLoadError } from '../errors';
+import { axiosGet, LogFunction } from '../utils';
 
 export class BuildDotFhirDotOrgClient implements CurrentBuildClient {
   private log: LogFunction;

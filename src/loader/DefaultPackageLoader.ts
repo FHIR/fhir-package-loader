@@ -1,11 +1,14 @@
 import os from 'os';
 import path from 'path';
+
 import initSqlJs from 'sql.js';
+
+import { BasePackageLoader, BasePackageLoaderOptions } from './BasePackageLoader';
+
+import { DiskBasedPackageCache } from '../cache/DiskBasedPackageCache';
 import { BuildDotFhirDotOrgClient } from '../current';
 import { SQLJSPackageDB } from '../db';
 import { DefaultRegistryClient } from '../registry';
-import { DiskBasedPackageCache } from '../cache/DiskBasedPackageCache';
-import { BasePackageLoader, BasePackageLoaderOptions } from './BasePackageLoader';
 
 export async function defaultPackageLoader(options: BasePackageLoaderOptions) {
   const SQL = await initSqlJs();

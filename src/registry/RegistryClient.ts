@@ -1,4 +1,5 @@
 import { Readable } from 'stream';
+
 import { LogFunction } from '../utils';
 
 export type RegistryClientOptions = {

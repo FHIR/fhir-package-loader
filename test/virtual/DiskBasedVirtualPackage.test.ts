@@ -1,4 +1,5 @@
 import path from 'path';
+
 import { DiskBasedVirtualPackage } from '../../src/virtual/DiskBasedVirtualPackage';
 import { loggerSpy } from '../testhelpers';
 

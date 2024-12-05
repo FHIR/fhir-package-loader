@@ -1,7 +1,10 @@
-import { Database, Statement } from 'sql.js';
 import util from 'util';
-import { FindResourceInfoOptions, PackageInfo, PackageStats, ResourceInfo } from '../package';
+
+import { Database, Statement } from 'sql.js';
+
 import { PackageDB } from './PackageDB';
+
+import { FindResourceInfoOptions, PackageInfo, PackageStats, ResourceInfo } from '../package';
 
 const CREATE_PACKAGE_TABLE = `CREATE TABLE package (
   rowid INTEGER PRIMARY KEY,

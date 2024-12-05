@@ -1,5 +1,6 @@
-import { logger } from '../../src/utils/logger';
 import { LogEntry } from 'winston';
+
+import { logger } from '../../src/utils/logger';
 
 // MUTE_LOGS controls whether or not logs get printed during testing.
 // Usually, we don't want logs actually printed, as they cause clutter.
