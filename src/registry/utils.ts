@@ -1,6 +1,6 @@
+import { maxSatisfying } from 'semver';
 import { IncorrectWildcardVersionFormatError, LatestVersionUnavailableError } from '../errors';
 import { axiosGet } from '../utils';
-import { maxSatisfying } from 'semver';
 
 export async function resolveVersion(
   endpoint: string,
