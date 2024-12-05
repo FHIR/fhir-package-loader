@@ -1,8 +1,8 @@
 import initSqlJs from 'sql.js';
 import { SQLJSPackageDB } from '../../src/db/SQLJSPackageDB';
-import { loggerSpy } from '../testhelpers';
 import { ResourceInfo } from '../../src/package';
 import { byLoadOrder, byType } from '../../src/sort';
+import { loggerSpy } from '../testhelpers';
 
 describe('SQLJSPackageDB', () => {
   let SQL: initSqlJs.SqlJsStatic;

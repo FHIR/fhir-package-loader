@@ -1,6 +1,6 @@
+import { Fhir as FHIRConverter } from 'fhir/fhir';
 import fs from 'fs-extra';
 import path from 'path';
-import { Fhir as FHIRConverter } from 'fhir/fhir';
 import { PackageJSON } from '../package/PackageJSON';
 import { LogFunction } from '../utils/logger';
 import { VirtualPackage, VirtualPackageOptions } from './VirtualPackage';

@@ -1,16 +1,16 @@
 #!/usr/bin/env node
 
-import path from 'path';
+import { Command, OptionValues } from 'commander';
 import fs from 'fs-extra';
 import os from 'os';
+import path from 'path';
 import initSqlJs from 'sql.js';
-import { logger } from './utils';
-import { Command, OptionValues } from 'commander';
-import { BasePackageLoader } from './loader';
-import { SQLJSPackageDB } from './db';
 import { DiskBasedPackageCache } from './cache';
-import { DefaultRegistryClient } from './registry';
 import { BuildDotFhirDotOrgClient } from './current';
+import { SQLJSPackageDB } from './db';
+import { BasePackageLoader } from './loader';
+import { DefaultRegistryClient } from './registry';
+import { logger } from './utils';
 
 function getVersion(): string {
   const packageJSONPath = path.join(__dirname, '..', 'package.json');

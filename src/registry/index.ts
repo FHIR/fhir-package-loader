@@ -1,5 +1,5 @@
-export * from './RegistryClient';
+export * from './DefaultRegistryClient';
 export * from './FHIRRegistryClient';
 export * from './NPMRegistryClient';
 export * from './RedundantRegistryClient';
-export * from './DefaultRegistryClient';
+export * from './RegistryClient';

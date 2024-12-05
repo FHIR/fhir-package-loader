@@ -1,9 +1,9 @@
 import axios from 'axios';
-import { resolveVersion } from '../../src/registry/utils';
 import {
   IncorrectWildcardVersionFormatError,
   LatestVersionUnavailableError
 } from '../../src/errors';
+import { resolveVersion } from '../../src/registry/utils';
 
 // Represents a minimal package manifest response w/ the necessary data for resolving versions.
 // Note that a real response will have additional data in it.
