@@ -1,5 +1,5 @@
 import { Readable } from 'stream';
-import { LogFunction, axiosGet } from '../utils';
+import { axiosGet, LogFunction } from '../utils';
 import { RegistryClient, RegistryClientOptions } from './RegistryClient';
 import { resolveVersion } from './utils';
 

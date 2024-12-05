@@ -1,5 +1,5 @@
-import { Database, Statement } from 'sql.js';
 import util from 'util';
+import { Database, Statement } from 'sql.js';
 import { FindResourceInfoOptions, PackageInfo, PackageStats, ResourceInfo } from '../package';
 import { PackageDB } from './PackageDB';
 
