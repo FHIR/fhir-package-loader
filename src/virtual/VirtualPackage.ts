@@ -1,5 +1,5 @@
-import { LogFunction } from '../utils/logger';
 import { PackageJSON } from '../package/PackageJSON';
+import { LogFunction } from '../utils/logger';
 
 export interface VirtualPackage {
   registerResources(

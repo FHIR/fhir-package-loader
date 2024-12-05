@@ -1,15 +1,15 @@
 import path from 'path';
+import { cloneDeep } from 'lodash';
 import { LRUCache } from 'mnemonist';
+import { LoadStatus, PackageLoader } from './PackageLoader';
+import { PackageCache } from '../cache/PackageCache';
 import { CurrentBuildClient } from '../current';
 import { PackageDB } from '../db';
 import { InvalidResourceError } from '../errors';
 import { FindResourceInfoOptions, PackageInfo, PackageStats, ResourceInfo } from '../package';
-import { VirtualPackage } from '../virtual';
 import { RegistryClient } from '../registry';
 import { LogFunction } from '../utils';
-import { PackageCache } from '../cache/PackageCache';
-import { LoadStatus, PackageLoader } from './PackageLoader';
-import { cloneDeep } from 'lodash';
+import { VirtualPackage } from '../virtual';
 
 const DEFAULT_RESOURCE_CACHE_SIZE = 200;
 

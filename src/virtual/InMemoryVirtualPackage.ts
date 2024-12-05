@@ -1,6 +1,6 @@
+import { VirtualPackage, VirtualPackageOptions } from './VirtualPackage';
 import { PackageJSON } from '../package/PackageJSON';
 import { LogFunction } from '../utils/logger';
-import { VirtualPackage, VirtualPackageOptions } from './VirtualPackage';
 
 export class InMemoryVirtualPackage implements VirtualPackage {
   private log: LogFunction;

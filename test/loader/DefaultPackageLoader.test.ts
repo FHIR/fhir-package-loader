@@ -1,8 +1,8 @@
-import { loggerSpy } from '../testhelpers';
 import { jest } from '@jest/globals';
+import { DiskBasedPackageCache } from '../../src/cache/DiskBasedPackageCache';
 import { defaultPackageLoader } from '../../src/loader';
 import { BasePackageLoader } from '../../src/loader/BasePackageLoader';
-import { DiskBasedPackageCache } from '../../src/cache/DiskBasedPackageCache';
+import { loggerSpy } from '../testhelpers';
 
 jest.mock('sql.js', () => {
   return () => {
