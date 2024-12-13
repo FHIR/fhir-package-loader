@@ -118,24 +118,27 @@ export class SQLJSPackageDB implements PackageDB {
   }
 
   async initialize() {
-    const SQL = await initSqlJs();
     if (!this.initialized) {
-      this.db = new SQL.Database();
-      this.db.run(
-        [
-          CREATE_PACKAGE_TABLE,
-          CREATE_PACKAGE_TABLE_INDICES,
-          CREATE_RESOURCE_TABLE,
-          CREATE_RESOURCE_TABLE_INDICES
-        ].join(';')
-      );
-      this.insertPackageStmt = this.db.prepare(INSERT_PACKAGE);
-      this.insertResourceStmt = this.db.prepare(INSERT_RESOURCE);
-      this.findAllPackagesStmt = this.db.prepare(FIND_ALL_PACKAGES);
-      this.findPackagesStmt = this.db.prepare(FIND_PACKAGES);
-      this.findPackageStmt = this.db.prepare(FIND_PACKAGE);
-      this.initialized = true;
-      this.optimized = false;
+      const SQL = await initSqlJs();
+      // check initialization state once more since initSqlJs call was async (possible race condition)
+      if (!this.initialized) {
+        this.db = new SQL.Database();
+        this.db.run(
+          [
+            CREATE_PACKAGE_TABLE,
+            CREATE_PACKAGE_TABLE_INDICES,
+            CREATE_RESOURCE_TABLE,
+            CREATE_RESOURCE_TABLE_INDICES
+          ].join(';')
+        );
+        this.insertPackageStmt = this.db.prepare(INSERT_PACKAGE);
+        this.insertResourceStmt = this.db.prepare(INSERT_RESOURCE);
+        this.findAllPackagesStmt = this.db.prepare(FIND_ALL_PACKAGES);
+        this.findPackagesStmt = this.db.prepare(FIND_PACKAGES);
+        this.findPackageStmt = this.db.prepare(FIND_PACKAGE);
+        this.initialized = true;
+        this.optimized = false;
+      }
     }
   }
 
