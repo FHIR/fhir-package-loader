@@ -77,8 +77,8 @@ describe('SQLJSPackageDB', () => {
     });
 
     it('should not throw even if the db is not initialized', () => {
-      const unitializedPackageDB = new SQLJSPackageDB();
-      unitializedPackageDB.clear();
+      const uninitializedPackageDB = new SQLJSPackageDB();
+      uninitializedPackageDB.clear();
     });
 
     it('should remove all packages and resources', () => {
@@ -119,8 +119,8 @@ describe('SQLJSPackageDB', () => {
     });
 
     it('should not throw even if the db is not initialized', () => {
-      const unitializedPackageDB = new SQLJSPackageDB();
-      unitializedPackageDB.optimize();
+      const uninitializedPackageDB = new SQLJSPackageDB();
+      uninitializedPackageDB.optimize();
     });
 
     it('should run optimization without any errors', () => {
@@ -142,9 +142,9 @@ describe('SQLJSPackageDB', () => {
     });
 
     it('should throw if the db has not been initialized', () => {
-      const unitializedPackageDB = new SQLJSPackageDB();
+      const uninitializedPackageDB = new SQLJSPackageDB();
       expect(() => {
-        unitializedPackageDB.savePackageInfo({
+        uninitializedPackageDB.savePackageInfo({
           name: 'MyPackage',
           version: '1.0.4'
         });
@@ -224,9 +224,9 @@ describe('SQLJSPackageDB', () => {
     });
 
     it('should throw if the db has not been initialized', () => {
-      const unitializedPackageDB = new SQLJSPackageDB();
+      const uninitializedPackageDB = new SQLJSPackageDB();
       expect(() => {
-        unitializedPackageDB.saveResourceInfo({
+        uninitializedPackageDB.saveResourceInfo({
           resourceType: 'StructureDefinition',
           id: 'my-patient-profile'
         });
@@ -341,9 +341,9 @@ describe('SQLJSPackageDB', () => {
     });
 
     it('should throw if the db has not been initialized', () => {
-      const unitializedPackageDB = new SQLJSPackageDB();
+      const uninitializedPackageDB = new SQLJSPackageDB();
       expect(() => {
-        unitializedPackageDB.findPackageInfos('*');
+        uninitializedPackageDB.findPackageInfos('*');
       }).toThrow(/SQLJSPackageDB not initialized/);
     });
 
@@ -421,9 +421,9 @@ describe('SQLJSPackageDB', () => {
     });
 
     it('should throw if the db has not been initialized', () => {
-      const unitializedPackageDB = new SQLJSPackageDB();
+      const uninitializedPackageDB = new SQLJSPackageDB();
       expect(() => {
-        unitializedPackageDB.findPackageInfo('CookiePackage', '1.0.3');
+        uninitializedPackageDB.findPackageInfo('CookiePackage', '1.0.3');
       }).toThrow(/SQLJSPackageDB not initialized/);
     });
 
@@ -510,9 +510,9 @@ describe('SQLJSPackageDB', () => {
     });
 
     it('should throw if the db has not been initialized', () => {
-      const unitializedPackageDB = new SQLJSPackageDB();
+      const uninitializedPackageDB = new SQLJSPackageDB();
       expect(() => {
-        unitializedPackageDB.findResourceInfos('*');
+        uninitializedPackageDB.findResourceInfos('*');
       }).toThrow(/SQLJSPackageDB not initialized/);
     });
 
@@ -836,9 +836,9 @@ describe('SQLJSPackageDB', () => {
     });
 
     it('should throw if the db has not been initialized', () => {
-      const unitializedPackageDB = new SQLJSPackageDB();
+      const uninitializedPackageDB = new SQLJSPackageDB();
       expect(() => {
-        unitializedPackageDB.findResourceInfo('my-value-set');
+        uninitializedPackageDB.findResourceInfo('my-value-set');
       }).toThrow(/SQLJSPackageDB not initialized/);
     });
 
@@ -1017,9 +1017,9 @@ describe('SQLJSPackageDB', () => {
     });
 
     it('should throw if the db has not been initialized', () => {
-      const unitializedPackageDB = new SQLJSPackageDB();
+      const uninitializedPackageDB = new SQLJSPackageDB();
       expect(() => {
-        unitializedPackageDB.getPackageStats('CookiePackage', '4.5.6');
+        uninitializedPackageDB.getPackageStats('CookiePackage', '4.5.6');
       }).toThrow(/SQLJSPackageDB not initialized/);
     });
 
@@ -1050,8 +1050,8 @@ describe('SQLJSPackageDB', () => {
     });
 
     it('should throw if the db has not been initialized', async () => {
-      const unitializedPackageDB = new SQLJSPackageDB();
-      await expect(unitializedPackageDB.exportDB()).rejects.toThrow(
+      const uninitializedPackageDB = new SQLJSPackageDB();
+      await expect(uninitializedPackageDB.exportDB()).rejects.toThrow(
         /SQLJSPackageDB not initialized/
       );
     });
