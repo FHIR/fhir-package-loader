@@ -3,10 +3,9 @@ import os from 'os';
 import path from 'path';
 import { Command, OptionValues } from 'commander';
 import fs from 'fs-extra';
-import initSqlJs from 'sql.js';
 import { DiskBasedPackageCache } from './cache';
 import { BuildDotFhirDotOrgClient } from './current';
-import { SQLJSPackageDB } from './db';
+import { newSQLJSPackageDB } from './db';
 import { BasePackageLoader } from './loader';
 import { DefaultRegistryClient } from './registry';
 import { logger } from './utils';
@@ -33,8 +32,7 @@ async function install(fhirPackages: string[], options: OptionValues) {
     logger.log(level, message);
   };
 
-  const SQL = await initSqlJs();
-  const packageDB = new SQLJSPackageDB(new SQL.Database());
+  const packageDB = await newSQLJSPackageDB();
   const fhirCache = options.cachePath ?? path.join(os.homedir(), '.fhir', 'packages');
   const packageCache = new DiskBasedPackageCache(fhirCache, { log });
   const registryClient = new DefaultRegistryClient({ log });

@@ -1,5 +1,5 @@
 import initSqlJs from 'sql.js';
-import { SQLJSPackageDB } from '../../src/db/SQLJSPackageDB';
+import { newSQLJSPackageDB, SQLJSPackageDB } from '../../src/db/SQLJSPackageDB';
 import { ResourceInfo } from '../../src/package';
 import { byLoadOrder, byType } from '../../src/sort';
 import { loggerSpy } from '../testhelpers';
@@ -7,7 +7,6 @@ import { loggerSpy } from '../testhelpers';
 describe('SQLJSPackageDB', () => {
   let SQL: initSqlJs.SqlJsStatic;
   let sqlDb: initSqlJs.Database;
-  let dbRunSpy: jest.SpyInstance;
 
   beforeAll(async () => {
     SQL = await initSqlJs();
@@ -16,19 +15,19 @@ describe('SQLJSPackageDB', () => {
   beforeEach(() => {
     loggerSpy.reset();
     sqlDb = new SQL.Database();
-    dbRunSpy = jest.spyOn(sqlDb, 'run');
   });
 
   afterEach(() => {
-    dbRunSpy.mockReset();
     sqlDb.close();
   });
 
   describe('constructor', () => {
-    it('should create and initialize a new SQLJSPackageDB', () => {
-      const packageDb = new SQLJSPackageDB(sqlDb);
+    it('should create and initialize a new SQLJSPackageDB', async () => {
+      const packageDb = new SQLJSPackageDB();
+      expect(packageDb.isInitialized()).toBe(false);
+      await packageDb.initialize();
       expect(packageDb).toBeDefined();
-      expect(dbRunSpy).toHaveBeenCalledTimes(1);
+      expect(packageDb.isInitialized()).toBe(true);
     });
   });
 
@@ -60,8 +59,8 @@ describe('SQLJSPackageDB', () => {
       packageVersion: '4.5.6'
     };
 
-    beforeEach(() => {
-      packageDb = new SQLJSPackageDB(sqlDb);
+    beforeEach(async () => {
+      packageDb = await newSQLJSPackageDB();
       packageDb.savePackageInfo({
         name: 'CookiePackage',
         version: '3.2.2',
@@ -75,6 +74,11 @@ describe('SQLJSPackageDB', () => {
       packageDb.saveResourceInfo(specialExtension);
       packageDb.saveResourceInfo(valueSetThree);
       packageDb.saveResourceInfo(valueSetFour);
+    });
+
+    it('should not throw even if the db is not initialized', () => {
+      const uninitializedPackageDB = new SQLJSPackageDB();
+      uninitializedPackageDB.clear();
     });
 
     it('should remove all packages and resources', () => {
@@ -104,14 +108,19 @@ describe('SQLJSPackageDB', () => {
       packageVersion: '4.5.6'
     };
 
-    beforeEach(() => {
-      packageDb = new SQLJSPackageDB(sqlDb);
+    beforeEach(async () => {
+      packageDb = await newSQLJSPackageDB();
       packageDb.savePackageInfo({
         name: 'CookiePackage',
         version: '4.5.6',
         packagePath: '/var/data/.fhir/CookiePackage-4.5.6'
       });
       packageDb.saveResourceInfo(specialExtension);
+    });
+
+    it('should not throw even if the db is not initialized', () => {
+      const uninitializedPackageDB = new SQLJSPackageDB();
+      uninitializedPackageDB.optimize();
     });
 
     it('should run optimization without any errors', () => {
@@ -128,8 +137,18 @@ describe('SQLJSPackageDB', () => {
   describe('#savePackageInfo', () => {
     let packageDb: SQLJSPackageDB;
 
-    beforeEach(() => {
-      packageDb = new SQLJSPackageDB(sqlDb);
+    beforeEach(async () => {
+      packageDb = await newSQLJSPackageDB();
+    });
+
+    it('should throw if the db has not been initialized', () => {
+      const uninitializedPackageDB = new SQLJSPackageDB();
+      expect(() => {
+        uninitializedPackageDB.savePackageInfo({
+          name: 'MyPackage',
+          version: '1.0.4'
+        });
+      }).toThrow(/SQLJSPackageDB not initialized/);
     });
 
     it('should save package info with a name and version', () => {
@@ -137,7 +156,6 @@ describe('SQLJSPackageDB', () => {
         name: 'MyPackage',
         version: '1.0.4'
       });
-      expect(dbRunSpy).toHaveBeenCalledTimes(1);
       const savedPackage = packageDb.findPackageInfo('MyPackage', '1.0.4');
       expect(savedPackage).toEqual(
         expect.objectContaining({
@@ -153,7 +171,6 @@ describe('SQLJSPackageDB', () => {
         version: '1.0.4',
         packagePath: '/var/data/.fhir/MyPackage-1.0.4'
       });
-      expect(dbRunSpy).toHaveBeenCalledTimes(1);
       const savedPackage = packageDb.findPackageInfo('MyPackage', '1.0.4');
       expect(savedPackage).toEqual(
         expect.objectContaining({
@@ -170,7 +187,6 @@ describe('SQLJSPackageDB', () => {
         version: '1.0.4',
         packageJSONPath: '/var/data/.fhir/MyPackage-1.0.4/package.json'
       });
-      expect(dbRunSpy).toHaveBeenCalledTimes(1);
       const savedPackage = packageDb.findPackageInfo('MyPackage', '1.0.4');
       expect(savedPackage).toEqual(
         expect.objectContaining({
@@ -188,7 +204,6 @@ describe('SQLJSPackageDB', () => {
         packagePath: '/var/data/.fhir/MyPackage-1.0.4',
         packageJSONPath: '/var/data/.fhir/MyPackage-1.0.4/package.json'
       });
-      expect(dbRunSpy).toHaveBeenCalledTimes(1);
       const savedPackage = packageDb.findPackageInfo('MyPackage', '1.0.4');
       expect(savedPackage).toEqual(
         expect.objectContaining({
@@ -204,8 +219,18 @@ describe('SQLJSPackageDB', () => {
   describe('#saveResourceInfo', () => {
     let packageDb: SQLJSPackageDB;
 
-    beforeEach(() => {
-      packageDb = new SQLJSPackageDB(sqlDb);
+    beforeEach(async () => {
+      packageDb = await newSQLJSPackageDB();
+    });
+
+    it('should throw if the db has not been initialized', () => {
+      const uninitializedPackageDB = new SQLJSPackageDB();
+      expect(() => {
+        uninitializedPackageDB.saveResourceInfo({
+          resourceType: 'StructureDefinition',
+          id: 'my-patient-profile'
+        });
+      }).toThrow(/SQLJSPackageDB not initialized/);
     });
 
     it('should save a simple resource', () => {
@@ -213,7 +238,6 @@ describe('SQLJSPackageDB', () => {
         resourceType: 'StructureDefinition',
         id: 'my-patient-profile'
       });
-      expect(dbRunSpy).toHaveBeenCalledTimes(1);
       const resource = packageDb.findResourceInfo('my-patient-profile');
       expect(resource).toEqual(
         expect.objectContaining({
@@ -234,7 +258,6 @@ describe('SQLJSPackageDB', () => {
         packageVersion: '3.2.2',
         resourcePath: '/var/data/.fhir/RegularPackage-3.2.2/ValueSets/my-value-set.json'
       });
-      expect(dbRunSpy).toHaveBeenCalledTimes(1);
       const resource = packageDb.findResourceInfo('my-value-set');
       expect(resource).toEqual(
         expect.objectContaining({
@@ -271,7 +294,6 @@ describe('SQLJSPackageDB', () => {
         packageName: 'RegularPackage',
         packageVersion: '3.2.2'
       });
-      expect(dbRunSpy).toHaveBeenCalledTimes(1);
       const resource = packageDb.findResourceInfo('my-patient-profile');
       expect(resource).toEqual(
         expect.objectContaining({
@@ -299,8 +321,8 @@ describe('SQLJSPackageDB', () => {
   describe('#findPackageInfos', () => {
     let packageDb: SQLJSPackageDB;
 
-    beforeEach(() => {
-      packageDb = new SQLJSPackageDB(sqlDb);
+    beforeEach(async () => {
+      packageDb = await newSQLJSPackageDB();
       packageDb.savePackageInfo({
         name: 'CookiePackage',
         version: '1.0.0',
@@ -316,6 +338,13 @@ describe('SQLJSPackageDB', () => {
         version: '1.0.0',
         packagePath: '/var/data/.fhir/BagelPackage-1.0.0'
       });
+    });
+
+    it('should throw if the db has not been initialized', () => {
+      const uninitializedPackageDB = new SQLJSPackageDB();
+      expect(() => {
+        uninitializedPackageDB.findPackageInfos('*');
+      }).toThrow(/SQLJSPackageDB not initialized/);
     });
 
     it('should return all packages when * is passed in as the name', () => {
@@ -372,8 +401,8 @@ describe('SQLJSPackageDB', () => {
   describe('#findPackageInfo', () => {
     let packageDb: SQLJSPackageDB;
 
-    beforeEach(() => {
-      packageDb = new SQLJSPackageDB(sqlDb);
+    beforeEach(async () => {
+      packageDb = await newSQLJSPackageDB();
       packageDb.savePackageInfo({
         name: 'CookiePackage',
         version: '1.0.0',
@@ -389,6 +418,13 @@ describe('SQLJSPackageDB', () => {
         version: '1.0.0',
         packagePath: '/var/data/.fhir/BagelPackage-1.0.0'
       });
+    });
+
+    it('should throw if the db has not been initialized', () => {
+      const uninitializedPackageDB = new SQLJSPackageDB();
+      expect(() => {
+        uninitializedPackageDB.findPackageInfo('CookiePackage', '1.0.3');
+      }).toThrow(/SQLJSPackageDB not initialized/);
     });
 
     it('should return a package that matches a name and version', () => {
@@ -464,13 +500,20 @@ describe('SQLJSPackageDB', () => {
       packageVersion: '4.5.6'
     };
 
-    beforeEach(() => {
-      packageDb = new SQLJSPackageDB(sqlDb);
+    beforeEach(async () => {
+      packageDb = await newSQLJSPackageDB();
       packageDb.saveResourceInfo(patientProfile);
       packageDb.saveResourceInfo(observationProfile);
       packageDb.saveResourceInfo(specialExtension);
       packageDb.saveResourceInfo(valueSetThree);
       packageDb.saveResourceInfo(valueSetFour);
+    });
+
+    it('should throw if the db has not been initialized', () => {
+      const uninitializedPackageDB = new SQLJSPackageDB();
+      expect(() => {
+        uninitializedPackageDB.findResourceInfos('*');
+      }).toThrow(/SQLJSPackageDB not initialized/);
     });
 
     it('should find all resources when the key is *', () => {
@@ -785,11 +828,18 @@ describe('SQLJSPackageDB', () => {
       packageVersion: '4.5.6'
     };
 
-    beforeEach(() => {
-      packageDb = new SQLJSPackageDB(sqlDb);
+    beforeEach(async () => {
+      packageDb = await newSQLJSPackageDB();
       packageDb.saveResourceInfo(specialExtension);
       packageDb.saveResourceInfo(valueSetThree);
       packageDb.saveResourceInfo(valueSetFour);
+    });
+
+    it('should throw if the db has not been initialized', () => {
+      const uninitializedPackageDB = new SQLJSPackageDB();
+      expect(() => {
+        uninitializedPackageDB.findResourceInfo('my-value-set');
+      }).toThrow(/SQLJSPackageDB not initialized/);
     });
 
     it('should return one resource when there is at least one match by resource id', () => {
@@ -944,8 +994,8 @@ describe('SQLJSPackageDB', () => {
       packageVersion: '4.5.6'
     };
 
-    beforeEach(() => {
-      packageDb = new SQLJSPackageDB(sqlDb);
+    beforeEach(async () => {
+      packageDb = await newSQLJSPackageDB();
       packageDb.savePackageInfo({
         name: 'CookiePackage',
         version: '3.2.2',
@@ -966,6 +1016,13 @@ describe('SQLJSPackageDB', () => {
       packageDb.saveResourceInfo(valueSetFour);
     });
 
+    it('should throw if the db has not been initialized', () => {
+      const uninitializedPackageDB = new SQLJSPackageDB();
+      expect(() => {
+        uninitializedPackageDB.getPackageStats('CookiePackage', '4.5.6');
+      }).toThrow(/SQLJSPackageDB not initialized/);
+    });
+
     it('should return a count of resources for a package', () => {
       const result = packageDb.getPackageStats('CookiePackage', '4.5.6');
       expect(result).toEqual({
@@ -983,13 +1040,20 @@ describe('SQLJSPackageDB', () => {
 
   describe('#exportDB', () => {
     let packageDb: SQLJSPackageDB;
-    beforeEach(() => {
-      packageDb = new SQLJSPackageDB(sqlDb);
+    beforeEach(async () => {
+      packageDb = await newSQLJSPackageDB();
       packageDb.savePackageInfo({
         name: 'CookiePackage',
         version: '3.2.2',
         packagePath: '/var/data/.fhir/CookiePackage-3.2.2'
       });
+    });
+
+    it('should throw if the db has not been initialized', async () => {
+      const uninitializedPackageDB = new SQLJSPackageDB();
+      await expect(uninitializedPackageDB.exportDB()).rejects.toThrow(
+        /SQLJSPackageDB not initialized/
+      );
     });
 
     it('should return an object with the correct mimetype and some data', async () => {

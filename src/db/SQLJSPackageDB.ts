@@ -1,5 +1,4 @@
-import util from 'util';
-import { Database, Statement } from 'sql.js';
+import initSqlJs, { Database, Statement } from 'sql.js';
 import { FindResourceInfoOptions, PackageInfo, PackageStats, ResourceInfo } from '../package';
 import { PackageDB } from './PackageDB';
 
@@ -105,50 +104,74 @@ const INSERT_RESOURCE = `INSERT INTO resource
 const SD_FLAVORS = ['Extension', 'Logical', 'Profile', 'Resource', 'Type'];
 
 export class SQLJSPackageDB implements PackageDB {
+  private db: Database;
   private insertPackageStmt: Statement;
   private insertResourceStmt: Statement;
   private findAllPackagesStmt: Statement;
   private findPackagesStmt: Statement;
   private findPackageStmt: Statement;
   private optimized: boolean;
-  constructor(
-    private db: Database,
-    initialize = true
-  ) {
-    if (initialize) {
-      this.db.run(
-        [
-          CREATE_PACKAGE_TABLE,
-          CREATE_PACKAGE_TABLE_INDICES,
-          CREATE_RESOURCE_TABLE,
-          CREATE_RESOURCE_TABLE_INDICES
-        ].join(';')
-      );
+  private initialized: boolean;
+
+  constructor() {
+    this.initialized = false;
+  }
+
+  async initialize() {
+    if (!this.initialized) {
+      const SQL = await initSqlJs();
+      // check initialization state once more since initSqlJs call was async (possible race condition)
+      if (!this.initialized) {
+        this.db = new SQL.Database();
+        this.db.run(
+          [
+            CREATE_PACKAGE_TABLE,
+            CREATE_PACKAGE_TABLE_INDICES,
+            CREATE_RESOURCE_TABLE,
+            CREATE_RESOURCE_TABLE_INDICES
+          ].join(';')
+        );
+        this.insertPackageStmt = this.db.prepare(INSERT_PACKAGE);
+        this.insertResourceStmt = this.db.prepare(INSERT_RESOURCE);
+        this.findAllPackagesStmt = this.db.prepare(FIND_ALL_PACKAGES);
+        this.findPackagesStmt = this.db.prepare(FIND_PACKAGES);
+        this.findPackageStmt = this.db.prepare(FIND_PACKAGE);
+        this.initialized = true;
+        this.optimized = false;
+      }
     }
-    this.insertPackageStmt = this.db.prepare(INSERT_PACKAGE);
-    this.insertResourceStmt = this.db.prepare(INSERT_RESOURCE);
-    this.findAllPackagesStmt = this.db.prepare(FIND_ALL_PACKAGES);
-    this.findPackagesStmt = this.db.prepare(FIND_PACKAGES);
-    this.findPackageStmt = this.db.prepare(FIND_PACKAGE);
-    this.optimized = false;
+  }
+
+  isInitialized() {
+    return this.initialized;
   }
 
   clear() {
-    this.db.exec('DELETE FROM package');
-    this.db.exec('DELETE FROM resource');
-    this.db.exec('VACUUM');
+    if (this.db) {
+      this.db.exec('DELETE FROM package');
+      this.db.exec('DELETE FROM resource');
+      this.db.exec('VACUUM');
+      this.optimized = false;
+    }
   }
 
   optimize() {
-    if (!this.optimized) {
-      this.db.exec('PRAGMA optimize=0x10002');
-      this.optimized = true;
-    } else {
-      this.db.exec('PRAGMA optimize');
+    if (this.db) {
+      if (!this.optimized) {
+        this.db.exec('PRAGMA optimize=0x10002');
+        this.optimized = true;
+      } else {
+        this.db.exec('PRAGMA optimize');
+      }
     }
   }
 
   savePackageInfo(info: PackageInfo): void {
+    if (!this.db) {
+      throw new Error(
+        'SQLJSPackageDB not initialized. Please call the initialize() function before using this class.'
+      );
+    }
     const binding: any = {
       ':name': info.name,
       ':version': info.version
@@ -163,6 +186,11 @@ export class SQLJSPackageDB implements PackageDB {
   }
 
   saveResourceInfo(info: ResourceInfo): void {
+    if (!this.db) {
+      throw new Error(
+        'SQLJSPackageDB not initialized. Please call the initialize() function before using this class.'
+      );
+    }
     const binding: any = {
       ':resourceType': info.resourceType
     };
@@ -221,6 +249,11 @@ export class SQLJSPackageDB implements PackageDB {
   }
 
   findPackageInfos(name: string): PackageInfo[] {
+    if (!this.db) {
+      throw new Error(
+        'SQLJSPackageDB not initialized. Please call the initialize() function before using this class.'
+      );
+    }
     const results: PackageInfo[] = [];
     const findStmt = name === '*' ? this.findAllPackagesStmt : this.findPackagesStmt;
     try {
@@ -237,6 +270,11 @@ export class SQLJSPackageDB implements PackageDB {
   }
 
   findPackageInfo(name: string, version: string): PackageInfo | undefined {
+    if (!this.db) {
+      throw new Error(
+        'SQLJSPackageDB not initialized. Please call the initialize() function before using this class.'
+      );
+    }
     try {
       this.findPackageStmt.bind({ ':name': name, ':version': version });
       if (this.findPackageStmt.step()) {
@@ -248,6 +286,11 @@ export class SQLJSPackageDB implements PackageDB {
   }
 
   findResourceInfos(key: string, options: FindResourceInfoOptions = {}): ResourceInfo[] {
+    if (!this.db) {
+      throw new Error(
+        'SQLJSPackageDB not initialized. Please call the initialize() function before using this class.'
+      );
+    }
     // In case a key wasn't supplied, just use empty string. Later we might have it return ALL.
     if (key == null) {
       key = '';
@@ -355,6 +398,11 @@ export class SQLJSPackageDB implements PackageDB {
   }
 
   findResourceInfo(key: string, options: FindResourceInfoOptions = {}): ResourceInfo | undefined {
+    if (!this.db) {
+      throw new Error(
+        'SQLJSPackageDB not initialized. Please call the initialize() function before using this class.'
+      );
+    }
     // TODO: Make this more sophisticated if/when it makes sense
     const results = this.findResourceInfos(key, { ...options, limit: 1 });
     if (results.length > 0) {
@@ -363,6 +411,11 @@ export class SQLJSPackageDB implements PackageDB {
   }
 
   getPackageStats(name: string, version: string): PackageStats | undefined {
+    if (!this.db) {
+      throw new Error(
+        'SQLJSPackageDB not initialized. Please call the initialize() function before using this class.'
+      );
+    }
     const pkg = this.findPackageInfo(name, version);
     if (pkg == null) {
       return;
@@ -378,18 +431,21 @@ export class SQLJSPackageDB implements PackageDB {
     };
   }
 
-  exportDB(): Promise<{ mimeType: string; data: Buffer }> {
+  async exportDB(): Promise<{ mimeType: string; data: Buffer }> {
+    if (!this.db) {
+      return Promise.reject(
+        new Error(
+          'SQLJSPackageDB not initialized. Please call the initialize() function before using this class.'
+        )
+      );
+    }
     const data = this.db.export();
     return Promise.resolve({ mimeType: 'application/x-sqlite3', data: Buffer.from(data) });
   }
+}
 
-  logPackageTable() {
-    const res = this.db.exec('SELECT * FROM package');
-    console.log(util.inspect(res, false, 3, true));
-  }
-
-  logResourceTable() {
-    const res = this.db.exec('SELECT * FROM resource');
-    console.log(util.inspect(res, false, 3, true));
-  }
+export async function newSQLJSPackageDB(): Promise<SQLJSPackageDB> {
+  const packageDB = new SQLJSPackageDB();
+  await packageDB.initialize();
+  return packageDB;
 }
