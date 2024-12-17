@@ -1,5 +1,5 @@
 import initSqlJs from 'sql.js';
-import { newSQLJSPackageDB, SQLJSPackageDB } from '../../src/db/SQLJSPackageDB';
+import { createSQLJSPackageDB, SQLJSPackageDB } from '../../src/db/SQLJSPackageDB';
 import { ResourceInfo } from '../../src/package';
 import { byLoadOrder, byType } from '../../src/sort';
 import { loggerSpy } from '../testhelpers';
@@ -60,7 +60,7 @@ describe('SQLJSPackageDB', () => {
     };
 
     beforeEach(async () => {
-      packageDb = await newSQLJSPackageDB();
+      packageDb = await createSQLJSPackageDB();
       packageDb.savePackageInfo({
         name: 'CookiePackage',
         version: '3.2.2',
@@ -109,7 +109,7 @@ describe('SQLJSPackageDB', () => {
     };
 
     beforeEach(async () => {
-      packageDb = await newSQLJSPackageDB();
+      packageDb = await createSQLJSPackageDB();
       packageDb.savePackageInfo({
         name: 'CookiePackage',
         version: '4.5.6',
@@ -138,7 +138,7 @@ describe('SQLJSPackageDB', () => {
     let packageDb: SQLJSPackageDB;
 
     beforeEach(async () => {
-      packageDb = await newSQLJSPackageDB();
+      packageDb = await createSQLJSPackageDB();
     });
 
     it('should throw if the db has not been initialized', () => {
@@ -220,7 +220,7 @@ describe('SQLJSPackageDB', () => {
     let packageDb: SQLJSPackageDB;
 
     beforeEach(async () => {
-      packageDb = await newSQLJSPackageDB();
+      packageDb = await createSQLJSPackageDB();
     });
 
     it('should throw if the db has not been initialized', () => {
@@ -322,7 +322,7 @@ describe('SQLJSPackageDB', () => {
     let packageDb: SQLJSPackageDB;
 
     beforeEach(async () => {
-      packageDb = await newSQLJSPackageDB();
+      packageDb = await createSQLJSPackageDB();
       packageDb.savePackageInfo({
         name: 'CookiePackage',
         version: '1.0.0',
@@ -402,7 +402,7 @@ describe('SQLJSPackageDB', () => {
     let packageDb: SQLJSPackageDB;
 
     beforeEach(async () => {
-      packageDb = await newSQLJSPackageDB();
+      packageDb = await createSQLJSPackageDB();
       packageDb.savePackageInfo({
         name: 'CookiePackage',
         version: '1.0.0',
@@ -501,7 +501,7 @@ describe('SQLJSPackageDB', () => {
     };
 
     beforeEach(async () => {
-      packageDb = await newSQLJSPackageDB();
+      packageDb = await createSQLJSPackageDB();
       packageDb.saveResourceInfo(patientProfile);
       packageDb.saveResourceInfo(observationProfile);
       packageDb.saveResourceInfo(specialExtension);
@@ -829,7 +829,7 @@ describe('SQLJSPackageDB', () => {
     };
 
     beforeEach(async () => {
-      packageDb = await newSQLJSPackageDB();
+      packageDb = await createSQLJSPackageDB();
       packageDb.saveResourceInfo(specialExtension);
       packageDb.saveResourceInfo(valueSetThree);
       packageDb.saveResourceInfo(valueSetFour);
@@ -995,7 +995,7 @@ describe('SQLJSPackageDB', () => {
     };
 
     beforeEach(async () => {
-      packageDb = await newSQLJSPackageDB();
+      packageDb = await createSQLJSPackageDB();
       packageDb.savePackageInfo({
         name: 'CookiePackage',
         version: '3.2.2',
@@ -1041,7 +1041,7 @@ describe('SQLJSPackageDB', () => {
   describe('#exportDB', () => {
     let packageDb: SQLJSPackageDB;
     beforeEach(async () => {
-      packageDb = await newSQLJSPackageDB();
+      packageDb = await createSQLJSPackageDB();
       packageDb.savePackageInfo({
         name: 'CookiePackage',
         version: '3.2.2',
