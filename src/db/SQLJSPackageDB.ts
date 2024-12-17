@@ -444,7 +444,7 @@ export class SQLJSPackageDB implements PackageDB {
   }
 }
 
-export async function newSQLJSPackageDB(): Promise<SQLJSPackageDB> {
+export async function createSQLJSPackageDB(): Promise<SQLJSPackageDB> {
   const packageDB = new SQLJSPackageDB();
   await packageDB.initialize();
   return packageDB;
