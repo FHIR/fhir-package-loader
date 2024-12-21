@@ -138,11 +138,9 @@ function getFilePaths(paths: string[], recursive: boolean): string[] {
     } else if (stat.isDirectory()) {
       fs.readdirSync(p, { withFileTypes: true }).forEach(entry => {
         if (entry.isFile()) {
-          filePaths.add(path.resolve(entry.parentPath, entry.name));
+          filePaths.add(path.resolve(p, entry.name));
         } else if (recursive && entry.isDirectory()) {
-          getFilePaths([path.resolve(entry.parentPath, entry.name)], recursive).forEach(fp =>
-            filePaths.add(fp)
-          );
+          getFilePaths([path.resolve(p, entry.name)], recursive).forEach(fp => filePaths.add(fp));
         }
       });
     }
