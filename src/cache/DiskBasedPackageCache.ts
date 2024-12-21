@@ -65,7 +65,7 @@ export class DiskBasedPackageCache implements PackageCache {
     return fs
       .readdirSync(contentPath, { withFileTypes: true })
       .filter(entry => entry.isFile() && /^[^.].*\.json$/i.test(entry.name))
-      .map(entry => path.resolve(entry.path, entry.name))
+      .map(entry => path.resolve(contentPath, entry.name))
       .sort();
   }
 
