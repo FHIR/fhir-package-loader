@@ -117,9 +117,9 @@ export class SQLJSPackageDB implements PackageDB {
     this.initialized = false;
   }
 
-  async initialize() {
+  async initialize(initSql?: initSqlJs.SqlJsStatic) {
     if (!this.initialized) {
-      const SQL = await initSqlJs();
+      const SQL = initSql ?? (await initSqlJs());
       // check initialization state once more since initSqlJs call was async (possible race condition)
       if (!this.initialized) {
         this.db = new SQL.Database();
