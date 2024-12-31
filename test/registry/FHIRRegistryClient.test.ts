@@ -1,5 +1,9 @@
+import { IncomingMessage } from 'http';
+import https from 'https';
+import path from 'path';
 import { Readable } from 'stream';
 import axios from 'axios';
+import nock from 'nock';
 import {
   IncorrectWildcardVersionFormatError,
   LatestVersionUnavailableError
@@ -423,6 +427,58 @@ describe('FHIRRegistryClient', () => {
         await expect(latest).rejects.toThrow(
           /Incorrect version format for package hl7.terminology.r4: 1.x. Wildcard should only be used to specify patch versions./
         );
+      });
+    });
+
+    describe('#download with https.get', () => {
+      beforeAll(() => {
+        nock.disableNetConnect();
+      });
+
+      afterAll(() => {
+        nock.cleanAll();
+        nock.enableNetConnect();
+      });
+
+      it('should use https.get when specified in options', async () => {
+        axiosSpy = jest.spyOn(axios, 'get');
+        const httpsSpy = jest.spyOn(https, 'get');
+        const scope = nock('https://packages.fhir.org')
+          .get('/hl7.fhir.small/0.1.0')
+          .replyWithFile(
+            200,
+            path.join(__dirname, '..', 'cache', 'fixtures', 'tarballs', 'small-package.tgz'),
+            {
+              'Content-Type': 'application/tar+gzip'
+            }
+          );
+        const httpsClient = new FHIRRegistryClient('https://packages.fhir.org', {
+          log: loggerSpy.log,
+          isBrowserEnvironment: true
+        });
+        await httpsClient.download('hl7.fhir.small', '0.1.0');
+        expect(axiosSpy).not.toHaveBeenCalled();
+        expect(httpsSpy).toHaveBeenCalledTimes(1);
+        scope.done(); // will throw if the nocked URL was never requested
+      });
+
+      it('should get the Readable IncomingMessage when successful using https', async () => {
+        const scope = nock('https://packages.fhir.org')
+          .get('/hl7.fhir.small/0.1.0')
+          .replyWithFile(
+            200,
+            path.join(__dirname, '..', 'cache', 'fixtures', 'tarballs', 'small-package.tgz'),
+            {
+              'Content-Type': 'application/tar+gzip'
+            }
+          );
+        const httpsClient = new FHIRRegistryClient('https://packages.fhir.org', {
+          log: loggerSpy.log,
+          isBrowserEnvironment: true
+        });
+        const downloadResult = await httpsClient.download('hl7.fhir.small', '0.1.0');
+        expect(downloadResult).toBeInstanceOf(IncomingMessage);
+        scope.done(); // will throw if the nocked URL was never requested
       });
     });
   });
