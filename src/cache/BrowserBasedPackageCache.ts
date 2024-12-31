@@ -63,7 +63,7 @@ export class BrowserBasedPackageCache implements PackageCache {
         stream.on('end', () => {
           try {
             // Only add:
-            // - files that are directly in 'packages' and not in nested folders to align with DiskBasedPackageCache, which reads directories non-recursively
+            // - files that are directly in 'package' and not in nested folders to align with DiskBasedPackageCache, which reads directories non-recursively
             // - files at the root-level to align with cleanCachedPackage in DiskBasedPackageCache
             const fileParts = header.name.split('/');
             const isInCleanedPackage =
