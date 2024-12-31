@@ -33,14 +33,17 @@ export class FHIRRegistryClient implements RegistryClient {
 
     // Right now, this approach is needed for browser environments
     if (this.isBrowserEnvironment) {
-      return new Promise(resolve => {
+      return new Promise((resolve, reject) => {
         https
           .get(url, res => {
-            resolve(res);
+            if (res.statusCode < 400) {
+              resolve(res);
+            } else {
+              reject(`Failed to download ${name}#${version} from ${url}`);
+            }
           })
-          .on('error', e => {
-            console.log(e);
-            throw new Error(`Failed to download ${name}#${version} from ${url}`);
+          .on('error', () => {
+            reject(`Failed to download ${name}#${version} from ${url}`);
           });
       });
     }
