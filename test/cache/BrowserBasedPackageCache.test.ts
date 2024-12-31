@@ -102,9 +102,9 @@ describe('BrowserBasedPackageCache', () => {
       expect(bundle).toBeUndefined(); // Bundle resource doesn't have an id
     });
 
-    // Current implementation of BrowserBasedPackageCache does not overwrite package if it exists
-    // This is a difference from the DiskBasedPackageCache but has not been needed yet
-    it.skip('should cache a fhir package tarball to the cache folder and replace the existing cached package if applicable', async () => {});
+    // Note: Current implementation of BrowserBasedPackageCache does not overwrite package if it exists
+    // This is a difference from the DiskBasedPackageCache but has not been needed yet. If needed, add this test.
+    // it('should cache a fhir package tarball to the cache folder and replace the existing cached package if applicable', async () => {});
   });
 
   describe('#isPackageInCache', () => {
@@ -152,14 +152,12 @@ describe('BrowserBasedPackageCache', () => {
   });
 
   describe('#getPotentialResourcePaths', () => {
-    // Note: This implementation differs from DiskBasedPackageCache because it returns potentials from nested folders
     it('should return potential paths for a package in the cache', () => {
       const potentials = cache.getPotentialResourcePaths('fhir.small', '0.1.0');
-      expect(potentials).toHaveLength(4);
+      expect(potentials).toHaveLength(3);
       expect(potentials).toContain('fhir.small#0.1.0#ImplementationGuide-fhir.small');
       expect(potentials).toContain('fhir.small#0.1.0#packagejson-fhir.small');
       expect(potentials).toContain('fhir.small#0.1.0#StructureDefinition-MyPatient');
-      expect(potentials).toContain('fhir.small#0.1.0#Patient-PatientExample');
       expect(loggerSpy.getAllLogs()).toHaveLength(0);
     });
 

@@ -63,7 +63,8 @@ export class BrowserBasedPackageCache implements PackageCache {
         stream.on('end', () => {
           try {
             const resource = JSON.parse(resourceData);
-            if (resource.resourceType) {
+            // Split on '/' to ensure files that were in nested folders are not cached
+            if (resource.resourceType && resource.id && header.name.split('/').length <= 2) {
               resources.push(resource);
             } else if (header.name.endsWith('/package.json') || header.name === 'package.json') {
               // Add a placeholder resourceType and id so we can uniquely store and retrieve package.json
@@ -173,7 +174,7 @@ async function addResourcesToDatabase(
     const openRequest = indexedDB.open(databaseName, databaseVersion);
     openRequest.onupgradeneeded = event => {
       const database = (event.target as IDBOpenDBRequest).result;
-      database.createObjectStore(packageLabel, { keyPath: ['id', 'resourceType'] });
+      database.createObjectStore(packageLabel, { keyPath: ['resourceType', 'id'] });
     };
     openRequest.onsuccess = event => {
       const database = (event.target as IDBOpenDBRequest).result;
