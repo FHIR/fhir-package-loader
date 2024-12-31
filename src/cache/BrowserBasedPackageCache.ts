@@ -212,11 +212,9 @@ function initializeResourcesInLocalMap(
       reject('Unexpected error trying to initialize');
     };
     request.onsuccess = (event: any) => {
-      const listOfResources: [string, any][] = event.target.result.map((r: any) => [
-        `${r.resourceType}-${r.id}`,
-        r
-      ]);
-      const resourceMap = new Map(listOfResources);
+      const resourceMap: Map<string, any> = new Map(
+        event.target.result.map((r: any) => [`${r.resourceType}-${r.id}`, r])
+      );
       resolve([packageLabel, resourceMap]);
     };
   });

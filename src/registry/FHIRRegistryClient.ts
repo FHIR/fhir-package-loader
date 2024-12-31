@@ -4,16 +4,18 @@ import { axiosGet, LogFunction } from '../utils';
 import { RegistryClient, RegistryClientOptions } from './RegistryClient';
 import { resolveVersion } from './utils';
 
+type FHIRRegistryClientOptions = RegistryClientOptions & { isBrowserEnvironment?: boolean };
+
 export class FHIRRegistryClient implements RegistryClient {
   public endpoint: string;
   private log: LogFunction;
-  private useHttps: boolean;
+  private isBrowserEnvironment: boolean;
 
-  constructor(endpoint: string, options?: RegistryClientOptions) {
+  constructor(endpoint: string, options?: FHIRRegistryClientOptions) {
     // Remove trailing '/' from endpoint if applicable
     this.endpoint = endpoint.replace(/\/$/, '');
     this.log = options.log ?? (() => {});
-    this.useHttps = options.useHttps ?? false;
+    this.isBrowserEnvironment = options.isBrowserEnvironment ?? false;
   }
 
   async resolveVersion(name: string, version: string): Promise<string> {
@@ -29,8 +31,8 @@ export class FHIRRegistryClient implements RegistryClient {
     const url = `${this.endpoint}/${name}/${version}`;
     this.log('info', `Attempting to download ${name}#${version} from ${url}`);
 
-    // Right now, this is really only needed for browser environments
-    if (this.useHttps) {
+    // Right now, this approach is needed for browser environments
+    if (this.isBrowserEnvironment) {
       return new Promise(resolve => {
         https
           .get(url, res => {

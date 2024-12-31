@@ -454,12 +454,12 @@ describe('FHIRRegistryClient', () => {
           );
         const httpsClient = new FHIRRegistryClient('https://packages.fhir.org', {
           log: loggerSpy.log,
-          useHttps: true
+          isBrowserEnvironment: true
         });
         await httpsClient.download('hl7.fhir.small', '0.1.0');
         expect(axiosSpy).not.toHaveBeenCalled();
         expect(httpsSpy).toHaveBeenCalledTimes(1);
-        scope.done();
+        scope.done(); // will throw if the nocked URL was never requested
       });
 
       it('should get the Readable IncomingMessage when successful using https', async () => {
@@ -474,7 +474,7 @@ describe('FHIRRegistryClient', () => {
           );
         const httpsClient = new FHIRRegistryClient('https://packages.fhir.org', {
           log: loggerSpy.log,
-          useHttps: true
+          isBrowserEnvironment: true
         });
         const downloadResult = await httpsClient.download('hl7.fhir.small', '0.1.0');
         expect(downloadResult).toBeInstanceOf(IncomingMessage);

@@ -30,11 +30,10 @@ describe('SQLJSPackageDB', () => {
       expect(packageDb.isInitialized()).toBe(true);
     });
 
-    it('should create an initialize a new SQLJSPackageDB using a provided SQL', async () => {
+    it('should create and initialize a new SQLJSPackageDB using a provided locateFile option', async () => {
       const packageDb = new SQLJSPackageDB();
       expect(packageDb.isInitialized()).toBe(false);
-      const initSql = await initSqlJs({ locateFile: () => 'fake/file/here' }); // Used when config is needed
-      await packageDb.initialize(initSql);
+      await packageDb.initialize({ locateFile: () => 'fake/file/here' });
       expect(packageDb).toBeDefined();
       expect(packageDb.isInitialized()).toBe(true);
     });

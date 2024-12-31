@@ -103,6 +103,10 @@ const INSERT_RESOURCE = `INSERT INTO resource
 
 const SD_FLAVORS = ['Extension', 'Logical', 'Profile', 'Resource', 'Type'];
 
+type SQLJSPackageDBInitializeOptions = {
+  locateFile?: (url: string, scriptDirectory: string) => string; // Based on config option for initSqlJs
+};
+
 export class SQLJSPackageDB implements PackageDB {
   private db: Database;
   private insertPackageStmt: Statement;
@@ -117,9 +121,11 @@ export class SQLJSPackageDB implements PackageDB {
     this.initialized = false;
   }
 
-  async initialize(initSql?: initSqlJs.SqlJsStatic) {
+  async initialize(options: SQLJSPackageDBInitializeOptions = {}) {
     if (!this.initialized) {
-      const SQL = initSql ?? (await initSqlJs());
+      const SQL = await initSqlJs({
+        ...(options.locateFile && { locateFile: options.locateFile })
+      });
       // check initialization state once more since initSqlJs call was async (possible race condition)
       if (!this.initialized) {
         this.db = new SQL.Database();

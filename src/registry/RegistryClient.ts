@@ -3,7 +3,6 @@ import { LogFunction } from '../utils';
 
 export type RegistryClientOptions = {
   log?: LogFunction;
-  useHttps?: boolean;
 };
 
 export interface RegistryClient {
