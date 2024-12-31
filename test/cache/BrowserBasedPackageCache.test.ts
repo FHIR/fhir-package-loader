@@ -93,11 +93,11 @@ describe('BrowserBasedPackageCache', () => {
       );
       expect(packageJSON.name).toEqual('fhir.small.wrong');
       expect(packageJSON.version).toEqual('0.1.0');
-      // Check that resources in example and other folders are added if possible
+      // Check that resources in nested folders are not added
       const patientExample = allSavedResources.find(
         (r: any) => r.resourceType === 'Patient' && r.id === 'PatientExample'
       );
-      expect(patientExample.name).toBeDefined();
+      expect(patientExample).toBeUndefined();
       const bundle = allSavedResources.find((r: any) => r.resourceType === 'Bundle');
       expect(bundle).toBeUndefined(); // Bundle resource doesn't have an id
     });

@@ -62,15 +62,23 @@ export class BrowserBasedPackageCache implements PackageCache {
         });
         stream.on('end', () => {
           try {
-            const resource = JSON.parse(resourceData);
-            // Split on '/' to ensure files that were in nested folders are not cached
-            if (resource.resourceType && resource.id && header.name.split('/').length <= 2) {
-              resources.push(resource);
-            } else if (header.name.endsWith('/package.json') || header.name === 'package.json') {
-              // Add a placeholder resourceType and id so we can uniquely store and retrieve package.json
-              resource.resourceType = 'packagejson';
-              resource.id = name; // This should be the same as resource.name
-              resources.push(resource);
+            // Only add:
+            // - files that are directly in 'packages' and not in nested folders to align with DiskBasedPackageCache, which reads directories non-recursively
+            // - files at the root-level to align with cleanCachedPackage in DiskBasedPackageCache
+            const fileParts = header.name.split('/');
+            const isInCleanedPackage =
+              (fileParts.length === 2 && fileParts[0] === 'package') || fileParts.length === 1;
+
+            if (isInCleanedPackage) {
+              const resource = JSON.parse(resourceData);
+              if (resource.resourceType && resource.id) {
+                resources.push(resource);
+              } else if (header.name.endsWith('/package.json') || header.name === 'package.json') {
+                // Add a placeholder resourceType and id so we can uniquely store and retrieve package.json
+                resource.resourceType = 'packagejson';
+                resource.id = name; // This should be the same as resource.name
+                resources.push(resource);
+              }
             }
           } catch {
             // Right now, if the JSON doesn't parse, we just ignore it.
