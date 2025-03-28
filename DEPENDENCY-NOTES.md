@@ -4,4 +4,3 @@ The `npm outdated` command reports a dependency as outdated. It is not being upd
 
 - `@types/node`: don't update until Node 22 is LTS version (currently Node 20).
 - `chalk`: major version 5 causes problems for jest. Keep updated to latest 4.x release.
-- `commander`: major version upgrade is definitely possible and should be done when time allows
