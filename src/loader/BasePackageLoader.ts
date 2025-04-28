@@ -123,7 +123,7 @@ export class BasePackageLoader implements PackageLoader {
     if (downloadErrorMessage) {
       // Loading succeeded despite a download error. This might happen if a current build is stale,
       // but the download fails, in which case the stale build will be loaded instead.
-      this.log('error', `${downloadErrorMessage}. Using most recent cached package instead.`);
+      this.log('warn', `${downloadErrorMessage}. Using most recent cached package instead.`);
     }
     this.log('info', `Loaded ${stats.name}#${stats.version} with ${stats.resourceCount} resources`);
     return LoadStatus.LOADED;

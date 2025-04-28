@@ -524,7 +524,7 @@ describe('BasePackageLoader', () => {
       expect(result).toBe(LoadStatus.LOADED);
     });
 
-    it('should log an error but load cached version if it cannot download current package when current version in cache out of date', async () => {
+    it('should log a warning but load cached version if it cannot download current package when current version in cache out of date', async () => {
       const pkg = setupLoadPackage(
         'some.ig',
         'current',
@@ -562,7 +562,7 @@ describe('BasePackageLoader', () => {
       expect(loggerSpy.getMessageAtIndex(-2, 'info')).toBe(
         'Cached package some.ig#current is out of date and will be replaced by the most recent current build.'
       );
-      expect(loggerSpy.getLastMessage('error')).toBe(
+      expect(loggerSpy.getLastMessage('warn')).toBe(
         'Failed to download most recent some.ig#current from current builds. Using most recent cached package instead.'
       );
       expect(loggerSpy.getLastMessage('info')).toBe('Loaded some.ig#current with 4 resources');
