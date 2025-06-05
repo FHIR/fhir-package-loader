@@ -174,6 +174,7 @@ describe('NPMRegistryClient', () => {
     });
 
     afterAll(() => {
+      process.env = OLD_ENV; // restore old env
       authSpy.mockRestore();
     });
 
