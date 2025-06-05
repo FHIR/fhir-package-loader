@@ -151,6 +151,40 @@ describe('NPMRegistryClient', () => {
     });
   });
 
+  describe('#authentication', () => {
+    let authSpy: jest.SpyInstance;
+    const OLD_ENV = process.env;
+
+    beforeAll(() => {
+      // inject token into the env
+      process.env = { ...OLD_ENV, FPL_TOKEN: 'test-token' };
+
+      authSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string, config: any): any => {
+        // verify the Authorization header was set correctly
+        expect(config?.headers?.Authorization).toBe('Bearer test-token');
+
+        // stub package manifest fetch
+        if (uri === 'https://my.npm.server.org/hl7.terminology.r4') {
+          return { data: TERM_PKG_RESPONSE };
+        }
+
+        // stub actual download
+        return { status: 200, data: Readable.from(['auth-test-data']) };
+      });
+    });
+
+    afterAll(() => {
+      authSpy.mockRestore();
+    });
+
+    it('should include FPL_TOKEN auth header when token is provided', async () => {
+      const client = new NPMRegistryClient('https://my.npm.server.org', { log: loggerSpy.log });
+
+      const stream = await client.download('hl7.terminology.r4', '1.2.3-test');
+      expect(stream.read()).toBe('auth-test-data');
+    });
+  });
+
   describe('#download', () => {
     describe('#downloadInvalidVersion', () => {
       beforeEach(() => {
