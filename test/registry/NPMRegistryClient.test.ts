@@ -157,7 +157,7 @@ describe('NPMRegistryClient', () => {
 
     beforeAll(() => {
       // inject token into the env
-      process.env = { ...OLD_ENV, FPL_TOKEN: 'test-token' };
+      process.env = { ...OLD_ENV, FPL_REGISTRY_TOKEN: 'test-token' };
 
       authSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string, config: any): any => {
         // verify the Authorization header was set correctly
@@ -178,7 +178,7 @@ describe('NPMRegistryClient', () => {
       authSpy.mockRestore();
     });
 
-    it('should include FPL_TOKEN auth header when token is provided', async () => {
+    it('should include FPL_REGISTRY_TOKEN auth header when token is provided', async () => {
       const client = new NPMRegistryClient('https://my.npm.server.org', { log: loggerSpy.log });
 
       const stream = await client.download('hl7.terminology.r4', '1.2.3-test');

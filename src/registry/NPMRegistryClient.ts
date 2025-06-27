@@ -14,9 +14,9 @@ export class NPMRegistryClient implements RegistryClient {
     this.endpoint = endpoint.replace(/\/$/, '');
     this.log = options.log ?? (() => {});
 
-    // If an FPL_TOKEN is provided, set it in the headers for authentication
-    if (process.env.FPL_TOKEN) {
-      this.headers.set('Authorization', `Bearer ${process.env.FPL_TOKEN}`);
+    // If an FPL_REGISTRY_TOKEN is provided, set it in the headers for authentication
+    if (process.env.FPL_REGISTRY_TOKEN) {
+      this.headers.set('Authorization', `Bearer ${process.env.FPL_REGISTRY_TOKEN}`);
     }
   }
 
