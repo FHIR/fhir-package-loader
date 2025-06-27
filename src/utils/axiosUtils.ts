@@ -20,9 +20,17 @@ export async function axiosGet(
     axiosOptions.httpsAgent = new (HttpsProxyAgent as any)(httpsProxy);
     axiosOptions.proxy = false;
   }
-  if (Object.keys(axiosOptions).length > 0) {
-    return await axios.get(url, axiosOptions);
-  } else {
-    return await axios.get(url);
+  try {
+    if (Object.keys(axiosOptions).length > 0) {
+      return await axios.get(url, axiosOptions);
+    } else {
+      return await axios.get(url);
+    }
+  } catch (error) {
+    if (error.response?.status === 401) {
+      return error.response;
+    } else {
+      throw error;
+    }
   }
 }

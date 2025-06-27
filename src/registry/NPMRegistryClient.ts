@@ -47,6 +47,9 @@ export class NPMRegistryClient implements RegistryClient {
     if (tarballRes?.status === 200 && tarballRes?.data) {
       return tarballRes.data;
     }
+    if (tarballRes?.status === 401) {
+      this.log('error', 'Unauthorized! Please check your FPL_REGISTRY_TOKEN.');
+    }
     throw new Error(`Failed to download ${name}#${version} from ${url}`);
   }
 }
