@@ -112,6 +112,7 @@ The [default PackageLoader](src/loader/DefaultPackageLoader.ts) implementation p
 * the standard FHIR cache is used for local storage of unzipped packages (`$USER_HOME/.fhir/packages`)
 * the standard FHIR registry is used (`packages.fhir.org`) for downloading published packages, falling back to `packages2.fhir.org` when necessary
   * unless an `FPL_REGISTRY` environment variable is defined, in which case its value is used as the URL for an NPM registry to use _instead_ of the standard FHIR registry
+    * if an additional `FPL_REGISTRY_TOKEN` environment variable is defined, it will be used as an authorization header (bearer token)
 * the `build.fhir.org` build server is used for downloading _current_ builds of packages
 * a 200-item LRU in-memory cache is used to minimize repeated disk reads for resource files
 
