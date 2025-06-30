@@ -1,4 +1,3 @@
-import { LogFunction } from '../utils';
 import { FHIRRegistryClient } from './FHIRRegistryClient';
 import { NPMRegistryClient } from './NPMRegistryClient';
 import { RedundantRegistryClient } from './RedundantRegistryClient';
@@ -11,7 +10,7 @@ export class DefaultRegistryClient extends RedundantRegistryClient {
   constructor(options?: RegistryClientOptions) {
     let clients: RegistryClient[];
     // If a custom registry has been specified, use that
-    const customRegistry = getCustomRegistry(options.log);
+    const customRegistry = process.env.FPL_REGISTRY;
     if (customRegistry) {
       clients = [new NPMRegistryClient(customRegistry, options)];
     }
@@ -23,20 +22,5 @@ export class DefaultRegistryClient extends RedundantRegistryClient {
       ];
     }
     super(clients, options);
-  }
-}
-
-let hasLoggedCustomRegistry = false;
-
-function getCustomRegistry(log: LogFunction = () => {}) {
-  if (process.env.FPL_REGISTRY) {
-    if (!hasLoggedCustomRegistry) {
-      hasLoggedCustomRegistry = true;
-      log(
-        'info',
-        `Using custom registry specified by FPL_REGISTRY environment variable: ${process.env.FPL_REGISTRY}`
-      );
-    }
-    return process.env.FPL_REGISTRY;
   }
 }

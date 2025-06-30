@@ -1,3 +1,4 @@
+import type { BasePackageLoaderOptions } from '../../src/loader/BasePackageLoader';
 import { DefaultRegistryClient } from '../../src/registry/DefaultRegistryClient';
 import { FHIRRegistryClient } from '../../src/registry/FHIRRegistryClient';
 import { NPMRegistryClient } from '../../src/registry/NPMRegistryClient';
@@ -19,9 +20,6 @@ describe('DefaultRegistryClient', () => {
         'https://custom-registry.example.org'
       );
       expect(defaultClient.clients[0]).toBeInstanceOf(NPMRegistryClient);
-      expect(loggerSpy.getLastMessage('info')).toBe(
-        'Using custom registry specified by FPL_REGISTRY environment variable: https://custom-registry.example.org'
-      );
     });
 
     it('should make a client with fhir registries if no custom registry specified', () => {
@@ -34,6 +32,41 @@ describe('DefaultRegistryClient', () => {
         'https://packages2.fhir.org/packages'
       );
       expect(defaultClient.clients[1]).toBeInstanceOf(FHIRRegistryClient);
+    });
+
+    it('should not throw when instantiated in subclass constructor before super()', () => {
+      // Define a base class
+      class BaseClass {
+        registryClient: DefaultRegistryClient;
+        constructor(registryClient: DefaultRegistryClient) {
+          this.registryClient = registryClient;
+        }
+      }
+
+      // Define a subclass that extends BaseClass
+      class SubClass extends BaseClass {
+        private fplLogInterceptor = (level: string, message: string) => {
+          console.log(`FPL Log Interceptor - Level: ${level}, Message: ${message}`);
+        };
+
+        constructor() {
+          // Create DefaultRegistryClient before calling super()
+          const options: BasePackageLoaderOptions = {
+            log: (level: string, message: string) => {
+              this.fplLogInterceptor(level, message);
+            }
+          };
+          const registryClient = new DefaultRegistryClient(options);
+          super(registryClient);
+        }
+      }
+
+      // This should not throw an exception
+      process.env.FPL_REGISTRY = 'http://custom-registry.example.org';
+
+      expect(() => {
+        new SubClass();
+      }).not.toThrow();
     });
   });
 });
