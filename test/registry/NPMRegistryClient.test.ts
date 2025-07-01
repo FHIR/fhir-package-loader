@@ -157,7 +157,11 @@ describe('NPMRegistryClient', () => {
 
     beforeAll(() => {
       // inject token into the env
-      process.env = { ...OLD_ENV, FPL_REGISTRY_TOKEN: 'test-token' };
+      process.env = {
+        ...OLD_ENV,
+        FPL_REGISTRY: 'https://registry.example.org/packages',
+        FPL_REGISTRY_TOKEN: 'test-token'
+      };
 
       authSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string, config: any): any => {
         // verify the Authorization header was set correctly

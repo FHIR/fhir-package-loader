@@ -20,7 +20,7 @@ export async function axiosGet(
     axiosOptions.httpsAgent = new (HttpsProxyAgent as any)(httpsProxy);
     axiosOptions.proxy = false;
   }
-  
+
   // If we are using a custom FPL registry and have a token, set the Authorization header
   if (process.env.FPL_REGISTRY && process.env.FPL_REGISTRY_TOKEN) {
     axiosOptions.headers = {
