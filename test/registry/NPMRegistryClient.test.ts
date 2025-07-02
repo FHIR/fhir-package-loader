@@ -164,16 +164,15 @@ describe('NPMRegistryClient', () => {
       };
 
       authSpy = jest.spyOn(axios, 'get').mockImplementation((uri: string, config: any): any => {
-        // verify the Authorization header was set correctly
-        expect(config?.headers?.Authorization).toBe('Bearer test-token');
-
-        // stub package manifest fetch
-        if (uri === 'https://my.npm.server.org/hl7.terminology.r4') {
-          return { data: TERM_PKG_RESPONSE };
+        if (process.env.FPL_REGISTRY && uri.startsWith(process.env.FPL_REGISTRY)) {
+          expect(config?.headers?.Authorization).toBe('Bearer test-token');
+          return { status: 200, data: Readable.from(['test-data-with-bearer-token']) };
+        } else if (process.env.FPL_REGISTRY) {
+          expect(config?.headers?.Authorization).toBeUndefined();
+          return { status: 200, data: Readable.from(['test-data-without-bearer-token']) };
+        } else {
+          fail('FPL_REGISTRY environment variable is not set, test setup failure');
         }
-
-        // stub actual download
-        return { status: 200, data: Readable.from(['auth-test-data']) };
       });
     });
 
@@ -182,11 +181,20 @@ describe('NPMRegistryClient', () => {
       authSpy.mockRestore();
     });
 
-    it('should include FPL_REGISTRY_TOKEN auth header when token is provided', async () => {
+    it('should not include FPL_REGISTRY_TOKEN auth header when the URL does not start with FPL_REGISTRY', async () => {
       const client = new NPMRegistryClient('https://my.npm.server.org', { log: loggerSpy.log });
 
       const stream = await client.download('hl7.terminology.r4', '1.2.3-test');
-      expect(stream.read()).toBe('auth-test-data');
+      expect(stream.read()).toBe('test-data-without-bearer-token');
+    });
+
+    it('should include FPL_REGISTRY_TOKEN auth header when the URL starts with FPL_REGISTRY', async () => {
+      const client = new NPMRegistryClient('https://registry.example.org/packages', {
+        log: loggerSpy.log
+      });
+
+      const stream = await client.download('hl7.terminology.r4', '1.2.3-test');
+      expect(stream.read()).toBe('test-data-with-bearer-token');
     });
   });
 

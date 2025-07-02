@@ -22,7 +22,11 @@ export async function axiosGet(
   }
 
   // If we are using a custom FPL registry and have a token, set the Authorization header
-  if (process.env.FPL_REGISTRY && process.env.FPL_REGISTRY_TOKEN) {
+  if (
+    process.env.FPL_REGISTRY &&
+    process.env.FPL_REGISTRY_TOKEN &&
+    url.startsWith(process.env.FPL_REGISTRY)
+  ) {
     axiosOptions.headers = {
       ...axiosOptions.headers,
       Authorization: `Bearer ${process.env.FPL_REGISTRY_TOKEN}`
