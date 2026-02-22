@@ -1,6 +1,6 @@
 {
   "name": "fhir-package-loader",
-  "version": "2.2.2",
+  "version": "2.2.3",
   "description": "JavaScript package for downloading and accessing FHIR definitions",
   "scripts": {
     "build": "tsc",
