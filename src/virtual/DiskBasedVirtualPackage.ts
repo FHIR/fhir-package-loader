@@ -1,5 +1,5 @@
 import path from 'path';
-import { Fhir as FHIRConverter } from 'fhir/fhir';
+import { Fhir as FHIRConverter } from 'fhir-tool';
 import fs from 'fs-extra';
 import { PackageJSON } from '../package/PackageJSON';
 import { LogFunction } from '../utils/logger';
