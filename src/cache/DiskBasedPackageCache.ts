@@ -1,7 +1,7 @@
 import path from 'path';
 import { Readable } from 'stream';
 import { pipeline } from 'stream/promises';
-import { Fhir as FHIRConverter } from 'fhir/fhir';
+import { Fhir as FHIRConverter } from 'fhir-tool';
 import fs from 'fs-extra';
 import * as tar from 'tar';
 import temp from 'temp';
