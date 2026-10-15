@@ -194,6 +194,13 @@ describe('FHIRRegistryClient', () => {
 
       it('should get the data of the package when 200 response', async () => {
         const result = await client.download('hl7.terminology.r4', '1.2.3-test');
+        expect(axiosSpy).toHaveBeenCalledWith(
+          'https://packages.fhir.org/hl7.terminology.r4/1.2.3-test',
+          expect.objectContaining({
+            responseType: 'stream',
+            headers: { Accept: 'application/octet-stream' }
+          })
+        );
         expect(loggerSpy.getLastMessage('info')).toBe(
           'Attempting to download hl7.terminology.r4#1.2.3-test from https://packages.fhir.org/hl7.terminology.r4/1.2.3-test'
         );
@@ -278,6 +285,9 @@ describe('FHIRRegistryClient', () => {
 
       it('should get the latest version of a package on the packages server', async () => {
         const latest = await client.download('hl7.terminology.r4', 'latest');
+        expect(axiosSpy).toHaveBeenCalledWith('https://packages.fhir.org/hl7.terminology.r4', {
+          responseType: 'json'
+        });
         expect(loggerSpy.getLastMessage('info')).toBe(
           'Attempting to download hl7.terminology.r4#1.2.3-test from https://packages.fhir.org/hl7.terminology.r4/1.2.3-test'
         );
@@ -462,8 +472,10 @@ describe('FHIRRegistryClient', () => {
         scope.done(); // will throw if the nocked URL was never requested
       });
 
-      it('should get the Readable IncomingMessage when successful using https', async () => {
-        const scope = nock('https://packages.fhir.org')
+      it('should request binary content and get the Readable IncomingMessage using https', async () => {
+        const scope = nock('https://packages.fhir.org', {
+          reqheaders: { Accept: 'application/octet-stream' }
+        })
           .get('/hl7.fhir.small/0.1.0')
           .replyWithFile(
             200,

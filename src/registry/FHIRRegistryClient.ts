@@ -29,13 +29,14 @@ export class FHIRRegistryClient implements RegistryClient {
     // Construct URL from endpoint, name, and version
     // See: https://confluence.hl7.org/pages/viewpage.action?pageId=97454344#FHIRPackageRegistryUserDocumentation-Download
     const url = `${this.endpoint}/${name}/${version}`;
+    const headers = { Accept: 'application/octet-stream' };
     this.log('info', `Attempting to download ${name}#${version} from ${url}`);
 
     // Right now, this approach is needed for browser environments
     if (this.isBrowserEnvironment) {
       return new Promise((resolve, reject) => {
         https
-          .get(url, res => {
+          .get(url, { headers }, res => {
             if (res.statusCode < 400) {
               resolve(res);
             } else {
@@ -49,7 +50,7 @@ export class FHIRRegistryClient implements RegistryClient {
     }
 
     // Axios approach should be used the vast majority of the time
-    const res = await axiosGet(url, { responseType: 'stream' });
+    const res = await axiosGet(url, { responseType: 'stream', headers });
     if (res?.status === 200 && res?.data) {
       return res.data;
     }
