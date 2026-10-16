@@ -45,39 +45,196 @@ describe('DiskBasedPackageCache', () => {
     it('should clean a malformed fhir package tarball when caching it', async () => {
       const tempCacheFolder = temp.mkdirSync('fpl-test');
       const tempCache = new DiskBasedPackageCache(tempCacheFolder, { log: loggerSpy.log });
+      const expectedTargetFolder = path.join(tempCacheFolder, 'fhir.small.wrong#0.1.0');
+      expect(fs.existsSync(expectedTargetFolder)).toBeFalsy();
       // NOTE: This package has example, xml, package, and other folders at root
       const tarballStream = fs.createReadStream(
         path.join(__dirname, 'fixtures', 'tarballs', 'small-wrong-package.tgz')
       );
-      const targetFolder = await tempCache.cachePackageTarball(
-        'fhir.small.wrong',
-        '0.1.0',
-        tarballStream
+      const realRename = fs.rename;
+      const realMove = fs.move;
+      const expectedSiblings = new Set(['example', 'other', 'xml']);
+      const completedSiblings = new Set<string>();
+      const startedRenames: Promise<void>[] = [];
+      let extractionRoot: string | undefined;
+      const failures: unknown[] = [];
+      const renameSpy = jest.spyOn(fs, 'rename');
+      const moveSpy = jest.spyOn(fs, 'move');
+      try {
+        renameSpy.mockImplementation(
+          (source: fs.PathLike, destination: fs.PathLike, callback?: fs.NoParamCallback) => {
+            if (
+              callback === undefined &&
+              typeof source === 'string' &&
+              typeof destination === 'string'
+            ) {
+              const root = path.dirname(source);
+              const sibling = path.basename(source);
+              if (
+                expectedSiblings.has(sibling) &&
+                destination === path.join(root, 'package', sibling) &&
+                (extractionRoot === undefined || root === extractionRoot)
+              ) {
+                extractionRoot = root;
+                const rename = new Promise<void>(resolve => setImmediate(resolve)).then(
+                  async () => {
+                    await realRename(source, destination);
+                    completedSiblings.add(sibling);
+                  }
+                );
+                startedRenames.push(rename);
+                return rename;
+              }
+            }
+            if (callback) {
+              return realRename(source, destination, callback);
+            }
+            return realRename(source, destination);
+          }
+        );
+        moveSpy.mockImplementation(
+          (
+            source: string,
+            destination: string,
+            options?: fs.MoveOptions | fs.NoParamCallbackWithUndefined,
+            callback?: fs.NoParamCallbackWithUndefined
+          ) => {
+            if (destination === expectedTargetFolder) {
+              expect(source).toBe(extractionRoot);
+              expect(completedSiblings).toEqual(expectedSiblings);
+            }
+            if (typeof options === 'function') {
+              return realMove(source, destination, options);
+            }
+            if (callback) {
+              return realMove(source, destination, options, callback);
+            }
+            return realMove(source, destination, options);
+          }
+        );
+        try {
+          const targetFolder = await tempCache.cachePackageTarball(
+            'fhir.small.wrong',
+            '0.1.0',
+            tarballStream
+          );
+          expect(targetFolder).toEqual(path.join(tempCacheFolder, 'fhir.small.wrong#0.1.0'));
+          // Check that package JSON hasn't moved
+          const packageJSONPath = path.join(targetFolder, 'package', 'package.json');
+          expect(fs.existsSync(packageJSONPath)).toBeTruthy();
+          const packageJSON = fs.readJSONSync(packageJSONPath);
+          expect(packageJSON.name).toEqual('fhir.small.wrong');
+          expect(packageJSON.version).toEqual('0.1.0');
+          // Check that example, other, and xml folders have moved
+          expect(fs.existsSync(path.join(targetFolder, 'example'))).toBeFalsy();
+          expect(fs.existsSync(path.join(targetFolder, 'package', 'example'))).toBeTruthy();
+          expect(fs.existsSync(path.join(targetFolder, 'other'))).toBeFalsy();
+          expect(fs.existsSync(path.join(targetFolder, 'package', 'other'))).toBeTruthy();
+          expect(fs.existsSync(path.join(targetFolder, 'xml'))).toBeFalsy();
+          expect(fs.existsSync(path.join(targetFolder, 'package', 'xml'))).toBeTruthy();
+          // And do one check to make sure their contents moved too
+          const exampleJSONPath = path.join(
+            targetFolder,
+            'package',
+            'example',
+            'Patient-PatientExample.json'
+          );
+          expect(fs.existsSync(exampleJSONPath)).toBeTruthy();
+          const exampleJSON = fs.readJSONSync(exampleJSONPath);
+          expect(exampleJSON.id).toEqual('PatientExample');
+        } catch (error) {
+          failures.push(error);
+        }
+        const results = await Promise.allSettled(startedRenames);
+        for (const result of results) {
+          if (result.status === 'rejected') {
+            failures.push(result.reason);
+          }
+        }
+        if (failures.length === 1) {
+          throw failures[0];
+        }
+        if (failures.length > 1) {
+          const details = failures
+            .map(failure =>
+              failure instanceof Error ? (failure.stack ?? failure.message) : String(failure)
+            )
+            .join('\n\n');
+          throw Object.assign(new Error(`Multiple malformed-package test failures:\n${details}`), {
+            errors: failures
+          });
+        }
+      } finally {
+        renameSpy.mockRestore();
+        moveSpy.mockRestore();
+      }
+    });
+
+    it('should reject normalization failures before replacing an existing cached package', async () => {
+      const tempCacheFolder = temp.mkdirSync('fpl-test');
+      const tempCache = new DiskBasedPackageCache(tempCacheFolder, { log: loggerSpy.log });
+      const targetFolder = path.join(tempCacheFolder, 'fhir.small.wrong#0.1.0');
+      const packageFolder = path.join(targetFolder, 'package');
+      const packageJSONPath = path.join(packageFolder, 'package.json');
+      const sentinelPath = path.join(packageFolder, 'sentinel.txt');
+      const sentinelContents = 'Keep the existing cached package.';
+      const oldPackageJSON = {
+        name: 'fhir.small.wrong',
+        version: '0.1.0',
+        description: 'Existing cached package'
+      };
+      await fs.ensureDir(packageFolder);
+      await fs.writeFile(sentinelPath, sentinelContents, 'utf-8');
+      await fs.writeJSON(packageJSONPath, oldPackageJSON);
+      const tarballStream = fs.createReadStream(
+        path.join(__dirname, 'fixtures', 'tarballs', 'small-wrong-package.tgz')
       );
-      expect(targetFolder).toEqual(path.join(tempCacheFolder, 'fhir.small.wrong#0.1.0'));
-      // Check that package JSON hasn't moved
-      const packageJSONPath = path.join(targetFolder, 'package', 'package.json');
-      expect(fs.existsSync(packageJSONPath)).toBeTruthy();
-      const packageJSON = fs.readJSONSync(packageJSONPath);
-      expect(packageJSON.name).toEqual('fhir.small.wrong');
-      expect(packageJSON.version).toEqual('0.1.0');
-      // Check that example, other, and xml folders have moved
-      expect(fs.existsSync(path.join(targetFolder, 'example'))).toBeFalsy();
-      expect(fs.existsSync(path.join(targetFolder, 'package', 'example'))).toBeTruthy();
-      expect(fs.existsSync(path.join(targetFolder, 'other'))).toBeFalsy();
-      expect(fs.existsSync(path.join(targetFolder, 'package', 'other'))).toBeTruthy();
-      expect(fs.existsSync(path.join(targetFolder, 'xml'))).toBeFalsy();
-      expect(fs.existsSync(path.join(targetFolder, 'package', 'xml'))).toBeTruthy();
-      // And do one check to make sure their contents moved too
-      const exampleJSONPath = path.join(
-        targetFolder,
-        'package',
-        'example',
-        'Patient-PatientExample.json'
-      );
-      expect(fs.existsSync(exampleJSONPath)).toBeTruthy();
-      const exampleJSON = fs.readJSONSync(exampleJSONPath);
-      expect(exampleJSON.id).toEqual('PatientExample');
+      const realRename = fs.rename;
+      const normalizationError = new Error('Normalization rename failed');
+      const expectedSiblings = new Set(['example', 'other', 'xml']);
+      let extractionRoot: string | undefined;
+      let normalizationStarts = 0;
+      const renameSpy = jest.spyOn(fs, 'rename');
+      try {
+        renameSpy.mockImplementation(
+          (source: fs.PathLike, destination: fs.PathLike, callback?: fs.NoParamCallback) => {
+            if (
+              callback === undefined &&
+              typeof source === 'string' &&
+              typeof destination === 'string'
+            ) {
+              const root = path.dirname(source);
+              const sibling = path.basename(source);
+              if (
+                expectedSiblings.has(sibling) &&
+                destination === path.join(root, 'package', sibling) &&
+                (extractionRoot === undefined || root === extractionRoot)
+              ) {
+                extractionRoot = root;
+                normalizationStarts += 1;
+                if (normalizationStarts === 1) {
+                  return Promise.reject(normalizationError);
+                }
+              }
+            }
+            if (callback) {
+              return realRename(source, destination, callback);
+            }
+            return realRename(source, destination);
+          }
+        );
+        await expect(
+          tempCache.cachePackageTarball('fhir.small.wrong', '0.1.0', tarballStream)
+        ).rejects.toBe(normalizationError);
+        expect(normalizationStarts).toBe(1);
+        expect(fs.readFileSync(sentinelPath, 'utf-8')).toBe(sentinelContents);
+        expect(fs.readJSONSync(packageJSONPath)).toEqual(oldPackageJSON);
+        expect(loggerSpy.getAllMessages('info')).not.toContain(
+          `Cached fhir.small.wrong#0.1.0 to ${targetFolder}`
+        );
+      } finally {
+        renameSpy.mockRestore();
+      }
     });
 
     it('should cache a fhir package tarball to the cache folder and replace the existing cached package if applicable', async () => {

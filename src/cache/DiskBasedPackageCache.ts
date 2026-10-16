@@ -104,13 +104,11 @@ export class DiskBasedPackageCache implements PackageCache {
  */
 async function cleanCachedPackage(packageDirectory: string): Promise<void> {
   if (fs.existsSync(path.join(packageDirectory, 'package'))) {
-    (await fs.readdir(packageDirectory))
-      .filter(file => file !== 'package')
-      .forEach(async file => {
-        await fs.rename(
-          path.join(packageDirectory, file),
-          path.join(packageDirectory, 'package', file)
-        );
-      });
+    for (const file of (await fs.readdir(packageDirectory)).filter(file => file !== 'package')) {
+      await fs.rename(
+        path.join(packageDirectory, file),
+        path.join(packageDirectory, 'package', file)
+      );
+    }
   }
 }
