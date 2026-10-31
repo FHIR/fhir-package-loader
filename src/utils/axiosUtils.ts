@@ -40,6 +40,11 @@ export async function axiosGet(
       return await axios.get(url);
     }
   } catch (error) {
+    // Failed streaming requests still own a response socket. Release it before
+    // returning or throwing so registry fallback cannot keep the process alive.
+    if (axiosOptions.responseType === 'stream') {
+      error.response?.data?.destroy?.();
+    }
     if (error.response?.status === 401) {
       return error.response;
     } else {
