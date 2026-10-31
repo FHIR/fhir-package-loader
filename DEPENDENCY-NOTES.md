@@ -5,5 +5,6 @@ The `npm outdated` command reports a dependency as outdated. It is not being upd
 - `@types/node`: don't update until Node 22 is LTS version (currently Node 20).
 - `chalk`: major version 5 is an esmodule and causes problems for jest. Keep updated to latest 4.x release.
 - `commander`: major version 14 requires Node 20 and higher. Wait until community has had sufficient time to move off Node 18.
+- `https-proxy-agent`: major version 8 is an esmodule and causes problems for jest. Keep updated to latest 7.x release.
 - `nock`: major version 15 is an esmodule and causes problems for jest. Keep updated to latest 14.x release.
 - `typescript`: typescript versions over 5.x have compatibility problems with some jest modules.
