@@ -1,3 +1,6 @@
+import path from 'path';
+import fs from 'fs-extra';
+import nock from 'nock';
 import type { BasePackageLoaderOptions } from '../../src/loader/BasePackageLoader';
 import { DefaultRegistryClient } from '../../src/registry/DefaultRegistryClient';
 import { FHIRRegistryClient } from '../../src/registry/FHIRRegistryClient';
@@ -67,6 +70,57 @@ describe('DefaultRegistryClient', () => {
       expect(() => {
         new SubClass();
       }).not.toThrow();
+    });
+  });
+
+  describe('#download', () => {
+    beforeEach(() => {
+      jest.replaceProperty(process, 'env', {
+        ...process.env,
+        FPL_REGISTRY: '',
+        HTTPS_PROXY: '',
+        NO_PROXY: '*'
+      });
+      nock.disableNetConnect();
+    });
+
+    afterEach(() => {
+      nock.cleanAll();
+      nock.enableNetConnect();
+      jest.restoreAllMocks();
+    });
+
+    it('should download an archive instead of metadata from the fallback when the primary returns 404', async () => {
+      const archive = fs.readFileSync(
+        path.join(__dirname, '..', 'cache', 'fixtures', 'tarballs', 'small-package.tgz')
+      );
+      const primary = nock('https://packages.fhir.org').get('/fhir.small/0.1.0').reply(404);
+      const fallback = nock('https://packages2.fhir.org')
+        .get('/packages/fhir.small/0.1.0')
+        .reply(function () {
+          if (this.req.headers.accept === 'application/octet-stream') {
+            return [200, archive, { 'Content-Type': 'application/octet-stream' }];
+          }
+          return [
+            200,
+            {
+              name: 'fhir.small',
+              version: '0.1.0',
+              dist: { tarball: 'https://packages2.fhir.org/packages/fhir.small/0.1.0' }
+            },
+            { 'Content-Type': 'application/json' }
+          ];
+        });
+      const client = new DefaultRegistryClient({ log: loggerSpy.log });
+      const result = await client.download('fhir.small', '0.1.0');
+      const chunks: Buffer[] = [];
+      for await (const chunk of result) {
+        chunks.push(chunk);
+      }
+
+      expect(Buffer.concat(chunks).equals(archive)).toBe(true);
+      primary.done();
+      fallback.done();
     });
   });
 });
