@@ -288,12 +288,18 @@ export class BasePackageLoader implements PackageLoader {
       }
       info.sdAbstract = resourceJSON.abstract === true;
       const imposeProfiles: string[] = [];
+      const compliesWithProfiles: string[] = [];
       const characteristics: string[] = [];
       resourceJSON.extension?.forEach((ext: any) => {
         if (
           ext?.url === 'http://hl7.org/fhir/StructureDefinition/structuredefinition-imposeProfile'
         ) {
           imposeProfiles.push(ext.valueCanonical);
+        } else if (
+          ext?.url ===
+          'http://hl7.org/fhir/StructureDefinition/structuredefinition-compliesWithProfile'
+        ) {
+          compliesWithProfiles.push(ext.valueCanonical);
         } else if (
           ext?.url ===
           'http://hl7.org/fhir/StructureDefinition/structuredefinition-type-characteristics'
@@ -310,6 +316,9 @@ export class BasePackageLoader implements PackageLoader {
       });
       if (imposeProfiles.length) {
         info.sdImposeProfiles = imposeProfiles;
+      }
+      if (compliesWithProfiles.length) {
+        info.sdCompliesWithProfiles = compliesWithProfiles;
       }
       if (characteristics.length) {
         info.sdCharacteristics = characteristics;

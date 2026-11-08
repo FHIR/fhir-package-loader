@@ -295,6 +295,7 @@ describe('SQLJSPackageDB', () => {
           'http://example.org/SomeOtherPatient',
           'http://example.org/YetAnotherPatient'
         ],
+        sdCompliesWithProfiles: ['http://example.org/ClaimedPatient'],
         // a profile wouldn't normally have characteristics,
         // but they are used here for test purposes
         sdCharacteristics: ['can-be-target', 'do-translations'],
@@ -317,6 +318,7 @@ describe('SQLJSPackageDB', () => {
             'http://example.org/SomeOtherPatient',
             'http://example.org/YetAnotherPatient'
           ],
+          sdCompliesWithProfiles: ['http://example.org/ClaimedPatient'],
           sdCharacteristics: ['can-be-target', 'do-translations'],
           sdFlavor: 'Profile',
           packageName: 'RegularPackage',
