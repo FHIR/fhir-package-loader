@@ -127,7 +127,10 @@ export class SQLJSPackageDB implements PackageDB {
   async initialize(options: SQLJSPackageDBInitializeOptions = {}) {
     if (!this.initialized) {
       const SQL = await initSqlJs({
-        ...(options.locateFile && { locateFile: options.locateFile })
+        ...(options.locateFile && {
+          locateFile: options.locateFile,
+          useOldExtensionFunctions: false
+        })
       });
       // check initialization state once more since initSqlJs call was async (possible race condition)
       if (!this.initialized) {
