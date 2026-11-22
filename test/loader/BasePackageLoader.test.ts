@@ -801,6 +801,35 @@ describe('BasePackageLoader', () => {
       expect(result).toBe(LoadStatus.LOADED);
     });
 
+    it('should use non local package paths to find package with extension url of compliesWithProfile', async () => {
+      const fixturePath = setupPackageWithFixture(
+        'complying-patient',
+        '0.1.0',
+        'StructureDefinition-complying-patient.json'
+      );
+      const result = await loader.loadPackage('complying-patient', '0.1.0');
+      expect(packageDBMock.savePackageInfo).toHaveBeenCalled();
+      expect(packageDBMock.saveResourceInfo).toHaveBeenCalledWith({
+        resourceType: 'StructureDefinition',
+        id: 'complying-patient',
+        url: 'http://example.org/complies/StructureDefinition/complying-patient',
+        name: 'ComplyingPatient',
+        version: '0.1.0',
+        sdKind: 'resource',
+        sdDerivation: 'constraint',
+        sdType: 'Patient',
+        sdBaseDefinition: 'http://hl7.org/fhir/StructureDefinition/Patient',
+        sdAbstract: false,
+        sdFlavor: 'Profile',
+        sdImposeProfiles: ['http://example.org/impose/StructureDefinition/named-patient'],
+        sdCompliesWithProfiles: ['http://example.org/complies/StructureDefinition/claimed-patient'],
+        packageName: 'complying-patient',
+        packageVersion: '0.1.0',
+        resourcePath: fixturePath
+      });
+      expect(result).toBe(LoadStatus.LOADED);
+    });
+
     it('should use non local package paths to find package with package json path that leads to non-existing resource', async () => {
       const pkg = setupLoadPackage('empty-json-id', '0.1.0', 'not-loaded');
       packageCacheMock.isPackageInCache.calledWith(pkg.name, pkg.version).mockReturnValue(true);
