@@ -47,6 +47,7 @@ const CREATE_RESOURCE_TABLE = `CREATE TABLE resource (
   sdBaseDefinition CHAR,
   sdAbstract BOOL,
   sdImposeProfiles CHAR,
+  sdCompliesWithProfiles CHAR,
   sdCharacteristics CHAR,
   sdFlavor CHAR,
   packageName CHAR,
@@ -77,6 +78,7 @@ const INSERT_RESOURCE = `INSERT INTO resource
     sdBaseDefinition,
     sdAbstract,
     sdImposeProfiles,
+    sdCompliesWithProfiles,
     sdCharacteristics,
     sdFlavor,
     packageName,
@@ -94,6 +96,7 @@ const INSERT_RESOURCE = `INSERT INTO resource
     :sdBaseDefinition,
     :sdAbstract,
     :sdImposeProfiles,
+    :sdCompliesWithProfiles,
     :sdCharacteristics,
     :sdFlavor,
     :packageName,
@@ -124,7 +127,10 @@ export class SQLJSPackageDB implements PackageDB {
   async initialize(options: SQLJSPackageDBInitializeOptions = {}) {
     if (!this.initialized) {
       const SQL = await initSqlJs({
-        ...(options.locateFile && { locateFile: options.locateFile })
+        ...(options.locateFile && {
+          locateFile: options.locateFile,
+          useOldExtensionFunctions: false
+        })
       });
       // check initialization state once more since initSqlJs call was async (possible race condition)
       if (!this.initialized) {
@@ -232,6 +238,9 @@ export class SQLJSPackageDB implements PackageDB {
         // Technically we could do this w/ join tables, but that makes
         // more complex, so let's try this simpler solution first.
         binding[':sdImposeProfiles'] = JSON.stringify(info.sdImposeProfiles);
+      }
+      if (info.sdCompliesWithProfiles?.length) {
+        binding[':sdCompliesWithProfiles'] = JSON.stringify(info.sdCompliesWithProfiles);
       }
       if (info.sdCharacteristics?.length) {
         // Technically we could do this w/ join tables, but that makes
@@ -389,6 +398,9 @@ export class SQLJSPackageDB implements PackageDB {
       const result = stmt.getAsObject() as any;
       if (result.sdImposeProfiles) {
         result.sdImposeProfiles = JSON.parse(result.sdImposeProfiles);
+      }
+      if (result.sdCompliesWithProfiles) {
+        result.sdCompliesWithProfiles = JSON.parse(result.sdCompliesWithProfiles);
       }
       if (result.sdCharacteristics) {
         result.sdCharacteristics = JSON.parse(result.sdCharacteristics);

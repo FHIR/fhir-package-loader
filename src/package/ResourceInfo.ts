@@ -31,6 +31,7 @@ export type ResourceInfo = {
   sdBaseDefinition?: string;
   sdAbstract?: boolean;
   sdImposeProfiles?: string[];
+  sdCompliesWithProfiles?: string[];
   sdCharacteristics?: string[];
   sdFlavor?: string;
   packageName?: string;
