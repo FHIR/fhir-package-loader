@@ -18,6 +18,28 @@ describe('axiosUtils', () => {
   });
 
   describe('#axiosGet', () => {
+    it.each([
+      ['request-token', 'Bearer request-token'],
+      ['', undefined]
+    ])(
+      'uses the explicit registry token %j in place of the environment token',
+      async (token, authorization) => {
+        const env = jest.replaceProperty(process, 'env', {
+          ...process.env,
+          FPL_REGISTRY: 'https://example.org',
+          FPL_REGISTRY_TOKEN: 'environment-token'
+        });
+        try {
+          getSpy.mockResolvedValueOnce({});
+          await axiosGet('https://example.org/package', undefined, token);
+          const options = getSpy.mock.calls[0][1];
+          expect(options?.headers?.Authorization).toBe(authorization);
+        } finally {
+          env.restore();
+        }
+      }
+    );
+
     it('releases failed response streams before falling back to another registry', async () => {
       const failedStream = Readable.from(['Not found']);
       const tarballStream = Readable.from(['tarball']);

@@ -11,7 +11,8 @@ import { HttpsProxyAgent } from 'https-proxy-agent';
  */
 export async function axiosGet(
   url: string,
-  options?: AxiosRequestConfig
+  options?: AxiosRequestConfig,
+  token?: string
 ): Promise<AxiosResponse<any>> {
   const httpsProxy = process.env.HTTPS_PROXY;
   const axiosOptions = options ?? {};
@@ -21,15 +22,18 @@ export async function axiosGet(
     axiosOptions.proxy = false;
   }
 
-  // If we are using a custom FPL registry and have a token, set the Authorization header
-  if (
-    process.env.FPL_REGISTRY &&
-    process.env.FPL_REGISTRY_TOKEN &&
-    url.startsWith(process.env.FPL_REGISTRY)
-  ) {
+  let bearerToken = token;
+  if (bearerToken === undefined) {
+    // If we are using a custom FPL registry and have a token, set the Authorization header
+    const { FPL_REGISTRY, FPL_REGISTRY_TOKEN } = process.env;
+    if (FPL_REGISTRY && FPL_REGISTRY_TOKEN && url.startsWith(FPL_REGISTRY)) {
+      bearerToken = FPL_REGISTRY_TOKEN;
+    }
+  }
+  if (bearerToken) {
     axiosOptions.headers = {
       ...axiosOptions.headers,
-      Authorization: `Bearer ${process.env.FPL_REGISTRY_TOKEN}`
+      Authorization: `Bearer ${bearerToken}`
     };
   }
 

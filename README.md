@@ -111,8 +111,7 @@ The [default PackageLoader](src/loader/DefaultPackageLoader.ts) implementation p
 * package and resource metadata is stored and queried in an in-memory [sql.js](https://github.com/sql-js/sql.js) database
 * the standard FHIR cache is used for local storage of unzipped packages (`$USER_HOME/.fhir/packages`)
 * the standard FHIR registry is used (`packages.fhir.org`) for downloading published packages, falling back to `packages2.fhir.org` when necessary
-  * unless an `FPL_REGISTRY` environment variable is defined, in which case its value is used as the URL for an NPM registry to use _instead_ of the standard FHIR registry
-    * if an additional `FPL_REGISTRY_TOKEN` environment variable is defined, it will be used as an authorization header (bearer token)
+  * set `FPL_REGISTRY` to use [custom registries](#custom-package-registries)
 * the `build.fhir.org` build server is used for downloading _current_ builds of packages
 * a 200-item LRU in-memory cache is used to minimize repeated disk reads for resource files
 
@@ -131,6 +130,26 @@ if (status !== LoadStatus.LOADED) {
 ```
 
 For more control over the `PackageLoader`, use the [BasePackageLoader](src/loader/BasePackageLoader.ts). This allows you to specify the [PackageDB](src/db), [PackageCache](src/cache), [RegistryClient](src/registry), and [CurrentBuildClient](src/current) you wish to use. FHIR Package Loader comes with implementations of each of these, but you may also provide your own implementations that adhere to the relevant interfaces.
+
+#### Custom Package Registries
+
+Set `FPL_REGISTRY` to a single NPM-compatible registry URL and optionally set `FPL_REGISTRY_TOKEN` to its bearer token.
+
+```sh
+export FPL_REGISTRY=https://registry.example.org/packages
+export FPL_REGISTRY_TOKEN=your-token
+```
+
+Use a non-empty JSON array of HTTP or HTTPS URLs to configure a priority order. Registry URLs can include a base path. Use URLs without credentials, a query, or a fragment. A custom list replaces the built-in FHIR registries.
+
+```sh
+export FPL_REGISTRY='["https://private.example.org/packages","https://public.example.org/packages"]'
+export FPL_REGISTRY_TOKEN='["your-private-token",""]'
+```
+
+In array mode, a non-empty `FPL_REGISTRY_TOKEN` must be a JSON array of strings with one entry per registry in the same order. Use `""` for a registry that needs no token. An unset or empty token variable makes the entire list token-free. Each token is scoped to its registry's origin and base path, including when following a tarball URL or redirect.
+
+The loader tries registries in order for version lookup and download. Once `latest` or a wildcard resolves to a concrete version, download fallback looks for that same version in each registry.
 
 #### BasePackageLoader Options
 

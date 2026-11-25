@@ -95,9 +95,7 @@ describe('NPMRegistryClient', () => {
 
   describe('#constructor', () => {
     it('should remove trailing slash from endpoint', async () => {
-      const clientWithSlash = new NPMRegistryClient('https://my.npm.server.org/', {
-        log: loggerSpy.log
-      });
+      const clientWithSlash = new NPMRegistryClient('https://my.npm.server.org/');
       expect(clientWithSlash.endpoint).toBe('https://my.npm.server.org');
     });
   });
@@ -123,7 +121,9 @@ describe('NPMRegistryClient', () => {
       expect(resolveVersionSpy).toHaveBeenCalledWith(
         'https://my.npm.server.org',
         'my.favorite.package',
-        'latest'
+        'latest',
+        undefined,
+        undefined
       );
       expect(latest).toEqual('2.4.6');
     });
